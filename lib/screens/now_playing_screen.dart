@@ -4,6 +4,8 @@ import '../services/audio_handler.dart';
 import '../services/download_service.dart';
 import '../services/playlist_service.dart';
 import '../services/language_service.dart';
+import '../services/favorites_service.dart';
+import '../services/share_helper.dart';
 import '../widgets/equalizer_sheet.dart';
 import '../widgets/lyrics_sheet.dart';
 
@@ -18,6 +20,7 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
   final DownloadService _downloadService = DownloadService();
+  final FavoritesService _favoritesService = FavoritesService();
   bool _isDownloading = false;
   double _downloadPercent = 0.0;
   bool _isDownloaded = false;
@@ -337,9 +340,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
                   const Spacer(),
 
-                  // Title, Artist, In-App Download Button & Favorite
+                  // Title, Artist, In-App Download Button, Favorite & Share
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
                       children: [
                         Expanded(
@@ -364,17 +367,50 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: Colors.white.withOpacity(0.65),
-                                  fontSize: 16,
+                                  fontSize: 15,
                                 ),
                               ),
                             ],
                           ),
                         ),
+
+                        // Like / Favorite Button
+                        AnimatedBuilder(
+                          animation: _favoritesService,
+                          builder: (context, _) {
+                            final isFav = _favoritesService.isFavorite(song.id);
+                            return IconButton(
+                              icon: Icon(
+                                isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                color: isFav ? const Color(0xFFFF2A6D) : Colors.white70,
+                                size: 28,
+                              ),
+                              tooltip: isFav ? 'Remove Favorite' : 'Add to Favorites',
+                              onPressed: () async {
+                                final added = await _favoritesService.toggleFavorite(song);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      duration: const Duration(seconds: 1),
+                                      backgroundColor: added ? const Color(0xFFFF2A6D) : Colors.grey.shade800,
+                                      content: Text(
+                                        added
+                                            ? (LanguageService().isHindi ? 'पसंदीदा में जोड़ा गया!' : 'Added to Favorites!')
+                                            : (LanguageService().isHindi ? 'पसंदीदा से हटाया गया!' : 'Removed from Favorites!'),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        ),
+
                         // In-App Download Button
                         _isDownloading
                             ? SizedBox(
-                                width: 38,
-                                height: 38,
+                                width: 34,
+                                height: 34,
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
@@ -385,7 +421,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                     ),
                                     Text(
                                       '${(_downloadPercent * 100).toInt()}%',
-                                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
                                     ),
                                   ],
                                 ),
@@ -394,11 +430,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                 icon: Icon(
                                   _isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
                                   color: _isDownloaded ? const Color(0xFF05D9E8) : Colors.white70,
-                                  size: 28,
+                                  size: 26,
                                 ),
                                 tooltip: 'App me Download Karein',
                                 onPressed: () => _triggerDownload(song),
                               ),
+
+                        // Share Button
+                        IconButton(
+                          icon: const Icon(Icons.share_rounded, color: Colors.white70, size: 24),
+                          tooltip: 'Share Song',
+                          onPressed: () {
+                            ShareHelper.shareSong(
+                              title: song.title,
+                              artist: song.artist,
+                              streamUrl: song.streamUrl,
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),

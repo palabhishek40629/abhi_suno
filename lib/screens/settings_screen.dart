@@ -75,7 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ? 'अपडेट की जांच विफल रही। इंटरनेट कनेक्शन जांचें।'
               : 'Failed to check updates. Check internet connection.';
         } else if (info.hasUpdate) {
-          _updateStatusMessage = ' (v)';
+          _updateStatusMessage = '${_lang.t('update_available')} (v${info.latestVersion})';
         } else {
           _updateStatusMessage = _lang.t('up_to_date');
         }
@@ -101,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _ytLinkController.clear();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(' ' + (_lang.isHindi ? 'गाने सफलतापूर्वक जोड़े गए!' : 'songs imported successfully!')),
+              content: Text('${songs.length} ' + (_lang.isHindi ? 'गाने सफलतापूर्वक जोड़े गए!' : 'songs imported successfully!')),
               backgroundColor: const Color(0xFF05D9E8),
             ),
           );

@@ -7,6 +7,7 @@ import 'services/language_service.dart';
 import 'services/theme_service.dart';
 import 'widgets/app_header.dart';
 import 'widgets/mini_player.dart';
+import 'widgets/splash_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/search_screen.dart';
@@ -15,7 +16,6 @@ import 'screens/library_screen.dart';
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set system UI overlay style immediately
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -58,6 +58,7 @@ class AppBootstrapScreen extends StatefulWidget {
 
 class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
   AbhiAudioHandler? _audioHandler;
+  bool _splashCompleted = false;
 
   @override
   void initState() {
@@ -83,7 +84,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
       if (mounted) {
         setState(() => _audioHandler = handler);
       }
-    } catch (e) {
+    } catch (_) {
       if (mounted) {
         setState(() => _audioHandler = AbhiAudioHandler());
       }
@@ -92,70 +93,26 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_audioHandler != null) {
-      return MainNavigationScaffold(audioHandler: _audioHandler!);
-    }
+    final bool isReady = _audioHandler != null && _splashCompleted;
 
-    // Instant Fast Splash Screen with the 3D Golden Crown Emblem
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFFD700).withOpacity(0.4),
-                    blurRadius: 30,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: ClipOval(
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.music_note_rounded, size: 48, color: Colors.amber),
-                ),
-              ),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 400),
+      transitionBuilder: (child, animation) {
+        return FadeTransition(opacity: animation, child: child);
+      },
+      child: isReady
+          ? MainNavigationScaffold(
+              key: const ValueKey('main_nav'),
+              audioHandler: _audioHandler!,
+            )
+          : AnimatedSplashScreen(
+              key: const ValueKey('splash_screen'),
+              onFinish: () {
+                if (mounted) {
+                  setState(() => _splashCompleted = true);
+                }
+              },
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Abhi Suno',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                color: Colors.white,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'by Abhishek Pal',
-              style: TextStyle(
-                color: Color(0xFF05D9E8),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 1.0,
-              ),
-            ),
-            const SizedBox(height: 36),
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2.5,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF05D9E8)),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

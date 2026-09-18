@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
-import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import '../models/song_model.dart';
 import 'cache_manager.dart';
@@ -71,7 +70,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
   }
 
-  // Playback Decision Flow (Requirement 21)
+  // Playback Decision Flow
   Future<void> playSong(SongModel song, {List<SongModel>? queue}) async {
     try {
       final previousSong = _currentSong;
@@ -107,24 +106,21 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
         await _player.setAudioSource(AudioSource.file(song.localFilePath!));
       } else {
-        // 2. Check Cache tiers (Promote prefetch or use cached file)
-        await _cacheManager.promotePrefetchToCurrent(song.id);
+        // 2. Check full cached file in local cache tiers
         final cachedFile = await _cacheManager.getCachedSongFile(song.id);
-
-        if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 200000) {
+        if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 500000) {
           await _player.setAudioSource(AudioSource.file(cachedFile.path));
         } else {
-          // 3. Resolve authorized stream URL
+          // 3. Play direct high-speed Akamai CDN audio stream URL
           String? audioUrl = song.streamUrl;
           if (audioUrl == null || audioUrl.isEmpty) {
-            audioUrl = await _audioRepo.resolveAudioStreamUrl(song.id);
+            audioUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: '320kbps');
             song.streamUrl = audioUrl;
           }
 
           if (audioUrl != null && audioUrl.isNotEmpty) {
             final streamHeaders = {
-              'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-              'Referer': 'https://www.youtube.com/',
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
             };
 
             await _player.setAudioSource(
@@ -132,14 +128,14 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
               preload: true,
             );
           } else {
-            throw Exception('Unable to resolve audio stream for track: ');
+            throw Exception('Unable to resolve audio stream for track: ${song.title}');
           }
         }
       }
 
       await _player.play();
 
-      // 4. Background Next-Song Prefetch (~13 seconds) (Requirement 3)
+      // 4. Background Next-Song Stream Pre-resolution
       _triggerNextSongPrefetch();
     } catch (e) {
       playbackState.add(playbackState.value.copyWith(
@@ -149,41 +145,17 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
-  // Prefetch first ~13 seconds (~350 KB) of upcoming track in background
+  // Pre-resolve upcoming song stream URL in background
   void _triggerNextSongPrefetch() {
     if (_currentIndex < 0 || _currentIndex + 1 >= _playlist.length) return;
     final nextSong = _playlist[_currentIndex + 1];
 
     Future.microtask(() async {
       try {
-        final cached = await _cacheManager.getCachedSongFile(nextSong.id);
-        if (cached != null && await cached.exists()) return;
-
-        // Resolve stream url
-        String? nextUrl = nextSong.streamUrl;
-        if (nextUrl == null || nextUrl.isEmpty) {
-          nextUrl = await _audioRepo.resolveAudioStreamUrl(nextSong.id);
-          nextSong.streamUrl = nextUrl;
-        }
-
-        if (nextUrl == null || nextUrl.isEmpty) return;
-
-        final prefetchDir = await _cacheManager.prefetchDir;
-        final cleanId = nextSong.id.replaceAll(RegExp(r'[^\w]+'), '_');
-        final targetFile = File('/.m4a');
-
-        // Fetch initial ~350 KB with HTTP range request (~13 seconds)
-        final res = await http.get(
-          Uri.parse(nextUrl),
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-            'Referer': 'https://www.youtube.com/',
-            'Range': 'bytes=0-350000',
-          },
-        ).timeout(const Duration(seconds: 4));
-
-        if (res.statusCode == 200 || res.statusCode == 206) {
-          await targetFile.writeAsBytes(res.bodyBytes, flush: true);
+        if (nextSong.streamUrl != null && nextSong.streamUrl!.isNotEmpty) return;
+        final resolved = await _audioRepo.resolveAudioStreamUrl(nextSong.id, quality: '320kbps');
+        if (resolved != null && resolved.isNotEmpty) {
+          nextSong.streamUrl = resolved;
         }
       } catch (_) {}
     });

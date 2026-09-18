@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/song_model.dart';
+import 'audio_providers/jiosaavn_adapter.dart';
 import 'audio_providers/unified_audio_repository.dart';
 
 class MusicService {
@@ -10,31 +11,50 @@ class MusicService {
   factory MusicService() => _instance;
   MusicService._internal();
 
+  final JioSaavnAdapter _saavnAdapter = JioSaavnAdapter();
   final YoutubeExplode _yt = YoutubeExplode();
   final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
 
+  /// Search music catalog using JioSaavn CDN primary with YouTube Explode fallback
   Future<List<SongModel>> searchSongs(String query) async {
-    try {
-      final searchResults = await _yt.search.search(
-        query.trim().isEmpty ? 'Top Hindi Songs Bollywood' : query.trim(),
-      );
+    final cleanQuery = query.trim().isEmpty ? 'Top Hindi Songs Bollywood' : query.trim();
 
+    // 1. Primary fast search on JioSaavn
+    try {
+      final saavnResults = await _saavnAdapter.searchSongs(cleanQuery, limit: 30);
+      if (saavnResults.isNotEmpty) {
+        // Cache resolved stream URLs in repository
+        for (final song in saavnResults) {
+          if (song.streamUrl != null && song.streamUrl!.isNotEmpty) {
+            _audioRepo.cacheStreamUrl(song.id, song.streamUrl!);
+          }
+        }
+        return saavnResults;
+      }
+    } catch (_) {}
+
+    // 2. Secondary fallback search on YouTube Explode
+    try {
+      final searchResults = await _yt.search.search(cleanQuery);
       final List<SongModel> songs = [];
+
       for (final video in searchResults) {
         if (video.duration != null && video.duration!.inMinutes > 15) {
           continue;
         }
 
-        songs.add(SongModel(
+        final cleanTitle = _cleanTitle(video.title);
+        final song = SongModel(
           id: video.id.value,
-          title: _cleanTitle(video.title),
+          title: cleanTitle,
           artist: video.author,
           album: 'Single',
           duration: video.duration ?? const Duration(minutes: 3),
           thumbnailUrl: video.thumbnails.highResUrl.isNotEmpty
               ? video.thumbnails.highResUrl
               : video.thumbnails.standardResUrl,
-        ));
+        );
+        songs.add(song);
 
         if (songs.length >= 25) break;
       }
@@ -46,28 +66,29 @@ class MusicService {
       }
 
       return songs;
-    } catch (e) {
+    } catch (_) {
       return [];
     }
   }
 
-  void preloadStreamUrl(String videoId) {
-    if (_audioRepo.hasCachedStream(videoId)) return;
-    _audioRepo.resolveAudioStreamUrl(videoId);
+  void preloadStreamUrl(String trackId) {
+    if (_audioRepo.hasCachedStream(trackId)) return;
+    _audioRepo.resolveAudioStreamUrl(trackId);
   }
 
-  Future<List<SongModel>> getTrendingHindi() => searchSongs('Trending Hindi Songs Bollywood Official');
-  Future<List<SongModel>> getBollywoodRomantic() => searchSongs('Best Bollywood Romantic Songs Arijit Singh');
-  Future<List<SongModel>> getRetroClassics() => searchSongs('Old Hindi Retro Classics Kishore Kumar Lata Mangeshkar');
-  Future<List<SongModel>> getPunjabiHits() => searchSongs('Top Punjabi Songs Sidhu Moosewala Diljit Dosanjh Karan Aujla');
-  Future<List<SongModel>> getHindiLofi() => searchSongs('Hindi Lofi Chill Songs Bollywood Slowed Reverb');
-  Future<List<SongModel>> getBhaktiSongs() => searchSongs('Best Hindi Bhakti Songs Bhajan Devotional');
-  Future<List<SongModel>> getWorkoutSongs() => searchSongs('High Energy Gym Workout Bollywood Hindi Songs');
-  Future<List<SongModel>> getPartySongs() => searchSongs('Bollywood Dance Party Mashup Songs');
-  Future<List<SongModel>> getGhazals() => searchSongs('Best Jagjit Singh Mehdi Hassan Ghazals');
+  // Curated category feeds powered by JioSaavn CDN
+  Future<List<SongModel>> getTrendingHindi() => _saavnAdapter.getTrendingHindi();
+  Future<List<SongModel>> getBollywoodRomantic() => _saavnAdapter.getBollywoodRomantic();
+  Future<List<SongModel>> getRetroClassics() => _saavnAdapter.getRetroClassics();
+  Future<List<SongModel>> getPunjabiHits() => _saavnAdapter.getPunjabiHits();
+  Future<List<SongModel>> getHindiLofi() => _saavnAdapter.getHindiLofi();
+  Future<List<SongModel>> getBhaktiSongs() => _saavnAdapter.getBhaktiSongs();
+  Future<List<SongModel>> getWorkoutSongs() => _saavnAdapter.getWorkoutSongs();
+  Future<List<SongModel>> getPartySongs() => _saavnAdapter.getPartySongs();
+  Future<List<SongModel>> getGhazals() => _saavnAdapter.getGhazals();
 
-  Future<String?> getAudioStreamUrl(String videoId) async {
-    return await _audioRepo.resolveAudioStreamUrl(videoId);
+  Future<String?> getAudioStreamUrl(String trackId) async {
+    return await _audioRepo.resolveAudioStreamUrl(trackId);
   }
 
   Future<List<SongModel>> importYouTubePlaylist(String urlOrId) async {
@@ -107,26 +128,36 @@ class MusicService {
     return '';
   }
 
+  /// Fetch crystal-clear synced/plain lyrics from LRCLIB
   Future<String> fetchLyrics(String title, String artist) async {
     try {
       final cleanT = _cleanTitle(title);
-      final cleanA = artist.replaceAll(RegExp(r'(VEVO|Official|Topic|Music)', caseSensitive: false), '').trim();
+      final cleanA = artist
+          .replaceAll(RegExp(r'(VEVO|Official|Topic|Music|Zee Music|T-Series)', caseSensitive: false), '')
+          .split(',')
+          .first
+          .trim();
 
-      final url = Uri.parse('https://lrclib.net/api/get?track_name=&artist_name=');
-      final res = await http.get(url).timeout(const Duration(seconds: 4));
+      final url = Uri.parse(
+        'https://lrclib.net/api/get?track_name=${Uri.encodeComponent(cleanT)}&artist_name=${Uri.encodeComponent(cleanA)}',
+      );
+      final res = await http.get(
+        url,
+        headers: {'User-Agent': 'AbhiSuno/3.2.0 (palabhishek40629@gmail.com)'},
+      ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
-        if (data['syncedLyrics'] != null && data['syncedLyrics'].toString().isNotEmpty) {
-          return data['syncedLyrics'];
+        if (data['syncedLyrics'] != null && data['syncedLyrics'].toString().trim().isNotEmpty) {
+          return data['syncedLyrics'].toString();
         }
-        if (data['plainLyrics'] != null && data['plainLyrics'].toString().isNotEmpty) {
-          return data['plainLyrics'];
+        if (data['plainLyrics'] != null && data['plainLyrics'].toString().trim().isNotEmpty) {
+          return data['plainLyrics'].toString();
         }
       }
     } catch (_) {}
 
-    return 'गीत के बोल उपलब्ध नहीं हैं।\n\n\n\n\nअभी सुनो - शुद्ध संगीत प्लेयर';
+    return 'गीत के बोल उपलब्ध नहीं हैं।\n\nअभी सुनो - शुद्ध संगीत प्लेयर';
   }
 
   String _cleanTitle(String title) {

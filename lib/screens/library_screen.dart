@@ -4,6 +4,7 @@ import '../services/audio_handler.dart';
 import '../services/download_service.dart';
 import '../services/playlist_service.dart';
 import '../services/device_audio_service.dart';
+import '../services/favorites_service.dart';
 import '../services/language_service.dart';
 
 class LibraryScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
   final DownloadService _downloadService = DownloadService();
   final PlaylistService _playlistService = PlaylistService();
   final DeviceAudioService _deviceAudioService = DeviceAudioService();
+  final FavoritesService _favoritesService = FavoritesService();
   final LanguageService _lang = LanguageService();
 
   List<SongModel> _downloadedSongs = [];
@@ -30,7 +32,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadDownloads();
   }
 
@@ -245,16 +247,21 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
 
         return Column(
           children: [
-            // 3-Tab Header (Downloads, Playlists, Device Songs)
+            // 4-Tab Header (Liked Songs, Downloads, Playlists, Device Songs)
             Container(
               color: const Color(0xFF0F0F0F),
               child: TabBar(
                 controller: _tabController,
-                indicatorColor: const Color(0xFF05D9E8),
+                indicatorColor: const Color(0xFFFF2A6D),
                 indicatorWeight: 3,
-                labelColor: const Color(0xFF05D9E8),
+                labelColor: const Color(0xFFFF2A6D),
                 unselectedLabelColor: Colors.white54,
+                isScrollable: true,
                 tabs: [
+                  Tab(
+                    icon: const Icon(Icons.favorite_rounded, size: 20),
+                    text: isHindi ? 'पसंदीदा' : 'Liked',
+                  ),
                   Tab(
                     icon: const Icon(Icons.download_done_rounded, size: 20),
                     text: isHindi ? 'डाउनलोड्स' : 'Downloads',
@@ -265,7 +272,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                   ),
                   Tab(
                     icon: const Icon(Icons.phone_android_rounded, size: 20),
-                    text: isHindi ? 'फोन के गाने' : 'Device Songs',
+                    text: isHindi ? 'फोन गाने' : 'Device',
                   ),
                 ],
               ),
@@ -275,13 +282,16 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  // TAB 1: In-App Downloads
+                  // TAB 1: Liked Songs (Favorites)
+                  _buildLikedSongsTab(isHindi),
+
+                  // TAB 2: In-App Downloads
                   _buildDownloadsTab(isHindi),
 
-                  // TAB 2: Custom Playlists
+                  // TAB 3: Custom Playlists
                   _buildPlaylistsTab(isHindi),
 
-                  // TAB 3: Device Music
+                  // TAB 4: Device Music
                   _buildDeviceSongsTab(isHindi),
                 ],
               ),
@@ -638,6 +648,151 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLikedSongsTab(bool isHindi) {
+    return AnimatedBuilder(
+      animation: _favoritesService,
+      builder: (context, _) {
+        final likedSongs = _favoritesService.favoriteSongs;
+
+        return Column(
+          children: [
+            // Liked Songs Header Banner
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF3B1528), Color(0xFF1E0E18)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFF2A6D).withOpacity(0.35)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFFF2A6D).withOpacity(0.18),
+                    ),
+                    child: const Icon(Icons.favorite_rounded, color: Color(0xFFFF2A6D), size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isHindi ? 'पसंदीदा गीत' : 'Liked Songs',
+                          style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${likedSongs.length} ${isHindi ? "पसंदीदा गाने" : "favorite tracks"}',
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (likedSongs.isNotEmpty)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF2A6D),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      ),
+                      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                      label: Text(isHindi ? 'बजाएं' : 'Play All', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: () => _playSong(likedSongs.first, likedSongs),
+                    ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: likedSongs.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.favorite_border_rounded, size: 64, color: Colors.white.withOpacity(0.2)),
+                          const SizedBox(height: 16),
+                          Text(
+                            isHindi ? 'कोई पसंदीदा गाना नहीं है' : 'No liked songs yet',
+                            style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            isHindi
+                                ? 'किसी भी गाने के दिल वाले आइकन पर टैप करें।'
+                                : 'Tap the heart icon on any song to add here.',
+                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      physics: const BouncingScrollPhysics(),
+                      padding: const EdgeInsets.only(bottom: 90),
+                      itemCount: likedSongs.length,
+                      itemBuilder: (context, index) {
+                        final song = likedSongs[index];
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              song.thumbnailUrl,
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 48,
+                                height: 48,
+                                color: Colors.white10,
+                                child: const Icon(Icons.music_note, color: Colors.white54),
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            song.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            song.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.favorite_rounded, color: Color(0xFFFF2A6D), size: 22),
+                                onPressed: () => _favoritesService.toggleFavorite(song),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.play_circle_filled_rounded, color: Color(0xFF05D9E8), size: 28),
+                                onPressed: () => _playSong(song, likedSongs),
+                              ),
+                            ],
+                          ),
+                          onTap: () => _playSong(song, likedSongs),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

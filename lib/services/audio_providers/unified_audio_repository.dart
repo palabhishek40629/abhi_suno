@@ -1,36 +1,35 @@
 import 'dart:async';
 import 'audio_provider_adapter.dart';
+import 'jiosaavn_adapter.dart';
 import 'youtube_explode_adapter.dart';
-import 'piped_invidious_adapter.dart';
 
 class UnifiedAudioRepository {
   static final UnifiedAudioRepository _instance = UnifiedAudioRepository._internal();
   factory UnifiedAudioRepository() => _instance;
   UnifiedAudioRepository._internal();
 
-  final YouTubeExplodeAdapter _primaryAdapter = YouTubeExplodeAdapter();
-  final PipedInvidiousAdapter _fallbackAdapter = PipedInvidiousAdapter();
+  final JioSaavnAdapter _primaryJioSaavn = JioSaavnAdapter();
+  final YouTubeExplodeAdapter _secondaryYouTube = YouTubeExplodeAdapter();
 
   // In-memory stream cache
   final Map<String, String> _streamCache = {};
 
-  // Request deduplication map: prevents duplicate concurrent requests for the same track
+  // Request deduplication map
   final Map<String, Future<String?>> _inFlightRequests = {};
 
-  // Resolve audio stream URL with caching, deduplication, and parallel race
-  Future<String?> resolveAudioStreamUrl(String trackId) async {
+  Future<String?> resolveAudioStreamUrl(String trackId, {String quality = '320kbps'}) async {
     // 1. Check in-memory stream cache
     if (_streamCache.containsKey(trackId)) {
       return _streamCache[trackId];
     }
 
-    // 2. Request deduplication: if request is already in-flight, await existing Future
+    // 2. Request deduplication
     if (_inFlightRequests.containsKey(trackId)) {
       return await _inFlightRequests[trackId];
     }
 
     // 3. Initiate resolution and record in flight
-    final future = _executeResolution(trackId);
+    final future = _executeResolution(trackId, quality: quality);
     _inFlightRequests[trackId] = future;
 
     try {
@@ -44,34 +43,31 @@ class UnifiedAudioRepository {
     }
   }
 
-  Future<String?> _executeResolution(String trackId) async {
-    // Parallel race between primary adapter and fallback adapter
-    final primaryFuture = _primaryAdapter.resolveAudioStreamUrl(trackId).then<String>((url) {
-      if (url != null && url.isNotEmpty) return url;
-      throw Exception('primary null');
-    });
+  Future<String?> _executeResolution(String trackId, {String quality = '320kbps'}) async {
+    // Check if ID is a YouTube 11-char ID
+    final isYouTubeId = RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(trackId);
 
-    final fallbackFuture = _fallbackAdapter.resolveAudioStreamUrl(trackId).then<String>((url) {
-      if (url != null && url.isNotEmpty) return url;
-      throw Exception('fallback null');
-    });
-
-    try {
-      final String resolvedUrl = await Future.any<String>([
-        primaryFuture,
-        fallbackFuture,
-      ]).timeout(const Duration(seconds: 4));
-
-      if (resolvedUrl.isNotEmpty) {
-        return resolvedUrl;
-      }
-    } catch (_) {
-      // If race failed, attempt sequential fallback
+    if (isYouTubeId) {
       try {
-        final fallback = await _primaryAdapter.resolveAudioStreamUrl(trackId) ??
-            await _fallbackAdapter.resolveAudioStreamUrl(trackId);
-        if (fallback != null && fallback.isNotEmpty) {
-          return fallback;
+        final ytUrl = await _secondaryYouTube.resolveAudioStreamUrl(trackId);
+        if (ytUrl != null && ytUrl.isNotEmpty) return ytUrl;
+      } catch (_) {}
+    }
+
+    // Primary resolution via JioSaavn Akamai CDN
+    try {
+      final saavnUrl = await _primaryJioSaavn.resolveAudioStreamUrl(trackId, quality: quality);
+      if (saavnUrl != null && saavnUrl.isNotEmpty) {
+        return saavnUrl;
+      }
+    } catch (_) {}
+
+    // Fallback resolution via YouTube Explode if not tried yet
+    if (!isYouTubeId) {
+      try {
+        final ytFallback = await _secondaryYouTube.resolveAudioStreamUrl(trackId);
+        if (ytFallback != null && ytFallback.isNotEmpty) {
+          return ytFallback;
         }
       } catch (_) {}
     }
@@ -80,8 +76,14 @@ class UnifiedAudioRepository {
   }
 
   void cacheStreamUrl(String trackId, String url) {
-    _streamCache[trackId] = url;
+    if (trackId.isNotEmpty && url.isNotEmpty) {
+      _streamCache[trackId] = url;
+    }
   }
 
   bool hasCachedStream(String trackId) => _streamCache.containsKey(trackId);
+
+  void clearStreamCache() {
+    _streamCache.clear();
+  }
 }

@@ -30,10 +30,11 @@ class DownloadService {
       // 1. Check if already permanently downloaded
       final permDir = await _cacheManager.permanentDir;
       final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
-      final safeName = cleanId.isEmpty ? 'song_' : cleanId;
-      final filePath = '/.m4a';
+      final safeName = cleanId.isEmpty ? 'song_${DateTime.now().millisecondsSinceEpoch}' : cleanId;
+      final filePath = '${permDir.path}/$safeName.m4a';
 
-      if (File(filePath).existsSync() && File(filePath).lengthSync() > 1024) {
+      final existingFile = File(filePath);
+      if (existingFile.existsSync() && existingFile.lengthSync() > 1024) {
         song.localFilePath = filePath;
         song.isDownloaded = true;
         await _saveOfflineTrack(song);
@@ -41,7 +42,7 @@ class DownloadService {
         return true;
       }
 
-      // 2. Check if already present in temporary cache tiers to avoid network download!
+      // 2. Check if already present in temporary cache tiers to avoid redundant network download
       final cachedFile = await _cacheManager.getCachedSongFile(song.id);
       if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 50000) {
         try {
@@ -54,10 +55,10 @@ class DownloadService {
         } catch (_) {}
       }
 
-      // 3. Resolve direct stream url via UnifiedAudioRepository
+      // 3. Resolve direct stream URL via UnifiedAudioRepository (JioSaavn 320 kbps Akamai CDN)
       String? streamUrl = song.streamUrl;
       if (streamUrl == null || streamUrl.isEmpty) {
-        streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id);
+        streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: '320kbps');
       }
 
       if (streamUrl == null || streamUrl.isEmpty) {
@@ -69,8 +70,7 @@ class DownloadService {
 
       final downloadOptions = Options(
         headers: {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-          'Referer': 'https://www.youtube.com/',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         },
       );
 
@@ -160,17 +160,14 @@ class DownloadService {
     } catch (_) {}
   }
 
-  // Get total permanent downloads storage size in MB
   Future<double> getPermanentStorageSizeInMB() async {
     return await _cacheManager.getPermanentDownloadsSizeMB();
   }
 
-  // Get total temporary cache storage size in MB
   Future<double> getTemporaryCacheSizeInMB() async {
     return await _cacheManager.getTemporaryCacheSizeMB();
   }
 
-  // Clear ONLY temporary cache tiers (NEVER deletes permanent downloads)
   Future<void> clearTemporaryCache() async {
     await _cacheManager.clearTemporaryCache();
   }

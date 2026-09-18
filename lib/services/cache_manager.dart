@@ -22,12 +22,12 @@ class CacheManager {
   Future<void> init() async {
     if (_baseCacheDir != null) return;
     final appDocDir = await getApplicationDocumentsDirectory();
-    _baseCacheDir = Directory('/abhi_suno_cache');
+    _baseCacheDir = Directory('${appDocDir.path}/abhi_suno_cache');
 
-    _currentDir = Directory('/CURRENT');
-    _prefetchDir = Directory('/PREFETCH');
-    _recentDir = Directory('/RECENT');
-    _permanentDir = Directory('/abhi_suno_vault/PERMANENT');
+    _currentDir = Directory('${_baseCacheDir!.path}/CURRENT');
+    _prefetchDir = Directory('${_baseCacheDir!.path}/PREFETCH');
+    _recentDir = Directory('${_baseCacheDir!.path}/RECENT');
+    _permanentDir = Directory('${appDocDir.path}/abhi_suno_vault/PERMANENT');
 
     await _currentDir!.create(recursive: true);
     await _prefetchDir!.create(recursive: true);
@@ -55,37 +55,37 @@ class CacheManager {
     return _permanentDir!;
   }
 
-  // Get cached file if it exists in any tier
+  /// Get cached file if it exists in any tier
   Future<File?> getCachedSongFile(String songId) async {
     await init();
     final cleanId = _cleanId(songId);
 
-    // 1. Check PERMANENT
-    final permFile = File('/.m4a');
-    if (await permFile.exists()) return permFile;
+    // 1. Check PERMANENT (Offline downloads)
+    final permFile = File('${_permanentDir!.path}/$cleanId.m4a');
+    if (await permFile.exists() && await permFile.length() > 1024) return permFile;
 
     // 2. Check CURRENT
-    final curFile = File('/.m4a');
-    if (await curFile.exists()) return curFile;
+    final curFile = File('${_currentDir!.path}/$cleanId.m4a');
+    if (await curFile.exists() && await curFile.length() > 1024) return curFile;
 
     // 3. Check PREFETCH
-    final prefFile = File('/.m4a');
-    if (await prefFile.exists()) return prefFile;
+    final prefFile = File('${_prefetchDir!.path}/$cleanId.m4a');
+    if (await prefFile.exists() && await prefFile.length() > 1024) return prefFile;
 
     // 4. Check RECENT
-    final recFile = File('/.m4a');
-    if (await recFile.exists()) return recFile;
+    final recFile = File('${_recentDir!.path}/$cleanId.m4a');
+    if (await recFile.exists() && await recFile.length() > 1024) return recFile;
 
     return null;
   }
 
-  // Promote prefetched file to current
+  /// Promote prefetched file to current
   Future<File?> promotePrefetchToCurrent(String songId) async {
     await init();
     final cleanId = _cleanId(songId);
-    final prefFile = File('/.m4a');
+    final prefFile = File('${_prefetchDir!.path}/$cleanId.m4a');
     if (await prefFile.exists()) {
-      final dest = File('/.m4a');
+      final dest = File('${_currentDir!.path}/$cleanId.m4a');
       try {
         await prefFile.rename(dest.path);
         return dest;
@@ -96,13 +96,13 @@ class CacheManager {
     return null;
   }
 
-  // Demote current to recent
+  /// Demote current to recent
   Future<void> demoteCurrentToRecent(String songId) async {
     await init();
     final cleanId = _cleanId(songId);
-    final curFile = File('/.m4a');
+    final curFile = File('${_currentDir!.path}/$cleanId.m4a');
     if (await curFile.exists()) {
-      final dest = File('/.m4a');
+      final dest = File('${_recentDir!.path}/$cleanId.m4a');
       try {
         await curFile.rename(dest.path);
       } catch (_) {}
@@ -110,7 +110,7 @@ class CacheManager {
     await _enforceRecentLRULimit();
   }
 
-  // Keep only the most recent 10 tracks in RECENT tier
+  /// Keep only the most recent 10 tracks in RECENT tier
   Future<void> _enforceRecentLRULimit() async {
     try {
       await init();
@@ -126,7 +126,7 @@ class CacheManager {
     } catch (_) {}
   }
 
-  // Get sizes
+  /// Total temporary cache size in MB (CURRENT + PREFETCH + RECENT)
   Future<double> getTemporaryCacheSizeMB() async {
     await init();
     int bytes = 0;
@@ -136,6 +136,7 @@ class CacheManager {
     return bytes / (1024 * 1024);
   }
 
+  /// Total permanent offline downloads size in MB
   Future<double> getPermanentDownloadsSizeMB() async {
     await init();
     final bytes = await _calcDirSize(_permanentDir!);
@@ -155,7 +156,7 @@ class CacheManager {
     return total;
   }
 
-  // Clear ONLY temporary cache tiers (CURRENT, PREFETCH, RECENT). NEVER touches PERMANENT.
+  /// Clear ONLY temporary cache tiers (CURRENT, PREFETCH, RECENT). NEVER touches PERMANENT.
   Future<void> clearTemporaryCache() async {
     await init();
     await _clearDirContents(_currentDir!);

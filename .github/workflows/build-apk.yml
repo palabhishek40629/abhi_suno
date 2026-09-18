@@ -37,34 +37,36 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.1.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.2.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v3.1.0-release
-          path: AbhiSuno-v3.1.0-release.apk
+          name: AbhiSuno-v3.2.0-release
+          path: AbhiSuno-v3.2.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.1.0-${{ github.run_number }}
-          name: "Abhi Suno v3.1.0 High Performance (Build ${{ github.run_number }})"
+          tag_name: v3.2.0-${{ github.run_number }}
+          name: "Abhi Suno v3.2.0 (Build ${{ github.run_number }})"
           body: |
-            ### 🎵 Abhi Suno v3.1.0 High Performance Edition
-            **Developed by Abhishek Pal (Computer Science & Engineering Student)**
+            ### 🎵 Abhi Suno v3.2.0 - JioSaavn Akamai CDN Engine
+            **Created by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 🚀 Low-latency playback with intelligent pre-buffering (~120s)
-            - ⚡ Background next-song prefetch (~13s) for zero-latency skips
-            - 🛡️ 4-Tier cache engine with permanent offline download protection
-            - 📦 Unified Audio Provider Adapter architecture with request deduplication
-            - 🎨 YouTube Music Explore tab, Themes (Dark, Light, Glass) & 100% Pure Localization
-            - 🔄 In-App GitHub Updates checker
+            - 🚀 **Zero-Buffering JioSaavn Akamai CDN Playback:** 320 kbps & 160 kbps direct unencrypted audio streaming (<0.1s instant start).
+            - 🛡️ **YouTube Explode Dual Engine:** Seamless fallback without 403 Forbidden or SABR throttling.
+            - ✨ **Animated Startup Splash Screen:** Centered 3D Golden Crown Logo & Abhishek Pal CSE Student creator credit with smooth, swift transitions.
+            - ❤️ **Favorites & Liked Songs Section:** Instant like/unlike with persistence and 1-tap playback in Library.
+            - 📤 **Native Music Share:** Share any song seamlessly across apps via native Android sharesheet.
+            - 💾 **4-Tier Cache & Permanent Downloads Vault:** In-app downloads protected from temporary cleanup.
+            - 🎧 **Device Audio Import:** Scan and play local songs stored on the phone.
+            - 🌐 **100% Pure Localization:** Dedicated settings language switcher (Hindi & English).
 
-            **Direct Download:** Download `AbhiSuno-v3.1.0-release.apk` below!
-          files: AbhiSuno-v3.1.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v3.2.0-release.apk`
+          files: AbhiSuno-v3.2.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
