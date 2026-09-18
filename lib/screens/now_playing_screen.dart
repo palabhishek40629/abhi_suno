@@ -515,9 +515,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.shuffle_rounded, color: Colors.white54, size: 24),
-                          onPressed: () {},
+                        StreamBuilder<bool>(
+                          stream: widget.audioHandler.shuffleStream,
+                          initialData: widget.audioHandler.isShuffle,
+                          builder: (context, snapshot) {
+                            final isShuffle = snapshot.data ?? widget.audioHandler.isShuffle;
+                            return IconButton(
+                              icon: Icon(
+                                Icons.shuffle_rounded,
+                                color: isShuffle ? const Color(0xFF05D9E8) : Colors.white54,
+                                size: 24,
+                              ),
+                              tooltip: isShuffle ? 'Shuffle On' : 'Shuffle Off',
+                              onPressed: () => widget.audioHandler.toggleShuffle(),
+                            );
+                          },
                         ),
                         IconButton(
                           icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 40),
@@ -567,9 +579,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 40),
                           onPressed: () => widget.audioHandler.skipToNext(),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.repeat_rounded, color: Colors.white54, size: 24),
-                          onPressed: () {},
+                        StreamBuilder<bool>(
+                          stream: widget.audioHandler.repeatStream,
+                          initialData: widget.audioHandler.isRepeat,
+                          builder: (context, snapshot) {
+                            final isRepeat = snapshot.data ?? widget.audioHandler.isRepeat;
+                            return IconButton(
+                              icon: Icon(
+                                isRepeat ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                                color: isRepeat ? const Color(0xFF05D9E8) : Colors.white54,
+                                size: 24,
+                              ),
+                              tooltip: isRepeat ? 'Repeat On' : 'Repeat Off',
+                              onPressed: () => widget.audioHandler.toggleRepeat(),
+                            );
+                          },
                         ),
                       ],
                     ),

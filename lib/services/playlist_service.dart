@@ -2,10 +2,11 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
+import 'download_service.dart';
 
 class UserPlaylist {
   final String id;
-  final String name;
+  String name;
   final List<SongModel> songs;
 
   UserPlaylist({required this.id, required this.name, required this.songs});
@@ -37,6 +38,9 @@ class PlaylistService extends ChangeNotifier {
   static const String _storageKey = 'abhi_suno_custom_playlists';
   List<UserPlaylist> _playlists = [];
   List<UserPlaylist> get playlists => List.unmodifiable(_playlists);
+
+  final Map<String, double> _playlistDownloadProgress = {};
+  Map<String, double> get playlistDownloadProgress => Map.unmodifiable(_playlistDownloadProgress);
 
   Future<void> _loadPlaylists() async {
     try {
@@ -70,6 +74,17 @@ class PlaylistService extends ChangeNotifier {
     await _savePlaylists();
   }
 
+  Future<void> renamePlaylist(String playlistId, String newName) async {
+    final cleanName = newName.trim();
+    if (cleanName.isEmpty) return;
+
+    final index = _playlists.indexWhere((p) => p.id == playlistId);
+    if (index != -1) {
+      _playlists[index].name = cleanName;
+      await _savePlaylists();
+    }
+  }
+
   Future<void> addSongToPlaylist(String playlistId, SongModel song) async {
     final index = _playlists.indexWhere((p) => p.id == playlistId);
     if (index != -1) {
@@ -91,5 +106,55 @@ class PlaylistService extends ChangeNotifier {
   Future<void> deletePlaylist(String playlistId) async {
     _playlists.removeWhere((p) => p.id == playlistId);
     await _savePlaylists();
+  }
+
+  /// Batch download all songs in a playlist with controlled concurrency & progress
+  Future<Map<String, int>> downloadEntirePlaylist(
+    String playlistId, {
+    Function(int completed, int total, double progress)? onProgress,
+  }) async {
+    final index = _playlists.indexWhere((p) => p.id == playlistId);
+    if (index == -1) return {'total': 0, 'downloaded': 0, 'skipped': 0};
+
+    final playlist = _playlists[index];
+    final total = playlist.songs.length;
+    if (total == 0) return {'total': 0, 'downloaded': 0, 'skipped': 0};
+
+    int downloadedCount = 0;
+    int skippedCount = 0;
+    final downloadService = DownloadService();
+
+    _playlistDownloadProgress[playlistId] = 0.0;
+    notifyListeners();
+
+    for (int i = 0; i < total; i++) {
+      final song = playlist.songs[i];
+      if (downloadService.isSongDownloaded(song.id)) {
+        downloadedCount++;
+      } else {
+        final success = await downloadService.downloadSong(song);
+        if (success) {
+          downloadedCount++;
+        } else {
+          skippedCount++;
+        }
+      }
+
+      final progress = (i + 1) / total;
+      _playlistDownloadProgress[playlistId] = progress;
+      notifyListeners();
+      if (onProgress != null) {
+        onProgress(i + 1, total, progress);
+      }
+    }
+
+    _playlistDownloadProgress.remove(playlistId);
+    notifyListeners();
+
+    return {
+      'total': total,
+      'downloaded': downloadedCount,
+      'skipped': skippedCount,
+    };
   }
 }

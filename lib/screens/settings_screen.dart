@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/language_service.dart';
@@ -27,6 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _tempCacheMB = 0.0;
   double _permStorageMB = 0.0;
   String _audioQuality = '320kbps';
+  String _installedVersion = '3.3.0';
 
   bool _isCheckingUpdate = false;
   UpdateInfo? _updateInfo;
@@ -43,12 +45,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final permSize = await _downloadService.getPermanentStorageSizeInMB();
     final prefs = await SharedPreferences.getInstance();
     final quality = prefs.getString('audio_quality_pref') ?? '320kbps';
+    final version = await _updateService.getInstalledVersion();
 
     if (mounted) {
       setState(() {
         _tempCacheMB = tempSize;
         _permStorageMB = permSize;
         _audioQuality = quality;
+        _installedVersion = version;
       });
     }
   }
@@ -81,6 +85,117 @@ class _SettingsScreenState extends State<SettingsScreen> {
         }
       });
     }
+  }
+
+  void _downloadAndInstallApk() {
+    if (_updateInfo == null || _updateInfo!.apkDownloadUrl.isEmpty) return;
+
+    final apkUrl = _updateInfo!.apkDownloadUrl;
+    final cancelToken = CancelToken();
+    final progressNotifier = ValueNotifier<Map<String, dynamic>>({
+      'received': 0,
+      'total': _updateInfo!.assetSize > 0 ? _updateInfo!.assetSize : 1,
+      'percent': 0.0,
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return ValueListenableBuilder<Map<String, dynamic>>(
+          valueListenable: progressNotifier,
+          builder: (context, data, _) {
+            final received = data['received'] as int;
+            final total = data['total'] as int;
+            final percent = (data['percent'] as double).clamp(0.0, 1.0);
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF161616),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  const Icon(Icons.system_update_rounded, color: Color(0xFF00E676)),
+                  const SizedBox(width: 8),
+                  Text(
+                    _lang.isHindi ? 'अपडेट डाउनलोड हो रहा है' : 'Downloading Update',
+                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: percent > 0 ? percent : null,
+                      backgroundColor: Colors.white12,
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00E676)),
+                      minHeight: 6,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${(received / (1024 * 1024)).toStringAsFixed(1)} MB / ${(total / (1024 * 1024)).toStringAsFixed(1)} MB',
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      Text(
+                        '${(percent * 100).toInt()}%',
+                        style: const TextStyle(color: Color(0xFF00E676), fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    cancelToken.cancel();
+                    Navigator.of(dialogCtx).pop();
+                  },
+                  child: Text(
+                    _lang.isHindi ? 'रद्द करें' : 'Cancel',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    _updateService.downloadUpdateApk(
+      apkUrl,
+      cancelToken: cancelToken,
+      onProgress: (received, total, percent) {
+        progressNotifier.value = {
+          'received': received,
+          'total': total > 0 ? total : _updateInfo!.assetSize,
+          'percent': percent,
+        };
+      },
+    ).then((apkPath) {
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      if (apkPath != null && apkPath.isNotEmpty) {
+        _updateService.installApk(apkPath);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(_lang.isHindi ? 'अपडेट डाउनलोड विफल हुआ' : 'Update download failed'),
+              backgroundColor: Colors.redAccent,
+            ),
+          );
+        }
+      }
+    });
   }
 
   Future<void> _importYouTubePlaylist() async {
@@ -315,7 +430,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                'v',
+                                'v$_installedVersion',
                                 style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
                               ),
                             ],
@@ -330,7 +445,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'v',
+                                  'v${_updateInfo!.latestVersion}',
                                   style: TextStyle(
                                     color: _updateInfo!.hasUpdate ? const Color(0xFF00E676) : primaryColor,
                                     fontSize: 16,
@@ -378,7 +493,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 : (_updateInfo?.hasUpdate == true ? _lang.t('update_now') : _lang.t('check_updates')),
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           ),
-                          onPressed: _isCheckingUpdate ? null : _checkForUpdates,
+                          onPressed: _isCheckingUpdate
+                              ? null
+                              : (_updateInfo?.hasUpdate == true ? _downloadAndInstallApk : _checkForUpdates),
                         ),
                       ),
                     ],
@@ -559,7 +676,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                ' MB',
+                                '${_tempCacheMB.toStringAsFixed(1)} MB',
                                 style: TextStyle(
                                   color: textColor,
                                   fontSize: 18,
@@ -574,23 +691,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ],
                           ),
                           Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                ' MB',
-                                style: TextStyle(
-                                  color: const Color(0xFF00E676),
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${_permStorageMB.toStringAsFixed(1)} MB',
+                                  style: TextStyle(
+                                    color: const Color(0xFF00E676),
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                _lang.t('permanent_downloads'),
-                                style: TextStyle(color: subtextColor, fontSize: 11),
-                              ),
-                            ],
-                          ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _lang.t('permanent_downloads'),
+                                  style: TextStyle(color: subtextColor, fontSize: 11),
+                                ),
+                              ],
+                            ),
                         ],
                       ),
                       const SizedBox(height: 12),
@@ -624,7 +741,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // App Version Footer
                 Center(
                   child: Text(
-                    _lang.t('app_version'),
+                    'Abhi Suno v$_installedVersion • Created by Abhishek Pal',
                     style: TextStyle(color: subtextColor.withOpacity(0.5), fontSize: 12),
                   ),
                 ),

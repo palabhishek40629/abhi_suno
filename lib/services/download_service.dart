@@ -1,16 +1,21 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import 'cache_manager.dart';
 import 'audio_providers/unified_audio_repository.dart';
 
-class DownloadService {
+class DownloadService extends ChangeNotifier {
   static final DownloadService _instance = DownloadService._internal();
   factory DownloadService() => _instance;
-  DownloadService._internal();
+  DownloadService._internal() {
+    _loadInitialDownloads();
+  }
 
+  static const MethodChannel _nativeChannel = MethodChannel('com.abhishekpal.abhisuno/native');
   final Dio _dio = Dio(BaseOptions(
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 45),
@@ -19,15 +24,41 @@ class DownloadService {
   final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
   static const String _storageKey = 'abhi_suno_offline_songs';
 
+  final List<SongModel> _downloadedSongs = [];
+  List<SongModel> get downloadedSongs => List.unmodifiable(_downloadedSongs);
+
   final Map<String, double> _downloadProgress = {};
-  Map<String, double> get downloadProgress => _downloadProgress;
+  Map<String, double> get downloadProgress => Map.unmodifiable(_downloadProgress);
+
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
+  Future<void> _loadInitialDownloads() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? encoded = prefs.getString(_storageKey);
+      if (encoded != null && encoded.isNotEmpty) {
+        final List<dynamic> jsonList = json.decode(encoded);
+        _downloadedSongs.clear();
+
+        for (final item in jsonList) {
+          final song = SongModel.fromJson(item as Map<String, dynamic>);
+          if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
+            song.isDownloaded = true;
+            _downloadedSongs.add(song);
+          }
+        }
+      }
+    } catch (_) {}
+    _isInitialized = true;
+    notifyListeners();
+  }
 
   Future<bool> downloadSong(
     SongModel song, {
     Function(double progress)? onProgress,
   }) async {
     try {
-      // 1. Check if already permanently downloaded
       final permDir = await _cacheManager.permanentDir;
       final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
       final safeName = cleanId.isEmpty ? 'song_${DateTime.now().millisecondsSinceEpoch}' : cleanId;
@@ -42,7 +73,7 @@ class DownloadService {
         return true;
       }
 
-      // 2. Check if already present in temporary cache tiers to avoid redundant network download
+      // Check temporary cache tiers to avoid redundant download
       final cachedFile = await _cacheManager.getCachedSongFile(song.id);
       if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 50000) {
         try {
@@ -55,7 +86,7 @@ class DownloadService {
         } catch (_) {}
       }
 
-      // 3. Resolve direct stream URL via UnifiedAudioRepository (JioSaavn 320 kbps Akamai CDN)
+      // Resolve stream URL
       String? streamUrl = song.streamUrl;
       if (streamUrl == null || streamUrl.isEmpty) {
         streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: '320kbps');
@@ -66,6 +97,7 @@ class DownloadService {
       }
 
       _downloadProgress[song.id] = 0.0;
+      notifyListeners();
       if (onProgress != null) onProgress(0.0);
 
       final downloadOptions = Options(
@@ -82,6 +114,7 @@ class DownloadService {
           if (total > 0) {
             final progress = received / total;
             _downloadProgress[song.id] = progress;
+            notifyListeners();
             if (onProgress != null) onProgress(progress);
           }
         },
@@ -96,53 +129,40 @@ class DownloadService {
       return true;
     } catch (e) {
       _downloadProgress.remove(song.id);
+      notifyListeners();
       return false;
     }
   }
 
-  Future<bool> isSongDownloaded(String songId) async {
-    final downloaded = await getDownloadedSongs();
-    return downloaded.any((s) => s.id == songId && File(s.localFilePath ?? '').existsSync());
+  bool isSongDownloaded(String songId) {
+    return _downloadedSongs.any((s) => s.id == songId && File(s.localFilePath ?? '').existsSync());
   }
 
   Future<List<SongModel>> getDownloadedSongs() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final String? encoded = prefs.getString(_storageKey);
-      if (encoded == null || encoded.isEmpty) return [];
-
-      final List<dynamic> jsonList = json.decode(encoded);
-      final List<SongModel> songs = [];
-
-      for (final item in jsonList) {
-        final song = SongModel.fromJson(item as Map<String, dynamic>);
-        if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
-          songs.add(song);
-        }
-      }
-      return songs;
-    } catch (e) {
-      return [];
+    if (!_isInitialized) {
+      await _loadInitialDownloads();
     }
+    return List.unmodifiable(_downloadedSongs);
   }
 
   Future<void> _saveOfflineTrack(SongModel song) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final currentSongs = await getDownloadedSongs();
 
-      currentSongs.removeWhere((s) => s.id == song.id);
-      currentSongs.insert(0, song);
+      _downloadedSongs.removeWhere((s) => s.id == song.id);
+      _downloadedSongs.insert(0, song);
 
-      final encoded = json.encode(currentSongs.map((s) => s.toJson()).toList());
+      final encoded = json.encode(_downloadedSongs.map((s) => s.toJson()).toList());
       await prefs.setString(_storageKey, encoded);
+
+      // Reactively notify listeners immediately so Downloads UI updates with zero delay!
+      notifyListeners();
     } catch (_) {}
   }
 
   Future<void> deleteDownloadedSong(String songId) async {
     try {
-      final songs = await getDownloadedSongs();
-      final toRemove = songs.where((s) => s.id == songId).toList();
+      final toRemove = _downloadedSongs.where((s) => s.id == songId).toList();
 
       for (final song in toRemove) {
         if (song.localFilePath != null) {
@@ -153,10 +173,48 @@ class DownloadService {
         }
       }
 
-      songs.removeWhere((s) => s.id == songId);
+      _downloadedSongs.removeWhere((s) => s.id == songId);
       final prefs = await SharedPreferences.getInstance();
-      final encoded = json.encode(songs.map((s) => s.toJson()).toList());
+      final encoded = json.encode(_downloadedSongs.map((s) => s.toJson()).toList());
       await prefs.setString(_storageKey, encoded);
+
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Export downloaded song outside the app into public Music folder
+  Future<String?> exportSongToPublic(SongModel song) async {
+    try {
+      if (song.localFilePath == null || !File(song.localFilePath!).existsSync()) {
+        return null;
+      }
+
+      final cleanName = '${song.title} - ${song.artist}'.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_') + '.m4a';
+      final String? exportedPath = await _nativeChannel.invokeMethod<String>('exportAudio', {
+        'srcPath': song.localFilePath,
+        'fileName': cleanName,
+      });
+
+      return exportedPath;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Share audio file via native Android Sharesheet
+  Future<void> shareAudioFile(SongModel song) async {
+    try {
+      if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
+        await _nativeChannel.invokeMethod('shareAudio', {
+          'srcPath': song.localFilePath,
+          'title': 'Share ${song.title}',
+        });
+      } else {
+        await _nativeChannel.invokeMethod('shareText', {
+          'text': 'Listen to "${song.title}" by ${song.artist} on Abhi Suno!',
+          'title': 'Share Song',
+        });
+      }
     } catch (_) {}
   }
 
@@ -170,5 +228,6 @@ class DownloadService {
 
   Future<void> clearTemporaryCache() async {
     await _cacheManager.clearTemporaryCache();
+    notifyListeners();
   }
 }

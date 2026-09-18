@@ -98,17 +98,21 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen> with Single
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          // 3D Golden Crown Logo in Medium Size
+                          // Featured Abhishek Pal & Abhi Suno Poster Card
                           Container(
-                            width: 108,
-                            height: 108,
+                            width: 200,
+                            height: 270,
                             decoration: BoxDecoration(
-                              shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(22),
+                              border: Border.all(
+                                color: const Color(0xFFFFD700),
+                                width: 2.5,
+                              ),
                               boxShadow: [
                                 BoxShadow(
                                   color: const Color(0xFFFFD700).withOpacity(0.45),
                                   blurRadius: 36,
-                                  spreadRadius: 2,
+                                  spreadRadius: 3,
                                   offset: const Offset(0, 4),
                                 ),
                                 BoxShadow(
@@ -118,23 +122,26 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen> with Single
                                 ),
                               ],
                             ),
-                            child: ClipOval(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(19),
                               child: Image.asset(
                                 'assets/images/logo.png',
                                 fit: BoxFit.cover,
                                 errorBuilder: (_, __, ___) => Container(
                                   color: Colors.black,
-                                  child: const Icon(
-                                    Icons.music_note_rounded,
-                                    size: 54,
-                                    color: Color(0xFFFFD700),
+                                  child: const Center(
+                                    child: Icon(
+                                      Icons.music_note_rounded,
+                                      size: 64,
+                                      color: Color(0xFFFFD700),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
 
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
 
                           // App Name
                           const Text(
@@ -151,11 +158,11 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen> with Single
 
                           // Developer Credit (Hindi & English per User Request)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
                             decoration: BoxDecoration(
                               color: Colors.white.withOpacity(0.06),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.3)),
+                              border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.35)),
                             ),
                             child: const Column(
                               mainAxisSize: MainAxisSize.min,
@@ -183,12 +190,12 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen> with Single
                             ),
                           ),
 
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
 
                           // Sleek fast loading indicator
                           SizedBox(
-                            width: 28,
-                            height: 28,
+                            width: 26,
+                            height: 26,
                             child: CircularProgressIndicator(
                               strokeWidth: 2.2,
                               valueColor: AlwaysStoppedAnimation<Color>(

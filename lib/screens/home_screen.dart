@@ -3,6 +3,7 @@ import '../models/song_model.dart';
 import '../services/audio_handler.dart';
 import '../services/language_service.dart';
 import '../services/music_service.dart';
+import '../services/playback_history_service.dart';
 import '../services/theme_service.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -18,12 +19,15 @@ class _HomeScreenState extends State<HomeScreen> {
   final MusicService _musicService = MusicService();
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
+  final PlaybackHistoryService _historyService = PlaybackHistoryService();
 
   List<SongModel> _trendingHindi = [];
   List<SongModel> _bollywoodRomantic = [];
   List<SongModel> _retroClassics = [];
   List<SongModel> _punjabiHits = [];
   List<SongModel> _hindiLofi = [];
+  List<SongModel> _artistSongs = [];
+  String _cachedArtistQuery = '';
 
   String _activeChip = 'all';
 
@@ -32,6 +36,38 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     _loadInstantStarterTracks();
     _refreshLiveTrending();
+    _historyService.addListener(_onHistoryUpdated);
+    _loadMoreByArtist();
+  }
+
+  @override
+  void dispose() {
+    _historyService.removeListener(_onHistoryUpdated);
+    super.dispose();
+  }
+
+  void _onHistoryUpdated() {
+    if (mounted) {
+      setState(() {});
+      _loadMoreByArtist();
+    }
+  }
+
+  Future<void> _loadMoreByArtist() async {
+    final lastSong = _historyService.lastPlayedSong;
+    if (lastSong == null) return;
+    final primaryArtist = lastSong.artist.split(',').first.split('&').first.trim();
+    if (primaryArtist.isEmpty || primaryArtist == _cachedArtistQuery) return;
+
+    _cachedArtistQuery = primaryArtist;
+    try {
+      final songs = await _musicService.searchSongs(primaryArtist);
+      if (mounted) {
+        setState(() {
+          _artistSongs = songs.where((s) => s.id != lastSong.id).take(10).toList();
+        });
+      }
+    } catch (_) {}
   }
 
   void _loadInstantStarterTracks() {
@@ -254,6 +290,30 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 12),
 
+              // Continue Listening Hero Card
+              if (_activeChip == 'all' && _historyService.lastPlayedSong != null)
+                _buildContinueListeningCard(_historyService.lastPlayedSong!, _historyService.lastPosition, textColor, subtextColor, primaryColor, cardColor),
+
+              // Recently Played Section
+              if (_activeChip == 'all' && _historyService.recentHistory.isNotEmpty)
+                _buildSongSection(
+                  _lang.isHindi ? 'हाल ही में बजाए गए' : 'Recently Played',
+                  _historyService.recentHistory,
+                  textColor,
+                  subtextColor,
+                  primaryColor,
+                ),
+
+              // More by Artist Section
+              if (_activeChip == 'all' && _artistSongs.isNotEmpty && _historyService.lastPlayedSong != null)
+                _buildSongSection(
+                  _lang.isHindi ? 'कलाकार के अन्य लोकप्रिय गीत' : 'More by ${_historyService.lastPlayedSong!.artist.split(',').first.trim()}',
+                  _artistSongs,
+                  textColor,
+                  subtextColor,
+                  primaryColor,
+                ),
+
               // Trending Hindi Section
               if (_activeChip == 'all' || _activeChip == 'trending')
                 _buildSongSection(_lang.t('trending'), _trendingHindi, textColor, subtextColor, primaryColor),
@@ -277,6 +337,149 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildContinueListeningCard(
+    SongModel song,
+    Duration position,
+    Color textColor,
+    Color subtextColor,
+    Color primaryColor,
+    Color cardColor,
+  ) {
+    final durSec = song.duration.inSeconds > 0 ? song.duration.inSeconds : 1;
+    final posSec = position.inSeconds.clamp(0, durSec);
+    final double progress = (posSec / durSec).clamp(0.0, 1.0);
+
+    String formatDur(int s) {
+      final m = s ~/ 60;
+      final sec = s % 60;
+      return '$m:${sec.toString().padLeft(2, '0')}';
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF221A0C), // Warm golden dark
+              Color(0xFF141414), // Dark obsidian
+            ],
+          ),
+          border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.35)),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFFD700).withOpacity(0.08),
+              blurRadius: 18,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.history_rounded, size: 14, color: primaryColor),
+                const SizedBox(width: 6),
+                Text(
+                  _lang.isHindi ? 'सुनना जारी रखें' : 'CONTINUE LISTENING',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.8,
+                    color: primaryColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.network(
+                    song.thumbnailUrl,
+                    width: 58,
+                    height: 58,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 58,
+                      height: 58,
+                      color: Colors.black45,
+                      child: const Icon(Icons.music_note, color: Colors.white54),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        song.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        song.artist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: subtextColor,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  iconSize: 42,
+                  padding: EdgeInsets.zero,
+                  icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor),
+                  onPressed: () => _playTrack(song, [song]),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: progress,
+                backgroundColor: Colors.white12,
+                valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                minHeight: 3.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  formatDur(posSec),
+                  style: TextStyle(color: subtextColor, fontSize: 10),
+                ),
+                Text(
+                  formatDur(durSec),
+                  style: TextStyle(color: subtextColor, fontSize: 10),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 

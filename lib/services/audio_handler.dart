@@ -1,30 +1,45 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 import '../models/song_model.dart';
 import 'cache_manager.dart';
+import 'playback_history_service.dart';
 import 'audio_providers/unified_audio_repository.dart';
 
 class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
   final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
   final CacheManager _cacheManager = CacheManager();
+  final PlaybackHistoryService _historyService = PlaybackHistoryService();
 
   SongModel? _currentSong;
   final List<SongModel> _playlist = [];
+  final List<SongModel> _originalPlaylist = [];
   int _currentIndex = -1;
+
+  bool _isShuffle = false;
+  bool _isRepeat = false;
 
   SongModel? get currentSong => _currentSong;
   List<SongModel> get playlist => List.unmodifiable(_playlist);
   int get currentIndex => _currentIndex;
   AudioPlayer get player => _player;
+  bool get isShuffle => _isShuffle;
+  bool get isRepeat => _isRepeat;
 
   final StreamController<SongModel?> _currentSongSubject = StreamController<SongModel?>.broadcast();
   Stream<SongModel?> get currentSongStream => _currentSongSubject.stream;
 
   final StreamController<List<SongModel>> _playlistSubject = StreamController<List<SongModel>>.broadcast();
   Stream<List<SongModel>> get playlistStream => _playlistSubject.stream;
+
+  final StreamController<bool> _shuffleSubject = StreamController<bool>.broadcast();
+  Stream<bool> get shuffleStream => _shuffleSubject.stream;
+
+  final StreamController<bool> _repeatSubject = StreamController<bool>.broadcast();
+  Stream<bool> get repeatStream => _repeatSubject.stream;
 
   AbhiAudioHandler() {
     _init();
@@ -63,9 +78,20 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       ));
     });
 
+    _player.positionStream.listen((pos) {
+      if (_currentSong != null && pos.inSeconds > 0 && pos.inSeconds % 5 == 0) {
+        _historyService.updatePosition(pos);
+      }
+    });
+
     _player.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
-        skipToNext();
+        if (_isRepeat) {
+          _player.seek(Duration.zero);
+          _player.play();
+        } else {
+          skipToNext();
+        }
       }
     });
   }
@@ -79,18 +105,29 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
 
       if (queue != null && queue.isNotEmpty) {
+        _originalPlaylist.clear();
+        _originalPlaylist.addAll(queue);
+
         _playlist.clear();
         _playlist.addAll(queue);
-        _currentIndex = _playlist.indexWhere((s) => s.id == song.id);
-        if (_currentIndex == -1) {
-          _playlist.insert(0, song);
-          _currentIndex = 0;
+
+        if (_isShuffle) {
+          _applyShuffleQueue(song);
+        } else {
+          _currentIndex = _playlist.indexWhere((s) => s.id == song.id);
+          if (_currentIndex == -1) {
+            _playlist.insert(0, song);
+            _currentIndex = 0;
+          }
         }
         _playlistSubject.add(List.unmodifiable(_playlist));
       }
 
       _currentSong = song;
       _currentSongSubject.add(_currentSong);
+
+      // Record to smart history for Home Continue Listening
+      _historyService.recordSongPlay(song);
 
       final item = MediaItem(
         id: song.id,
@@ -161,6 +198,42 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
   }
 
+  void toggleShuffle() {
+    _isShuffle = !_isShuffle;
+    _shuffleSubject.add(_isShuffle);
+
+    if (_playlist.isEmpty) return;
+
+    if (_isShuffle) {
+      _applyShuffleQueue(_currentSong ?? _playlist.first);
+    } else {
+      // Restore original queue order
+      if (_originalPlaylist.isNotEmpty) {
+        _playlist.clear();
+        _playlist.addAll(_originalPlaylist);
+        _currentIndex = _playlist.indexWhere((s) => s.id == _currentSong?.id);
+        if (_currentIndex == -1) _currentIndex = 0;
+      }
+    }
+    _playlistSubject.add(List.unmodifiable(_playlist));
+  }
+
+  void _applyShuffleQueue(SongModel current) {
+    final others = _playlist.where((s) => s.id != current.id).toList();
+    final random = Random();
+    others.shuffle(random);
+
+    _playlist.clear();
+    _playlist.add(current);
+    _playlist.addAll(others);
+    _currentIndex = 0;
+  }
+
+  void toggleRepeat() {
+    _isRepeat = !_isRepeat;
+    _repeatSubject.add(_isRepeat);
+  }
+
   @override
   Future<void> play() => _player.play();
 
@@ -215,5 +288,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     await _player.dispose();
     await _currentSongSubject.close();
     await _playlistSubject.close();
+    await _shuffleSubject.close();
+    await _repeatSubject.close();
   }
 }

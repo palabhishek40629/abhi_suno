@@ -37,36 +37,37 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.2.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.3.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v3.2.0-release
-          path: AbhiSuno-v3.2.0-release.apk
+          name: AbhiSuno-v3.3.0-release
+          path: AbhiSuno-v3.3.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.2.0-${{ github.run_number }}
-          name: "Abhi Suno v3.2.0 (Build ${{ github.run_number }})"
+          tag_name: v3.3.0-${{ github.run_number }}
+          name: "Abhi Suno v3.3.0 (Build ${{ github.run_number }})"
           body: |
-            ### 🎵 Abhi Suno v3.2.0 - JioSaavn Akamai CDN Engine
+            ### 🎵 Abhi Suno v3.3.0 - Ultimate Music & In-App Update Engine
             **Created by Abhishek Pal (Computer Science & Engineering Student)**
 
+            - 🎨 **Featured Startup Brand Logo:** Abhishek Pal opening emblem & creator poster with golden aura and smooth transition.
+            - 🔄 **Native In-App Auto-Updater:** Dynamic package versioning, byte-level download progress reporting, and native FileProvider package installation.
+            - ⚡ **Instant Reactive Downloads:** Completed downloads appear in library immediately without manual refresh.
+            - 🔘 **3-Dot Overflow Menu:** Play, Add to Playlist, Create Playlist, Delete with confirmation, Share file stream, Export to public device Music storage, and Song Information.
+            - 🔀 **Stateful Queue Shuffle & Repeat:** Real Fisher-Yates shuffle queue preservation and track loop modes.
+            - 🏠 **Smart Home Dashboard:** "Continue Listening" hero resume card with playback position tracking, Recently Played, and More by Artist recommendations.
+            - 🗂️ **Modern 2-Column Category Grid:** 10 curated mood categories opening dedicated category detail screens with batch playback and shuffle.
+            - 📂 **Playlist Power-ups:** Playlist renaming and batch download with progress dialog.
             - 🚀 **Zero-Buffering JioSaavn Akamai CDN Playback:** 320 kbps & 160 kbps direct unencrypted audio streaming (<0.1s instant start).
-            - 🛡️ **YouTube Explode Dual Engine:** Seamless fallback without 403 Forbidden or SABR throttling.
-            - ✨ **Animated Startup Splash Screen:** Centered 3D Golden Crown Logo & Abhishek Pal CSE Student creator credit with smooth, swift transitions.
-            - ❤️ **Favorites & Liked Songs Section:** Instant like/unlike with persistence and 1-tap playback in Library.
-            - 📤 **Native Music Share:** Share any song seamlessly across apps via native Android sharesheet.
-            - 💾 **4-Tier Cache & Permanent Downloads Vault:** In-app downloads protected from temporary cleanup.
-            - 🎧 **Device Audio Import:** Scan and play local songs stored on the phone.
-            - 🌐 **100% Pure Localization:** Dedicated settings language switcher (Hindi & English).
 
-            **Direct APK Download:** `AbhiSuno-v3.2.0-release.apk`
-          files: AbhiSuno-v3.2.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v3.3.0-release.apk`
+          files: AbhiSuno-v3.3.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

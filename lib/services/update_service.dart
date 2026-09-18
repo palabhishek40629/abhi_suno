@@ -1,5 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 
@@ -26,26 +29,47 @@ class UpdateService {
   factory UpdateService() => _instance;
   UpdateService._internal();
 
-  static const String currentVersion = '3.1.0';
+  static const MethodChannel _channel = MethodChannel('com.abhishekpal.abhisuno/native');
   static const String _repoOwner = 'palabhishek40629';
   static const String _repoName = 'abhi_suno';
 
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 20),
+    receiveTimeout: const Duration(minutes: 5),
+  ));
+
+  /// Dynamically get the installed version from Android package manager
+  Future<String> getInstalledVersion() async {
+    try {
+      final String? version = await _channel.invokeMethod<String>('getAppVersion');
+      if (version != null && version.isNotEmpty) {
+        return version;
+      }
+    } catch (_) {}
+    return '3.3.0';
+  }
+
+  /// Check GitHub Releases asynchronously for updates
   Future<UpdateInfo?> checkForUpdate() async {
     try {
-      final url = Uri.parse('https://api.github.com/repos///releases/latest');
+      final currentVer = await getInstalledVersion();
+      final url = Uri.parse('https://api.github.com/repos/$_repoOwner/$_repoName/releases');
       final res = await http.get(
         url,
         headers: {
           'Accept': 'application/vnd.github.v3+json',
           'User-Agent': 'AbhiSuno-Android-App',
         },
-      ).timeout(const Duration(seconds: 6));
+      ).timeout(const Duration(seconds: 8));
 
       if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        final tagName = (data['tag_name'] ?? '').toString();
-        final releaseNotes = (data['body'] ?? 'Performance improvements and bug fixes.').toString();
-        final assets = data['assets'] as List<dynamic>? ?? [];
+        final List<dynamic> releases = json.decode(res.body);
+        if (releases.isEmpty) return null;
+
+        final latestRelease = releases.first as Map<String, dynamic>;
+        final tagName = (latestRelease['tag_name'] ?? '').toString();
+        final releaseNotes = (latestRelease['body'] ?? 'Performance improvements and bug fixes.').toString();
+        final assets = latestRelease['assets'] as List<dynamic>? ?? [];
 
         String apkUrl = '';
         int apkSize = 0;
@@ -58,12 +82,12 @@ class UpdateService {
           }
         }
 
-        final cleanLatest = tagName.replaceAll('v', '').trim();
-        final hasUpdate = _isNewerVersion(cleanLatest, currentVersion);
+        final cleanLatest = tagName.replaceAll(RegExp(r'[^0-9.]'), '').trim();
+        final hasUpdate = _isNewerVersion(cleanLatest, currentVer);
 
         return UpdateInfo(
-          currentVersion: currentVersion,
-          latestVersion: cleanLatest.isEmpty ? currentVersion : cleanLatest,
+          currentVersion: currentVer,
+          latestVersion: cleanLatest.isEmpty ? currentVer : cleanLatest,
           releaseNotes: releaseNotes,
           apkDownloadUrl: apkUrl,
           assetSize: apkSize,
@@ -75,11 +99,55 @@ class UpdateService {
     return null;
   }
 
+  /// Download APK with byte-level progress reporting
+  Future<String?> downloadUpdateApk(
+    String apkUrl, {
+    required Function(int receivedBytes, int totalBytes, double percent) onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final targetPath = '${tempDir.path}/AbhiSuno_Update.apk';
+
+      final file = File(targetPath);
+      if (file.existsSync()) {
+        try {
+          file.deleteSync();
+        } catch (_) {}
+      }
+
+      await _dio.download(
+        apkUrl,
+        targetPath,
+        cancelToken: cancelToken,
+        onReceiveProgress: (received, total) {
+          final double percent = total > 0 ? (received / total) : 0.0;
+          onProgress(received, total, percent);
+        },
+      );
+
+      if (File(targetPath).existsSync() && File(targetPath).lengthSync() > 1024 * 1024) {
+        return targetPath;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Launch Android Package Installer using FileProvider
+  Future<bool> installApk(String filePath) async {
+    try {
+      final bool? result = await _channel.invokeMethod<bool>('installApk', {'filePath': filePath});
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   bool _isNewerVersion(String latest, String current) {
     if (latest.isEmpty) return false;
     try {
-      final lParts = latest.split('-')[0].split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      final cParts = current.split('-')[0].split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final lParts = latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final cParts = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
       for (int i = 0; i < 3; i++) {
         final l = i < lParts.length ? lParts[i] : 0;
