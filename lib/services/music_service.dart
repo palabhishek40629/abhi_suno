@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
@@ -9,12 +10,13 @@ class MusicService {
   MusicService._internal();
 
   final YoutubeExplode _yt = YoutubeExplode();
+  final Map<String, String> _streamCache = {};
 
   // Search songs with query - pure audio focus
   Future<List<SongModel>> searchSongs(String query) async {
     try {
       final searchResults = await _yt.search.search(
-        query.trim().isEmpty ? 'Top Hindi Songs Bollywood' : '$query audio',
+        query.trim().isEmpty ? 'Top Hindi Songs Bollywood' : query.trim(),
       );
 
       final List<SongModel> songs = [];
@@ -36,22 +38,71 @@ class MusicService {
 
         if (songs.length >= 25) break;
       }
+
+      // Pre-warm cache for the first 2 songs in background
+      if (songs.isNotEmpty) {
+        preloadStreamUrl(songs[0].id);
+        if (songs.length > 1) preloadStreamUrl(songs[1].id);
+      }
+
       return songs;
     } catch (e) {
       return [];
     }
   }
 
-  // Curated Hindi categories
+  // Pre-load stream URL into cache for instantaneous playback
+  void preloadStreamUrl(String videoId) {
+    if (_streamCache.containsKey(videoId)) return;
+    getAudioStreamUrl(videoId);
+  }
+
+  // Curated category playlists
   Future<List<SongModel>> getTrendingHindi() => searchSongs('Trending Hindi Songs Bollywood Official');
   Future<List<SongModel>> getBollywoodRomantic() => searchSongs('Best Bollywood Romantic Songs Arijit Singh');
   Future<List<SongModel>> getRetroClassics() => searchSongs('Old Hindi Retro Classics Kishore Kumar Lata Mangeshkar');
   Future<List<SongModel>> getPunjabiHits() => searchSongs('Top Punjabi Songs Sidhu Moosewala Diljit Dosanjh Karan Aujla');
   Future<List<SongModel>> getHindiLofi() => searchSongs('Hindi Lofi Chill Songs Bollywood Slowed Reverb');
+  Future<List<SongModel>> getBhaktiSongs() => searchSongs('Best Hindi Bhakti Songs Bhajan Devotional');
+  Future<List<SongModel>> getWorkoutSongs() => searchSongs('High Energy Gym Workout Bollywood Hindi Songs');
+  Future<List<SongModel>> getPartySongs() => searchSongs('Bollywood Dance Party Mashup Songs');
+  Future<List<SongModel>> getGhazals() => searchSongs('Best Jagjit Singh Mehdi Hassan Ghazals');
 
-  // Direct high-quality pure audio stream resolver using iOS, Music & TV clients (bypasses bot blocks & 403)
+  // Ultra-Fast Stream Resolver with Cache & Parallel Race
   Future<String?> getAudioStreamUrl(String videoId) async {
-    // Strategy 1: YouTube Explode with specialized clients
+    // 1. Check in-memory stream cache
+    if (_streamCache.containsKey(videoId)) {
+      return _streamCache[videoId];
+    }
+
+    // 2. Launch YouTube Explode and Piped in parallel race
+    final ytExplodeFuture = _getYtExplodeStream(videoId);
+    final fallbackFuture = getFallbackAudioStreamUrl(videoId);
+
+    try {
+      // Race: whichever finishes first with a valid URL wins
+      final resolvedUrl = await Future.any([
+        ytExplodeFuture.then((url) => (url != null && url.isNotEmpty) ? url : Future<String>.error('yt null')),
+        fallbackFuture.then((url) => (url != null && url.isNotEmpty) ? url : Future<String>.error('fallback null')),
+      ]).timeout(const Duration(seconds: 4));
+
+      if (resolvedUrl.isNotEmpty) {
+        _streamCache[videoId] = resolvedUrl;
+        return resolvedUrl;
+      }
+    } catch (_) {
+      // If race timed out or had errors, fallback to sequential check
+      final fallback = await ytExplodeFuture ?? await fallbackFuture;
+      if (fallback != null && fallback.isNotEmpty) {
+        _streamCache[videoId] = fallback;
+        return fallback;
+      }
+    }
+
+    return null;
+  }
+
+  Future<String?> _getYtExplodeStream(String videoId) async {
     try {
       final manifest = await _yt.videos.streamsClient.getManifest(
         videoId,
@@ -69,34 +120,32 @@ class MusicService {
         return bestAudio.url.toString();
       }
     } catch (_) {}
-
-    // Strategy 2: Fallback to Piped & Invidious mirrors
-    return await getFallbackAudioStreamUrl(videoId);
+    return null;
   }
 
   // Fallback stream resolver using open-source Piped and Invidious APIs
   Future<String?> getFallbackAudioStreamUrl(String videoId) async {
-    // Piped APIs (fastest, unthrottled audio stream links)
     final pipedInstances = [
       'https://pipedapi.kavin.rocks',
       'https://api.piped.private.coffee',
       'https://piped-api.garudalinux.org',
-      'https://pipedapi.tokhmi.xyz',
     ];
 
     for (final host in pipedInstances) {
       try {
         final res = await http.get(
-          Uri.parse('$host/streams/$videoId'),
+          Uri.parse('System.Management.Automation.Internal.Host.InternalHost/streams/'),
           headers: {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)'},
-        ).timeout(const Duration(seconds: 4));
+        ).timeout(const Duration(milliseconds: 2500));
 
         if (res.statusCode == 200) {
           final data = json.decode(res.body);
           final audioList = data['audioStreams'] as List<dynamic>? ?? [];
           if (audioList.isNotEmpty) {
             final url = audioList[0]['url'] as String?;
-            if (url != null && url.isNotEmpty) return url;
+            if (url != null && url.isNotEmpty) {
+              return url;
+            }
           }
         }
       } catch (_) {}
@@ -106,16 +155,15 @@ class MusicService {
     final invidiousMirrors = [
       'https://invidious.nerdvpn.de',
       'https://inv.nadeko.net',
-      'https://yt.chocolatemoo53.com',
       'https://invidious.f5.si',
     ];
 
     for (final host in invidiousMirrors) {
       try {
         final res = await http.get(
-          Uri.parse('$host/api/v1/videos/$videoId'),
+          Uri.parse('System.Management.Automation.Internal.Host.InternalHost/api/v1/videos/'),
           headers: {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)'},
-        ).timeout(const Duration(seconds: 4));
+        ).timeout(const Duration(milliseconds: 2500));
 
         if (res.statusCode == 200) {
           final data = json.decode(res.body);
@@ -176,7 +224,7 @@ class MusicService {
       final cleanT = _cleanTitle(title);
       final cleanA = artist.replaceAll(RegExp(r'(VEVO|Official|Topic|Music)', caseSensitive: false), '').trim();
 
-      final url = Uri.parse('https://lrclib.net/api/get?track_name=${Uri.encodeComponent(cleanT)}&artist_name=${Uri.encodeComponent(cleanA)}');
+      final url = Uri.parse('https://lrclib.net/api/get?track_name=&artist_name=');
       final res = await http.get(url).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
@@ -190,13 +238,13 @@ class MusicService {
       }
     } catch (_) {}
 
-    return "Bol / Lyrics available nahi hain.\n\n$title\n$artist\n\nAbhi Suno Pure Audio Player";
+    return 'गीत के बोल उपलब्ध नहीं हैं।\n\n\n\n\nअभी सुनो - शुद्ध संगीत प्लेयर';
   }
 
   String _cleanTitle(String title) {
     return title
-        .replaceAll(RegExp(r'\(.*?(official|video|audio|lyric|song|4k|hd).*?\)', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\[.*?(official|video|audio|lyric|song|4k|hd).*?\]', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\(.*?(official|video|audio|lyric|song|4k|hd|remix).*?\)', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\[.*?(official|video|audio|lyric|song|4k|hd|remix).*?\]', caseSensitive: false), '')
         .replaceAll(RegExp(r'\|.*$'), '')
         .trim();
   }

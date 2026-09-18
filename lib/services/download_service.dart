@@ -11,15 +11,16 @@ class DownloadService {
   factory DownloadService() => _instance;
   DownloadService._internal();
 
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 45),
+  ));
   final MusicService _musicService = MusicService();
   static const String _storageKey = 'abhi_suno_offline_songs';
 
-  // Map to track active download percentages (0.0 to 1.0)
   final Map<String, double> _downloadProgress = {};
   Map<String, double> get downloadProgress => _downloadProgress;
 
-  // Get in-app sandboxed private directory for offline music
   Future<Directory> _getAppPrivateDirectory() async {
     final appDocDir = await getApplicationDocumentsDirectory();
     final privateVault = Directory('${appDocDir.path}/abhi_suno_vault');
@@ -29,13 +30,12 @@ class DownloadService {
     return privateVault;
   }
 
-  // Download song inside app's private sandbox
   Future<bool> downloadSong(
     SongModel song, {
     Function(double progress)? onProgress,
   }) async {
     try {
-      // 1. Resolve direct audio stream url
+      // 1. Resolve direct audio stream url (from cache or fast parallel lookup)
       String? streamUrl = song.streamUrl;
       if (streamUrl == null || streamUrl.isEmpty) {
         streamUrl = await _musicService.getAudioStreamUrl(song.id);
@@ -45,9 +45,8 @@ class DownloadService {
         return false;
       }
 
-      // 2. Prepare destination path inside app's private storage
+      // 2. Prepare destination path inside app private vault
       final vaultDir = await _getAppPrivateDirectory();
-      // Clean filename for safety
       final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
       final safeName = cleanId.isEmpty ? 'song_${song.title.hashCode.abs()}' : cleanId;
       final filePath = '${vaultDir.path}/$safeName.m4a';
@@ -55,7 +54,6 @@ class DownloadService {
       _downloadProgress[song.id] = 0.0;
       if (onProgress != null) onProgress(0.0);
 
-      // 3. Download using Dio with stream progress and mobile headers
       final downloadOptions = Options(
         headers: {
           'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
@@ -69,7 +67,7 @@ class DownloadService {
           filePath,
           options: downloadOptions,
           onReceiveProgress: (received, total) {
-            if (total != -1) {
+            if (total > 0) {
               final progress = received / total;
               _downloadProgress[song.id] = progress;
               if (onProgress != null) onProgress(progress);
@@ -77,7 +75,7 @@ class DownloadService {
           },
         );
       } catch (firstErr) {
-        // Retry with fallback stream URL
+        // Fallback retry
         final fallbackUrl = await _musicService.getFallbackAudioStreamUrl(song.id);
         if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
           await _dio.download(
@@ -85,7 +83,7 @@ class DownloadService {
             filePath,
             options: downloadOptions,
             onReceiveProgress: (received, total) {
-              if (total != -1) {
+              if (total > 0) {
                 final progress = received / total;
                 _downloadProgress[song.id] = progress;
                 if (onProgress != null) onProgress(progress);
@@ -99,13 +97,10 @@ class DownloadService {
 
       _downloadProgress.remove(song.id);
 
-      // 4. Update track model with local sandboxed path
       song.localFilePath = filePath;
       song.isDownloaded = true;
 
-      // 5. Save to persistent offline database
       await _saveOfflineTrack(song);
-
       return true;
     } catch (e) {
       _downloadProgress.remove(song.id);
@@ -113,13 +108,11 @@ class DownloadService {
     }
   }
 
-  // Check if song is downloaded inside app
   Future<bool> isSongDownloaded(String songId) async {
     final downloaded = await getDownloadedSongs();
     return downloaded.any((s) => s.id == songId && File(s.localFilePath ?? '').existsSync());
   }
 
-  // Get list of all in-app downloaded songs (100% offline)
   Future<List<SongModel>> getDownloadedSongs() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -131,7 +124,6 @@ class DownloadService {
 
       for (final item in jsonList) {
         final song = SongModel.fromJson(item as Map<String, dynamic>);
-        // Verify that file actually exists in private app storage
         if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
           songs.add(song);
         }
@@ -142,7 +134,6 @@ class DownloadService {
     }
   }
 
-  // Save or update offline track in local storage
   Future<void> _saveOfflineTrack(SongModel song) async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -156,7 +147,6 @@ class DownloadService {
     } catch (_) {}
   }
 
-  // Delete downloaded song from app vault
   Future<void> deleteDownloadedSong(String songId) async {
     try {
       final songs = await getDownloadedSongs();
@@ -175,6 +165,40 @@ class DownloadService {
       final prefs = await SharedPreferences.getInstance();
       final encoded = json.encode(songs.map((s) => s.toJson()).toList());
       await prefs.setString(_storageKey, encoded);
+    } catch (_) {}
+  }
+
+  // Get total offline cache storage size in MB
+  Future<double> getVaultSizeInMB() async {
+    try {
+      final vaultDir = await _getAppPrivateDirectory();
+      if (!await vaultDir.exists()) return 0.0;
+
+      int totalBytes = 0;
+      await for (final entity in vaultDir.list(recursive: true)) {
+        if (entity is File) {
+          totalBytes += await entity.length();
+        }
+      }
+      return totalBytes / (1024 * 1024);
+    } catch (_) {
+      return 0.0;
+    }
+  }
+
+  // Clear cache memory
+  Future<void> clearVaultCache() async {
+    try {
+      final vaultDir = await _getAppPrivateDirectory();
+      if (await vaultDir.exists()) {
+        await for (final entity in vaultDir.list()) {
+          if (entity is File) {
+            await entity.delete();
+          }
+        }
+      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_storageKey);
     } catch (_) {}
   }
 }

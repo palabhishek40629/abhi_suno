@@ -97,11 +97,11 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       );
       mediaItem.add(item);
 
-      // Determine audio source: 1. Local Sandboxed File OR 2. Online Stream
+      // Determine audio source: 1. Local Sandboxed File OR 2. Instant Online Stream
       if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
         await _player.setAudioSource(AudioSource.file(song.localFilePath!));
       } else {
-        // Resolve online stream url if missing or expired
+        // Resolve online stream url if missing or expired (raced + cached)
         String? audioUrl = song.streamUrl;
         if (audioUrl == null || audioUrl.isEmpty) {
           audioUrl = await _musicService.getAudioStreamUrl(song.id);
@@ -117,6 +117,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           try {
             await _player.setAudioSource(
               AudioSource.uri(Uri.parse(audioUrl), headers: streamHeaders),
+              preload: true,
             );
           } catch (initialErr) {
             // Automatic resilient fallback if primary link encountered 403 or network issue
@@ -125,19 +126,24 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
               song.streamUrl = fallbackUrl;
               await _player.setAudioSource(
                 AudioSource.uri(Uri.parse(fallbackUrl), headers: streamHeaders),
+                preload: true,
               );
             } else {
               rethrow;
             }
           }
         } else {
-          throw Exception("Unable to resolve audio stream for track: ${song.title}");
+          throw Exception('Unable to resolve audio stream for track: ' + song.title);
         }
       }
 
       await _player.play();
+
+      // Preload next track URL in background for 0-latency skip
+      if (_currentIndex >= 0 && _currentIndex + 1 < _playlist.length) {
+        _musicService.preloadStreamUrl(_playlist[_currentIndex + 1].id);
+      }
     } catch (e) {
-      // Graceful error recovery: don't crash, update state
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         errorMessage: e.toString(),
@@ -167,7 +173,6 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _currentIndex++;
       await playSong(_playlist[_currentIndex]);
     } else if (_playlist.isNotEmpty) {
-      // Loop back to first song
       _currentIndex = 0;
       await playSong(_playlist[_currentIndex]);
     }
@@ -184,7 +189,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
-  // Equalizer & Volume Boost controls
+  // Audio Equalizer & Speed/Pitch controls
   Future<void> setVolume(double volume) async {
     await _player.setVolume(volume.clamp(0.0, 1.0));
   }

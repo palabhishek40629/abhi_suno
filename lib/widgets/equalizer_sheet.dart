@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/audio_handler.dart';
+import '../services/language_service.dart';
+import '../services/theme_service.dart';
 
 class EqualizerSheet extends StatefulWidget {
   final AbhiAudioHandler audioHandler;
@@ -11,6 +13,9 @@ class EqualizerSheet extends StatefulWidget {
 }
 
 class _EqualizerSheetState extends State<EqualizerSheet> {
+  final LanguageService _lang = LanguageService();
+  final ThemeService _theme = ThemeService();
+
   double _volume = 1.0;
   double _bass = 0.5;
   String _selectedPreset = 'Normal';
@@ -44,115 +49,126 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF181818),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+    return AnimatedBuilder(
+      animation: Listenable.merge([_theme, _lang]),
+      builder: (context, _) {
+        final textColor = _theme.textColor;
+        final subtextColor = _theme.subtextColor;
+        final cardColor = _theme.cardBg;
+        final primaryColor = _theme.primaryColor;
+
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border.all(color: Colors.white12),
           ),
-          const SizedBox(height: 18),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Equalizer & Sound Effects',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.close, color: Colors.white70),
-                onPressed: () => Navigator.pop(context),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // Presets Horizontal list
-          SizedBox(
-            height: 36,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _presets.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final preset = _presets[index];
-                final isSelected = preset == _selectedPreset;
-                return ChoiceChip(
-                  label: Text(preset),
-                  selected: isSelected,
-                  selectedColor: const Color(0xFF05D9E8),
-                  backgroundColor: Colors.white10,
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.black : Colors.white,
-                    fontWeight: FontWeight.w600,
+              const SizedBox(height: 18),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _lang.t('equalizer'),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                  onSelected: (_) => _applyPreset(preset),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 24),
-          // Bass Boost Slider
-          Row(
-            children: [
-              const Icon(Icons.speaker_group_rounded, color: Color(0xFFFF2A6D), size: 20),
-              const SizedBox(width: 8),
-              const Text('Bass Boost', style: TextStyle(color: Colors.white, fontSize: 14)),
-              const Spacer(),
-              Text('${(_bass * 100).toInt()}%', style: const TextStyle(color: Colors.white70)),
+                  IconButton(
+                    icon: Icon(Icons.close_rounded, color: textColor),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              // Presets Horizontal list
+              SizedBox(
+                height: 36,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _presets.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, index) {
+                    final preset = _presets[index];
+                    final isSelected = preset == _selectedPreset;
+                    return ChoiceChip(
+                      label: Text(preset),
+                      selected: isSelected,
+                      selectedColor: primaryColor,
+                      backgroundColor: Colors.white10,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.black : textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      onSelected: (_) => _applyPreset(preset),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 24),
+              // Bass Boost Slider
+              Row(
+                children: [
+                  const Icon(Icons.speaker_group_rounded, color: Color(0xFFFF2A6D), size: 20),
+                  const SizedBox(width: 8),
+                  Text(_lang.t('bass'), style: TextStyle(color: textColor, fontSize: 14)),
+                  const Spacer(),
+                  Text('%', style: TextStyle(color: subtextColor)),
+                ],
+              ),
+              Slider(
+                value: _bass,
+                min: 0.0,
+                max: 1.0,
+                activeColor: const Color(0xFFFF2A6D),
+                inactiveColor: Colors.white10,
+                onChanged: (val) {
+                  setState(() => _bass = val);
+                },
+              ),
+              const SizedBox(height: 12),
+              // Master Volume Slider
+              Row(
+                children: [
+                  Icon(Icons.volume_up_rounded, color: textColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(_lang.t('volume'), style: TextStyle(color: textColor, fontSize: 14)),
+                  const Spacer(),
+                  Text('%', style: TextStyle(color: subtextColor)),
+                ],
+              ),
+              Slider(
+                value: _volume,
+                min: 0.0,
+                max: 1.0,
+                activeColor: textColor,
+                inactiveColor: Colors.white10,
+                onChanged: (val) {
+                  setState(() => _volume = val);
+                  widget.audioHandler.setVolume(val);
+                },
+              ),
+              const SizedBox(height: 16),
             ],
           ),
-          Slider(
-            value: _bass,
-            min: 0.0,
-            max: 1.0,
-            activeColor: const Color(0xFFFF2A6D),
-            inactiveColor: Colors.white10,
-            onChanged: (val) {
-              setState(() => _bass = val);
-            },
-          ),
-          const SizedBox(height: 12),
-          // Master Volume Slider
-          Row(
-            children: [
-              const Icon(Icons.volume_up_rounded, color: Colors.white, size: 20),
-              const SizedBox(width: 8),
-              const Text('Master Volume', style: TextStyle(color: Colors.white, fontSize: 14)),
-              const Spacer(),
-              Text('${(_volume * 100).toInt()}%', style: const TextStyle(color: Colors.white70)),
-            ],
-          ),
-          Slider(
-            value: _volume,
-            min: 0.0,
-            max: 1.0,
-            activeColor: Colors.white,
-            inactiveColor: Colors.white10,
-            onChanged: (val) {
-              setState(() => _volume = val);
-              widget.audioHandler.setVolume(val);
-            },
-          ),
-          const SizedBox(height: 16),
-        ],
-      ),
+        );
+      },
     );
   }
 }

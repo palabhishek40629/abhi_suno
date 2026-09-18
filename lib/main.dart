@@ -4,12 +4,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/audio_handler.dart';
 import 'services/language_service.dart';
+import 'services/theme_service.dart';
 import 'widgets/app_header.dart';
 import 'widgets/mini_player.dart';
 import 'screens/home_screen.dart';
+import 'screens/explore_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/library_screen.dart';
-import 'screens/about_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,7 +25,6 @@ void main() {
     ),
   );
 
-  // Launch UI immediately so the phone NEVER hangs on a black screen
   runApp(const AbhiSunoApp());
 }
 
@@ -33,23 +33,18 @@ class AbhiSunoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Abhi Suno',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF0A0A0A),
-        primaryColor: const Color(0xFF05D9E8),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFF05D9E8),
-          secondary: Color(0xFFFF2A6D),
-          surface: Color(0xFF141414),
-          background: Color(0xFF0A0A0A),
-        ),
-        fontFamily: 'sans-serif',
-        useMaterial3: true,
-      ),
-      home: const AppBootstrapScreen(),
+    final themeService = ThemeService();
+
+    return AnimatedBuilder(
+      animation: themeService,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'Abhi Suno',
+          debugShowCheckedModeBanner: false,
+          theme: themeService.themeData,
+          home: const AppBootstrapScreen(),
+        );
+      },
     );
   }
 }
@@ -63,7 +58,6 @@ class AppBootstrapScreen extends StatefulWidget {
 
 class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
   AbhiAudioHandler? _audioHandler;
-  bool _hasError = false;
 
   @override
   void initState() {
@@ -73,7 +67,6 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
 
   Future<void> _initializeServices() async {
     try {
-      // Initialize background audio with a timeout to prevent hanging on device
       final handler = await AudioService.init(
         builder: () => AbhiAudioHandler(),
         config: const AudioServiceConfig(
@@ -83,7 +76,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
           androidStopForegroundOnPause: true,
         ),
       ).timeout(
-        const Duration(seconds: 4),
+        const Duration(seconds: 3),
         onTimeout: () => AbhiAudioHandler(),
       );
 
@@ -91,8 +84,6 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
         setState(() => _audioHandler = handler);
       }
     } catch (e) {
-      // Fallback safe handler in case of any native device issues
-      debugPrint("Fallback audio handler initiated: $e");
       if (mounted) {
         setState(() => _audioHandler = AbhiAudioHandler());
       }
@@ -101,85 +92,47 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If audioHandler is ready, show full app
     if (_audioHandler != null) {
       return MainNavigationScaffold(audioHandler: _audioHandler!);
     }
 
-    // While initializing (takes < 0.5s), show sleek 3D "A" Splash Screen instead of black screen!
+    // Instant Fast Splash Screen with the 3D Golden Crown Emblem
     return Scaffold(
       backgroundColor: const Color(0xFF0A0A0A),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 3D "A" Emblem Badge with pulsing glow
             Container(
-              width: 86,
-              height: 86,
+              width: 96,
+              height: 96,
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFF2A6D),
-                    Color(0xFF05D9E8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(24),
+                shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF05D9E8).withOpacity(0.5),
-                    blurRadius: 28,
-                    offset: const Offset(0, 8),
+                    color: const Color(0xFFFFD700).withOpacity(0.4),
+                    blurRadius: 30,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              child: const Center(
-                child: Text(
-                  'A',
-                  style: TextStyle(
-                    fontSize: 52,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    shadows: [
-                      Shadow(
-                        color: Colors.black54,
-                        blurRadius: 6,
-                        offset: Offset(2, 3),
-                      ),
-                    ],
-                  ),
+              child: ClipOval(
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.music_note_rounded, size: 48, color: Colors.amber),
                 ),
               ),
             ),
             const SizedBox(height: 24),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Text(
-                  'Abhi ',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: Colors.white,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Color(0xFF05D9E8), Color(0xFFFF2A6D)],
-                  ).createShader(bounds),
-                  child: const Text(
-                    'Suno',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ],
+            const Text(
+              'Abhi Suno',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w900,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
             ),
             const SizedBox(height: 6),
             const Text(
@@ -218,63 +171,66 @@ class MainNavigationScaffold extends StatefulWidget {
 
 class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
   int _currentIndex = 0;
+  final ThemeService _theme = ThemeService();
+  final LanguageService _lang = LanguageService();
 
   @override
   Widget build(BuildContext context) {
     final screens = [
       HomeScreen(audioHandler: widget.audioHandler),
+      ExploreScreen(audioHandler: widget.audioHandler),
       SearchScreen(audioHandler: widget.audioHandler),
       LibraryScreen(audioHandler: widget.audioHandler),
     ];
 
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A0A),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Top 3D "A" Logo & "Abhi Suno" Header
-            AppHeader(
-              onSearchTap: () => setState(() => _currentIndex = 1),
-              onAboutTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AboutScreen()),
-                );
-              },
-            ),
+    return AnimatedBuilder(
+      animation: Listenable.merge([_theme, _lang]),
+      builder: (context, _) {
+        final isLight = _theme.isLight;
+        final textColor = _theme.textColor;
+        final primaryColor = _theme.primaryColor;
 
-            // Tab Content
-            Expanded(
-              child: IndexedStack(
-                index: _currentIndex,
-                children: screens,
+        return Scaffold(
+          backgroundColor: _theme.scaffoldBg,
+          body: Container(
+            decoration: _theme.backgroundDecoration,
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Top 3D Golden Logo & App Header
+                  AppHeader(
+                    onSearchTap: () => setState(() => _currentIndex = 2),
+                  ),
+
+                  // Tab View
+                  Expanded(
+                    child: IndexedStack(
+                      index: _currentIndex,
+                      children: screens,
+                    ),
+                  ),
+
+                  // Floating Mini-Player
+                  MiniPlayer(audioHandler: widget.audioHandler),
+                ],
               ),
             ),
-
-            // Persistent Floating Mini-Player
-            MiniPlayer(audioHandler: widget.audioHandler),
-          ],
-        ),
-      ),
-      bottomNavigationBar: AnimatedBuilder(
-        animation: LanguageService(),
-        builder: (context, _) {
-          final isHindi = LanguageService().isHindi;
-
-          return NavigationBarTheme(
+          ),
+          bottomNavigationBar: NavigationBarTheme(
             data: NavigationBarThemeData(
-              backgroundColor: const Color(0xFF0D0D0D),
-              indicatorColor: const Color(0xFF05D9E8).withOpacity(0.2),
+              backgroundColor: isLight ? Colors.white : const Color(0xFF0D0D0D),
+              indicatorColor: primaryColor.withOpacity(0.2),
               labelTextStyle: MaterialStateProperty.resolveWith((states) {
                 if (states.contains(MaterialState.selected)) {
-                  return const TextStyle(color: Color(0xFF05D9E8), fontWeight: FontWeight.bold, fontSize: 12);
+                  return TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 11);
                 }
-                return TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12);
+                return TextStyle(color: textColor.withOpacity(0.5), fontSize: 11);
               }),
               iconTheme: MaterialStateProperty.resolveWith((states) {
                 if (states.contains(MaterialState.selected)) {
-                  return const IconThemeData(color: Color(0xFF05D9E8));
+                  return IconThemeData(color: primaryColor);
                 }
-                return IconThemeData(color: Colors.white.withOpacity(0.5));
+                return IconThemeData(color: textColor.withOpacity(0.5));
               }),
             ),
             child: NavigationBar(
@@ -284,23 +240,28 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
                 NavigationDestination(
                   icon: const Icon(Icons.home_outlined),
                   selectedIcon: const Icon(Icons.home_rounded),
-                  label: isHindi ? 'होम' : 'Home',
+                  label: _lang.t('home'),
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.explore_outlined),
+                  selectedIcon: const Icon(Icons.explore_rounded),
+                  label: _lang.t('explore'),
                 ),
                 NavigationDestination(
                   icon: const Icon(Icons.search_outlined),
                   selectedIcon: const Icon(Icons.search_rounded),
-                  label: isHindi ? 'सर्च' : 'Search',
+                  label: _lang.t('search'),
                 ),
                 NavigationDestination(
                   icon: const Icon(Icons.library_music_outlined),
                   selectedIcon: const Icon(Icons.library_music_rounded),
-                  label: isHindi ? 'लाइब्रेरी' : 'Library',
+                  label: _lang.t('library'),
                 ),
               ],
             ),
-          );
-        },
-      ),
+          ),
+        );
+      },
     );
   }
 }

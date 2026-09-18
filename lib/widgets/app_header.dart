@@ -1,184 +1,116 @@
 import 'package:flutter/material.dart';
 import '../services/language_service.dart';
-import 'youtube_login_dialog.dart';
+import '../services/theme_service.dart';
+import '../screens/settings_screen.dart';
 
 class AppHeader extends StatelessWidget {
-  final VoidCallback? onAboutTap;
   final VoidCallback? onSearchTap;
 
   const AppHeader({
     Key? key,
-    this.onAboutTap,
     this.onSearchTap,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: Colors.transparent,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // 3D "A" Logo Badge + "Abhi Suno" Stylized Branding
-          Row(
+    final theme = ThemeService();
+    final lang = LanguageService();
+
+    return AnimatedBuilder(
+      animation: Listenable.merge([theme, lang]),
+      builder: (context, _) {
+        final textColor = theme.textColor;
+        final subtextColor = theme.subtextColor;
+        final primaryColor = theme.primaryColor;
+        final isHindi = lang.isHindi;
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          color: Colors.transparent,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // 3D "A" Monogram Emblem
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFFFF2A6D), // Vibrant Neon Pink
-                      Color(0xFF05D9E8), // Electric Cyan
-                      Color(0xFF005670), // Deep 3D Shadow
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFF2A6D).withOpacity(0.5),
-                      blurRadius: 10,
-                      offset: const Offset(-2, -2),
-                    ),
-                    BoxShadow(
-                      color: const Color(0xFF05D9E8).withOpacity(0.4),
-                      blurRadius: 12,
-                      offset: const Offset(3, 4),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.3),
-                    width: 1.2,
-                  ),
-                ),
-                child: Center(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // 3D Shadow for letter A
-                      Transform.translate(
-                        offset: const Offset(1.5, 1.5),
-                        child: const Text(
-                          'A',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            fontFamily: 'sans-serif',
-                            color: Colors.black45,
-                          ),
-                        ),
-                      ),
-                      // Foreground crisp 3D Letter A
-                      const Text(
-                        'A',
-                        style: TextStyle(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w900,
-                          fontFamily: 'sans-serif',
-                          color: Colors.white,
-                          shadows: [
-                            Shadow(
-                              color: Colors.black87,
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              // Stylized 3D "Abhi Suno" Text
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
+              // 3D Golden Crown Audio Emblem & Brand Title
+              Row(
                 children: [
-                  Row(
-                    children: [
-                      ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [Colors.white, Color(0xFFE0E0E0)],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ).createShader(bounds),
-                        child: const Text(
-                          'Abhi ',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: Colors.white,
-                          ),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFFD700).withOpacity(0.35),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          color: Colors.black45,
+                          child: const Icon(Icons.music_note_rounded, color: Colors.amber),
                         ),
                       ),
-                      ShaderMask(
-                        shaderCallback: (bounds) => const LinearGradient(
-                          colors: [Color(0xFF05D9E8), Color(0xFFFF2A6D)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ).createShader(bounds),
-                        child: const Text(
-                          'Suno',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.5,
-                            color: Colors.white,
-                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        lang.t('app_name'),
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                          color: textColor,
+                        ),
+                      ),
+                      Text(
+                        lang.t('app_subtitle'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.8,
+                          color: subtextColor,
                         ),
                       ),
                     ],
-                  ),
-                  const Text(
-                    'by Abhishek Pal',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 1.2,
-                      color: Color(0xFF9E9E9E),
-                    ),
                   ),
                 ],
               ),
-            ],
-          ),
 
-          // Header Actions (Language Toggle, YouTube Sync, Creator Profile)
-          Row(
-            children: [
-              // Language Switcher Pill [हिन्दी / EN]
-              AnimatedBuilder(
-                animation: LanguageService(),
-                builder: (context, _) {
-                  final isHindi = LanguageService().isHindi;
-                  return InkWell(
-                    onTap: () => LanguageService().toggleLanguage(),
+              // Header Actions: Language Switcher, Search, Settings Gear
+              Row(
+                children: [
+                  // Language Switcher Pill [हिन्दी / EN]
+                  InkWell(
+                    onTap: () => lang.toggleLanguage(),
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: Colors.white10,
+                        color: theme.cardBg,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: const Color(0xFF05D9E8).withOpacity(0.5),
+                          color: primaryColor.withOpacity(0.5),
                           width: 1.2,
                         ),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.language_rounded, size: 14, color: Color(0xFF05D9E8)),
+                          Icon(Icons.language_rounded, size: 14, color: primaryColor),
                           const SizedBox(width: 4),
                           Text(
                             isHindi ? 'हिन्दी' : 'EN',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: textColor,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
                             ),
@@ -186,54 +118,33 @@ class AppHeader extends StatelessWidget {
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
-              const SizedBox(width: 6),
-
-              // YouTube Connect & Playlist Button
-              IconButton(
-                icon: const Icon(Icons.play_circle_filled_rounded, color: Color(0xFFFF0000), size: 26),
-                tooltip: 'YouTube Playlist Import',
-                onPressed: () => YouTubeLoginDialog.show(context),
-              ),
-
-              // Search Button
-              if (onSearchTap != null)
-                IconButton(
-                  icon: const Icon(Icons.search_rounded, color: Colors.white, size: 24),
-                  tooltip: 'Search',
-                  onPressed: onSearchTap,
-                ),
-
-              // Creator Profile (Abhishek Pal)
-              IconButton(
-                icon: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: const Color(0xFF05D9E8), width: 1.5),
                   ),
-                  child: const CircleAvatar(
-                    radius: 12,
-                    backgroundColor: Color(0xFF1E1E1E),
-                    child: Text(
-                      'AP',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF05D9E8),
-                      ),
+                  const SizedBox(width: 4),
+
+                  // Optional Search Icon Button
+                  if (onSearchTap != null)
+                    IconButton(
+                      icon: Icon(Icons.search_rounded, color: textColor, size: 24),
+                      tooltip: lang.t('search'),
+                      onPressed: onSearchTap,
                     ),
+
+                  // Settings Gear Icon (contains YouTube login & Abhishek Pal bio)
+                  IconButton(
+                    icon: Icon(Icons.settings_rounded, color: textColor, size: 24),
+                    tooltip: lang.t('settings'),
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                      );
+                    },
                   ),
-                ),
-                tooltip: 'Abhishek Pal (About)',
-                onPressed: onAboutTap,
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

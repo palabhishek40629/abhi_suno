@@ -280,9 +280,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         ),
                         Column(
                           children: [
-                            const Text(
-                              'PLAYING FROM',
-                              style: TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 1.5),
+                            Text(
+                              LanguageService().t('playing_from'),
+                              style: const TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 1.5),
                             ),
                             Text(
                               song.album,
@@ -543,7 +543,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           ),
                           icon: const Icon(Icons.lyrics_rounded, size: 18, color: Color(0xFF05D9E8)),
-                          label: const Text('Lyrics (बोल)', style: TextStyle(fontSize: 13)),
+                          label: Text(LanguageService().t('lyrics'), style: const TextStyle(fontSize: 13)),
                           onPressed: () {
                             showModalBottomSheet(
                               context: context,
@@ -562,7 +562,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                           ),
                           icon: const Icon(Icons.equalizer_rounded, size: 18, color: Color(0xFFFF2A6D)),
-                          label: const Text('Equalizer', style: TextStyle(fontSize: 13)),
+                          label: Text(LanguageService().t('equalizer'), style: const TextStyle(fontSize: 13)),
                           onPressed: () {
                             showModalBottomSheet(
                               context: context,

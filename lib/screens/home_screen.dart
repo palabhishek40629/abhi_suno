@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
+import '../services/language_service.dart';
 import '../services/music_service.dart';
-import '../services/download_service.dart';
+import '../services/theme_service.dart';
 
 class HomeScreen extends StatefulWidget {
   final AbhiAudioHandler audioHandler;
@@ -15,7 +16,8 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final MusicService _musicService = MusicService();
-  final DownloadService _downloadService = DownloadService();
+  final ThemeService _theme = ThemeService();
+  final LanguageService _lang = LanguageService();
 
   List<SongModel> _trendingHindi = [];
   List<SongModel> _bollywoodRomantic = [];
@@ -23,24 +25,12 @@ class _HomeScreenState extends State<HomeScreen> {
   List<SongModel> _punjabiHits = [];
   List<SongModel> _hindiLofi = [];
 
-  bool _isRefreshing = false;
-  String _activeChip = 'All';
-
-  final List<String> _chips = [
-    'All',
-    'Trending Hindi',
-    'Romantic',
-    'Old Classics 90s',
-    'Punjabi Hits',
-    'Lo-Fi Beats',
-  ];
+  String _activeChip = 'all';
 
   @override
   void initState() {
     super.initState();
-    // 1. Load instant starter songs immediately in 0.01 seconds!
     _loadInstantStarterTracks();
-    // 2. Fetch fresh live trending songs in background in parallel
     _refreshLiveTrending();
   }
 
@@ -137,13 +127,6 @@ class _HomeScreenState extends State<HomeScreen> {
           duration: const Duration(minutes: 4, seconds: 18),
           thumbnailUrl: 'https://i.ytimg.com/vi/TFr6G5zveS8/hqdefault.jpg',
         ),
-        SongModel(
-          id: '1rMh-2mO5oQ',
-          title: 'Pal Pal Dil Ke Paas',
-          artist: 'Kishore Kumar',
-          duration: const Duration(minutes: 5, seconds: 28),
-          thumbnailUrl: 'https://i.ytimg.com/vi/1rMh-2mO5oQ/hqdefault.jpg',
-        ),
       ];
 
       _punjabiHits = [
@@ -160,13 +143,6 @@ class _HomeScreenState extends State<HomeScreen> {
           artist: 'Karan Aujla, Ikky',
           duration: const Duration(minutes: 2, seconds: 35),
           thumbnailUrl: 'https://i.ytimg.com/vi/cWMxCE2HTag/hqdefault.jpg',
-        ),
-        SongModel(
-          id: '7vpeN4m_a94',
-          title: 'Born to Shine',
-          artist: 'Diljit Dosanjh',
-          duration: const Duration(minutes: 3, seconds: 33),
-          thumbnailUrl: 'https://i.ytimg.com/vi/7vpeN4m_a94/hqdefault.jpg',
         ),
       ];
 
@@ -191,7 +167,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _refreshLiveTrending() async {
     try {
-      // Parallel fetch with Future.wait for maximum speed
       final results = await Future.wait([
         _musicService.getTrendingHindi().timeout(const Duration(seconds: 5), onTimeout: () => []),
         _musicService.getBollywoodRomantic().timeout(const Duration(seconds: 5), onTimeout: () => []),
@@ -207,12 +182,9 @@ class _HomeScreenState extends State<HomeScreen> {
           if (results[2].isNotEmpty) _retroClassics = results[2];
           if (results[3].isNotEmpty) _punjabiHits = results[3];
           if (results[4].isNotEmpty) _hindiLofi = results[4];
-          _isRefreshing = false;
         });
       }
-    } catch (_) {
-      if (mounted) setState(() => _isRefreshing = false);
-    }
+    } catch (_) {}
   }
 
   void _playTrack(SongModel song, List<SongModel> queue) {
@@ -221,99 +193,125 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _refreshLiveTrending,
-      color: const Color(0xFF05D9E8),
-      backgroundColor: const Color(0xFF1E1E1E),
-      child: ListView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.only(bottom: 90),
-        children: [
-          // Filter Chips Row
-          SizedBox(
-            height: 48,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              itemCount: _chips.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final chip = _chips[i];
-                final isSelected = chip == _activeChip;
-                return FilterChip(
-                  label: Text(chip),
-                  selected: isSelected,
-                  selectedColor: Colors.white,
-                  backgroundColor: const Color(0xFF222222),
-                  labelStyle: TextStyle(
-                    color: isSelected ? Colors.black : Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: isSelected ? Colors.white : Colors.transparent),
-                  ),
-                  onSelected: (val) {
-                    setState(() => _activeChip = chip);
+    return AnimatedBuilder(
+      animation: Listenable.merge([_theme, _lang]),
+      builder: (context, _) {
+        final textColor = _theme.textColor;
+        final subtextColor = _theme.subtextColor;
+        final cardColor = _theme.cardBg;
+        final primaryColor = _theme.primaryColor;
+
+        final chips = [
+          {'key': 'all', 'label': _lang.isHindi ? 'सभी' : 'All'},
+          {'key': 'trending', 'label': _lang.t('trending')},
+          {'key': 'romantic', 'label': _lang.t('romantic')},
+          {'key': 'retro', 'label': _lang.t('retro_classics')},
+          {'key': 'punjabi', 'label': _lang.t('punjabi')},
+          {'key': 'lofi', 'label': _lang.t('lofi')},
+        ];
+
+        return RefreshIndicator(
+          onRefresh: _refreshLiveTrending,
+          color: primaryColor,
+          backgroundColor: cardColor,
+          child: ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.only(bottom: 90),
+            children: [
+              // Filter Chips Row
+              SizedBox(
+                height: 48,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  itemCount: chips.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (context, i) {
+                    final chip = chips[i];
+                    final isSelected = chip['key'] == _activeChip;
+
+                    return FilterChip(
+                      label: Text(chip['label']!),
+                      selected: isSelected,
+                      selectedColor: primaryColor,
+                      backgroundColor: cardColor,
+                      labelStyle: TextStyle(
+                        color: isSelected ? Colors.black : textColor,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                        side: BorderSide(color: isSelected ? primaryColor : Colors.white12),
+                      ),
+                      onSelected: (val) {
+                        setState(() => _activeChip = chip['key']!);
+                      },
+                    );
                   },
-                );
-              },
-            ),
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+              // Trending Hindi Section
+              if (_activeChip == 'all' || _activeChip == 'trending')
+                _buildSongSection(_lang.t('trending'), _trendingHindi, textColor, subtextColor, primaryColor),
+
+              // Romantic Section
+              if (_activeChip == 'all' || _activeChip == 'romantic')
+                _buildSongSection(_lang.t('romantic'), _bollywoodRomantic, textColor, subtextColor, primaryColor),
+
+              // Retro Classics Section
+              if (_activeChip == 'all' || _activeChip == 'retro')
+                _buildSongSection(_lang.t('retro_classics'), _retroClassics, textColor, subtextColor, primaryColor),
+
+              // Punjabi Section
+              if (_activeChip == 'all' || _activeChip == 'punjabi')
+                _buildSongSection(_lang.t('punjabi'), _punjabiHits, textColor, subtextColor, primaryColor),
+
+              // Lo-Fi Section
+              if (_activeChip == 'all' || _activeChip == 'lofi')
+                _buildSongSection(_lang.t('lofi'), _hindiLofi, textColor, subtextColor, primaryColor),
+            ],
           ),
-
-          const SizedBox(height: 12),
-
-          // Trending Hindi Section
-          if (_activeChip == 'All' || _activeChip == 'Trending Hindi')
-            _buildSongSection('🔥 Trending Hindi (अभी ट्रेंडिंग)', _trendingHindi),
-
-          // Romantic Section
-          if (_activeChip == 'All' || _activeChip == 'Romantic')
-            _buildSongSection('❤️ Bollywood Romantic (रोमांटिक हिट्स)', _bollywoodRomantic),
-
-          // Retro Classics Section
-          if (_activeChip == 'All' || _activeChip == 'Old Classics 90s')
-            _buildSongSection('📻 Retro Classics (सदाबहार 90s & पुराने)', _retroClassics),
-
-          // Punjabi Section
-          if (_activeChip == 'All' || _activeChip == 'Punjabi Hits')
-            _buildSongSection('⚡ Punjabi Hits (धमाकेदार बीट्स)', _punjabiHits),
-
-          // Lo-Fi Section
-          if (_activeChip == 'All' || _activeChip == 'Lo-Fi Beats')
-            _buildSongSection('🌙 Hindi Lo-Fi (रिलैक्स & चिल)', _hindiLofi),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildSongSection(String title, List<SongModel> songs) {
+  Widget _buildSongSection(
+    String title,
+    List<SongModel> songs,
+    Color textColor,
+    Color subtextColor,
+    Color primaryColor,
+  ) {
     if (songs.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: 17,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.3,
                 ),
               ),
-              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 14),
+              Icon(Icons.arrow_forward_ios_rounded, color: subtextColor.withOpacity(0.4), size: 14),
             ],
           ),
         ),
         SizedBox(
-          height: 200,
+          height: 195,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -328,7 +326,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Thumbnail Card with Play Overlay
                       Stack(
                         children: [
                           ClipRRect(
@@ -360,25 +357,23 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                       const SizedBox(height: 8),
-                      // Song Title
                       Text(
                         song.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: textColor,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      // Artist
                       Text(
                         song.artist,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.55),
+                          color: subtextColor,
                           fontSize: 11,
                         ),
                       ),
