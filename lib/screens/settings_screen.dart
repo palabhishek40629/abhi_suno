@@ -5,6 +5,7 @@ import '../services/theme_service.dart';
 import '../services/download_service.dart';
 import '../services/music_service.dart';
 import '../services/playlist_service.dart';
+import '../services/update_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -19,11 +20,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final DownloadService _downloadService = DownloadService();
   final MusicService _musicService = MusicService();
   final PlaylistService _playlistService = PlaylistService();
+  final UpdateService _updateService = UpdateService();
 
   final TextEditingController _ytLinkController = TextEditingController();
   bool _isImportingYt = false;
-  double _cacheSizeMB = 0.0;
+  double _tempCacheMB = 0.0;
+  double _permStorageMB = 0.0;
   String _audioQuality = '320kbps';
+
+  bool _isCheckingUpdate = false;
+  UpdateInfo? _updateInfo;
+  String _updateStatusMessage = '';
 
   @override
   void initState() {
@@ -32,13 +39,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    final size = await _downloadService.getVaultSizeInMB();
+    final tempSize = await _downloadService.getTemporaryCacheSizeInMB();
+    final permSize = await _downloadService.getPermanentStorageSizeInMB();
     final prefs = await SharedPreferences.getInstance();
     final quality = prefs.getString('audio_quality_pref') ?? '320kbps';
 
     if (mounted) {
       setState(() {
-        _cacheSizeMB = size;
+        _tempCacheMB = tempSize;
+        _permStorageMB = permSize;
         _audioQuality = quality;
       });
     }
@@ -48,6 +57,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() => _audioQuality = quality);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('audio_quality_pref', quality);
+  }
+
+  Future<void> _checkForUpdates() async {
+    setState(() {
+      _isCheckingUpdate = true;
+      _updateStatusMessage = _lang.t('checking_updates');
+    });
+
+    final info = await _updateService.checkForUpdate();
+    if (mounted) {
+      setState(() {
+        _isCheckingUpdate = false;
+        _updateInfo = info;
+        if (info == null) {
+          _updateStatusMessage = _lang.isHindi
+              ? 'अपडेट की जांच विफल रही। इंटरनेट कनेक्शन जांचें।'
+              : 'Failed to check updates. Check internet connection.';
+        } else if (info.hasUpdate) {
+          _updateStatusMessage = ' (v)';
+        } else {
+          _updateStatusMessage = _lang.t('up_to_date');
+        }
+      });
+    }
   }
 
   Future<void> _importYouTubePlaylist() async {
@@ -68,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _ytLinkController.clear();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('${songs.length} ' + (_lang.isHindi ? 'गाने सफलतापूर्वक जोड़े गए!' : 'songs imported successfully!')),
+              content: Text(' ' + (_lang.isHindi ? 'गाने सफलतापूर्वक जोड़े गए!' : 'songs imported successfully!')),
               backgroundColor: const Color(0xFF05D9E8),
             ),
           );
@@ -97,8 +130,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _clearCache() async {
-    await _downloadService.clearVaultCache();
+  Future<void> _clearTemporaryCache() async {
+    await _downloadService.clearTemporaryCache();
     await _loadSettings();
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -149,7 +182,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                // SECTION: Developer Profile (Abhishek Pal)
+                // SECTION 1: Developer Profile (Abhishek Pal)
                 _buildSectionHeader(_lang.t('about_developer'), textColor),
                 const SizedBox(height: 8),
                 Container(
@@ -223,7 +256,138 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 24),
 
-                // SECTION: Theme Selection (Dark, Light, Transparent)
+                // SECTION 2: Language Selection (Moved from Home Header per Requirement 26)
+                _buildSectionHeader(_lang.t('language_title'), textColor),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Column(
+                    children: [
+                      RadioListTile<bool>(
+                        value: true,
+                        groupValue: _lang.isHindi,
+                        activeColor: primaryColor,
+                        title: Text('हिन्दी (Hindi)', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                        subtitle: Text('100% शुद्ध हिन्दी भाषा', style: TextStyle(color: subtextColor, fontSize: 12)),
+                        onChanged: (val) => _lang.setLanguage(true),
+                      ),
+                      const Divider(height: 1, color: Colors.white10),
+                      RadioListTile<bool>(
+                        value: false,
+                        groupValue: _lang.isHindi,
+                        activeColor: primaryColor,
+                        title: Text('English', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                        subtitle: Text('100% Pure English localization', style: TextStyle(color: subtextColor, fontSize: 12)),
+                        onChanged: (val) => _lang.setLanguage(false),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // SECTION 3: GitHub In-App Software Updates (Requirement 24 & 25)
+                _buildSectionHeader(_lang.t('github_updates_title'), textColor),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _lang.t('current_version'),
+                                style: TextStyle(color: subtextColor, fontSize: 11),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'v',
+                                style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          if (_updateInfo != null)
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  _lang.t('latest_version'),
+                                  style: TextStyle(color: subtextColor, fontSize: 11),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'v',
+                                  style: TextStyle(
+                                    color: _updateInfo!.hasUpdate ? const Color(0xFF00E676) : primaryColor,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                      if (_updateStatusMessage.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          _updateStatusMessage,
+                          style: TextStyle(
+                            color: _updateInfo?.hasUpdate == true ? const Color(0xFF00E676) : subtextColor,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 42,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _updateInfo?.hasUpdate == true ? const Color(0xFF00E676) : primaryColor,
+                            foregroundColor: Colors.black,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: _isCheckingUpdate
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                                )
+                              : Icon(
+                                  _updateInfo?.hasUpdate == true ? Icons.system_update_rounded : Icons.sync_rounded,
+                                  size: 18,
+                                ),
+                          label: Text(
+                            _isCheckingUpdate
+                                ? _lang.t('checking_updates')
+                                : (_updateInfo?.hasUpdate == true ? _lang.t('update_now') : _lang.t('check_updates')),
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          onPressed: _isCheckingUpdate ? null : _checkForUpdates,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // SECTION 4: Theme Selection (Dark, Light, Transparent)
                 _buildSectionHeader(_lang.t('theme_title'), textColor),
                 const SizedBox(height: 8),
                 Container(
@@ -266,41 +430,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 24),
 
-                // SECTION: Language Selection (Pure Hindi / Pure English)
-                _buildSectionHeader(_lang.t('language_title'), textColor),
-                const SizedBox(height: 8),
-                Container(
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white12),
-                  ),
-                  child: Column(
-                    children: [
-                      RadioListTile<bool>(
-                        value: true,
-                        groupValue: _lang.isHindi,
-                        activeColor: primaryColor,
-                        title: Text('हिन्दी (Hindi)', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
-                        subtitle: Text('100% शुद्ध हिन्दी भाषा', style: TextStyle(color: subtextColor, fontSize: 12)),
-                        onChanged: (val) => _lang.setLanguage(true),
-                      ),
-                      const Divider(height: 1, color: Colors.white10),
-                      RadioListTile<bool>(
-                        value: false,
-                        groupValue: _lang.isHindi,
-                        activeColor: primaryColor,
-                        title: Text('English', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
-                        subtitle: Text('100% Pure English localization', style: TextStyle(color: subtextColor, fontSize: 12)),
-                        onChanged: (val) => _lang.setLanguage(false),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // SECTION: YouTube Sync & Account Playlists
+                // SECTION 5: YouTube Sync & Account Playlists
                 _buildSectionHeader(_lang.t('youtube_sync_title'), textColor),
                 const SizedBox(height: 8),
                 Container(
@@ -369,7 +499,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 24),
 
-                // SECTION: Audio Quality
+                // SECTION 6: Audio Quality
                 _buildSectionHeader(_lang.t('audio_quality_title'), textColor),
                 const SizedBox(height: 8),
                 Container(
@@ -409,7 +539,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                 const SizedBox(height: 24),
 
-                // SECTION: Cache & Storage
+                // SECTION 7: Cache & Storage Management (Requirement 5, 6, 7)
                 _buildSectionHeader(_lang.t('cache_clear_title'), textColor),
                 const SizedBox(height: 8),
                 Container(
@@ -419,38 +549,71 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.white12),
                   ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            '${_cacheSizeMB.toStringAsFixed(1)} MB',
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ' MB',
+                                style: TextStyle(
+                                  color: textColor,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _lang.t('temporary_cache'),
+                                style: TextStyle(color: subtextColor, fontSize: 11),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _lang.t('offline_vault'),
-                            style: TextStyle(color: subtextColor, fontSize: 12),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                ' MB',
+                                style: TextStyle(
+                                  color: const Color(0xFF00E676),
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _lang.t('permanent_downloads'),
+                                style: TextStyle(color: subtextColor, fontSize: 11),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Colors.redAccent),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      const SizedBox(height: 12),
+                      Text(
+                        _lang.t('clear_cache_note'),
+                        style: TextStyle(color: subtextColor.withOpacity(0.8), fontSize: 11),
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 42,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.redAccent),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 18),
+                          label: Text(
+                            _lang.t('clear_cache_btn'),
+                            style: const TextStyle(color: Colors.redAccent, fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: _clearTemporaryCache,
                         ),
-                        icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 18),
-                        label: Text(
-                          _lang.t('clear_cache_btn'),
-                          style: const TextStyle(color: Colors.redAccent, fontSize: 12),
-                        ),
-                        onPressed: _clearCache,
                       ),
                     ],
                   ),

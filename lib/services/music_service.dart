@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/song_model.dart';
+import 'audio_providers/unified_audio_repository.dart';
 
 class MusicService {
   static final MusicService _instance = MusicService._internal();
@@ -10,9 +11,8 @@ class MusicService {
   MusicService._internal();
 
   final YoutubeExplode _yt = YoutubeExplode();
-  final Map<String, String> _streamCache = {};
+  final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
 
-  // Search songs with query - pure audio focus
   Future<List<SongModel>> searchSongs(String query) async {
     try {
       final searchResults = await _yt.search.search(
@@ -51,13 +51,11 @@ class MusicService {
     }
   }
 
-  // Pre-load stream URL into cache for instantaneous playback
   void preloadStreamUrl(String videoId) {
-    if (_streamCache.containsKey(videoId)) return;
-    getAudioStreamUrl(videoId);
+    if (_audioRepo.hasCachedStream(videoId)) return;
+    _audioRepo.resolveAudioStreamUrl(videoId);
   }
 
-  // Curated category playlists
   Future<List<SongModel>> getTrendingHindi() => searchSongs('Trending Hindi Songs Bollywood Official');
   Future<List<SongModel>> getBollywoodRomantic() => searchSongs('Best Bollywood Romantic Songs Arijit Singh');
   Future<List<SongModel>> getRetroClassics() => searchSongs('Old Hindi Retro Classics Kishore Kumar Lata Mangeshkar');
@@ -68,125 +66,10 @@ class MusicService {
   Future<List<SongModel>> getPartySongs() => searchSongs('Bollywood Dance Party Mashup Songs');
   Future<List<SongModel>> getGhazals() => searchSongs('Best Jagjit Singh Mehdi Hassan Ghazals');
 
-  // Ultra-Fast Stream Resolver with Cache & Parallel Race
   Future<String?> getAudioStreamUrl(String videoId) async {
-    // 1. Check in-memory stream cache
-    if (_streamCache.containsKey(videoId)) {
-      return _streamCache[videoId];
-    }
-
-    // 2. Launch YouTube Explode and Piped in parallel race
-    final ytExplodeFuture = _getYtExplodeStream(videoId).then<String>((url) {
-      if (url != null && url.isNotEmpty) return url;
-      throw Exception('yt null');
-    });
-    final fallbackFuture = getFallbackAudioStreamUrl(videoId).then<String>((url) {
-      if (url != null && url.isNotEmpty) return url;
-      throw Exception('fallback null');
-    });
-
-    try {
-      // Race: whichever finishes first with a valid URL wins
-      final String resolvedUrl = await Future.any<String>([
-        ytExplodeFuture,
-        fallbackFuture,
-      ]).timeout(const Duration(seconds: 4));
-
-      if (resolvedUrl.isNotEmpty) {
-        _streamCache[videoId] = resolvedUrl;
-        return resolvedUrl;
-      }
-    } catch (_) {
-      // If race timed out or had errors, fallback to sequential check
-      final fallback = await _getYtExplodeStream(videoId) ?? await getFallbackAudioStreamUrl(videoId);
-      if (fallback != null && fallback.isNotEmpty) {
-        _streamCache[videoId] = fallback;
-        return fallback;
-      }
-    }
-
-    return null;
+    return await _audioRepo.resolveAudioStreamUrl(videoId);
   }
 
-  Future<String?> _getYtExplodeStream(String videoId) async {
-    try {
-      final manifest = await _yt.videos.streamsClient.getManifest(
-        videoId,
-        ytClients: [
-          YoutubeApiClient.ios,
-          YoutubeApiClient.tv,
-          YoutubeApiClient.androidVr,
-          YoutubeApiClient.safari,
-        ],
-      );
-
-      final audioStreams = manifest.audioOnly;
-      if (audioStreams.isNotEmpty) {
-        final bestAudio = audioStreams.withHighestBitrate();
-        return bestAudio.url.toString();
-      }
-    } catch (_) {}
-    return null;
-  }
-
-  // Fallback stream resolver using open-source Piped and Invidious APIs
-  Future<String?> getFallbackAudioStreamUrl(String videoId) async {
-    final pipedInstances = [
-      'https://pipedapi.kavin.rocks',
-      'https://api.piped.private.coffee',
-      'https://piped-api.garudalinux.org',
-    ];
-
-    for (final host in pipedInstances) {
-      try {
-        final res = await http.get(
-          Uri.parse('System.Management.Automation.Internal.Host.InternalHost/streams/'),
-          headers: {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)'},
-        ).timeout(const Duration(milliseconds: 2500));
-
-        if (res.statusCode == 200) {
-          final data = json.decode(res.body);
-          final audioList = data['audioStreams'] as List<dynamic>? ?? [];
-          if (audioList.isNotEmpty) {
-            final url = audioList[0]['url'] as String?;
-            if (url != null && url.isNotEmpty) {
-              return url;
-            }
-          }
-        }
-      } catch (_) {}
-    }
-
-    // Invidious Mirrors
-    final invidiousMirrors = [
-      'https://invidious.nerdvpn.de',
-      'https://inv.nadeko.net',
-      'https://invidious.f5.si',
-    ];
-
-    for (final host in invidiousMirrors) {
-      try {
-        final res = await http.get(
-          Uri.parse('System.Management.Automation.Internal.Host.InternalHost/api/v1/videos/'),
-          headers: {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)'},
-        ).timeout(const Duration(milliseconds: 2500));
-
-        if (res.statusCode == 200) {
-          final data = json.decode(res.body);
-          final formats = data['adaptiveFormats'] as List<dynamic>? ?? [];
-          final audioList = formats.where((f) => (f['type'] ?? '').toString().contains('audio')).toList();
-          if (audioList.isNotEmpty) {
-            final url = audioList[0]['url'] as String?;
-            if (url != null && url.isNotEmpty) return url;
-          }
-        }
-      } catch (_) {}
-    }
-
-    return null;
-  }
-
-  // Import public YouTube playlist by link or ID
   Future<List<SongModel>> importYouTubePlaylist(String urlOrId) async {
     try {
       final playlistId = _extractPlaylistId(urlOrId);
@@ -224,7 +107,6 @@ class MusicService {
     return '';
   }
 
-  // Fetch real-time lyrics
   Future<String> fetchLyrics(String title, String artist) async {
     try {
       final cleanT = _cleanTitle(title);
@@ -249,8 +131,8 @@ class MusicService {
 
   String _cleanTitle(String title) {
     return title
-        .replaceAll(RegExp(r'\(.*?(official|video|audio|lyric|song|4k|hd|remix).*?\)', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\[.*?(official|video|audio|lyric|song|4k|hd|remix).*?\]', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\(.*?(\bofficial|video|audio|lyric|song|4k|hd|remix).*?\)', caseSensitive: false), '')
+        .replaceAll(RegExp(r'\[.*?(\bofficial|video|audio|lyric|song|4k|hd|remix).*?\]', caseSensitive: false), '')
         .replaceAll(RegExp(r'\|.*$'), '')
         .trim();
   }

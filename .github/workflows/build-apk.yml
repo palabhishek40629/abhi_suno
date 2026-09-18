@@ -37,33 +37,34 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v1.0.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.1.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v1.0.0-release
-          path: AbhiSuno-v1.0.0-release.apk
+          name: AbhiSuno-v3.1.0-release
+          path: AbhiSuno-v3.1.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0-${{ github.run_number }}
-          name: "Abhi Suno v1.0.0 (Build ${{ github.run_number }})"
+          tag_name: v3.1.0-${{ github.run_number }}
+          name: "Abhi Suno v3.1.0 High Performance (Build ${{ github.run_number }})"
           body: |
-            ### 🎵 Abhi Suno - Official Release
-            **Developed by Abhishek Pal**
+            ### 🎵 Abhi Suno v3.1.0 High Performance Edition
+            **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 🚀 Ad-free YouTube Music streaming & instant search
-            - 💾 In-App Offline Downloads
-            - 🎧 Background playback & lockscreen notification controls
-            - 📑 Real-time Lyrics & Equalizer
-            - 🎨 Modern Material 3 Dark UI with 3D "A" Logo
+            - 🚀 Low-latency playback with intelligent pre-buffering (~120s)
+            - ⚡ Background next-song prefetch (~13s) for zero-latency skips
+            - 🛡️ 4-Tier cache engine with permanent offline download protection
+            - 📦 Unified Audio Provider Adapter architecture with request deduplication
+            - 🎨 YouTube Music Explore tab, Themes (Dark, Light, Glass) & 100% Pure Localization
+            - 🔄 In-App GitHub Updates checker
 
-            **Direct Download:** Download `AbhiSuno-v1.0.0-release.apk` below and install on your phone!
-          files: AbhiSuno-v1.0.0-release.apk
+            **Direct Download:** Download `AbhiSuno-v3.1.0-release.apk` below!
+          files: AbhiSuno-v3.1.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

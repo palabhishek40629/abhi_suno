@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
+import 'package:http/http.dart' as http;
 import 'package:just_audio/just_audio.dart';
 import '../models/song_model.dart';
-import 'music_service.dart';
+import 'cache_manager.dart';
+import 'audio_providers/unified_audio_repository.dart';
 
 class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
-  final MusicService _musicService = MusicService();
+  final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
+  final CacheManager _cacheManager = CacheManager();
 
   SongModel? _currentSong;
   final List<SongModel> _playlist = [];
@@ -18,11 +21,9 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   int get currentIndex => _currentIndex;
   AudioPlayer get player => _player;
 
-  // Stream for current playing song model
   final StreamController<SongModel?> _currentSongSubject = StreamController<SongModel?>.broadcast();
   Stream<SongModel?> get currentSongStream => _currentSongSubject.stream;
 
-  // Stream for playlist changes
   final StreamController<List<SongModel>> _playlistSubject = StreamController<List<SongModel>>.broadcast();
   Stream<List<SongModel>> get playlistStream => _playlistSubject.stream;
 
@@ -31,7 +32,8 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   void _init() {
-    // Broadcast playback state changes to Android System / Notification
+    _cacheManager.init();
+
     _player.playbackEventStream.listen((PlaybackEvent event) {
       final playing = _player.playing;
       playbackState.add(playbackState.value.copyWith(
@@ -62,7 +64,6 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       ));
     });
 
-    // Auto play next song when current finishes
     _player.playerStateStream.listen((state) {
       if (state.processingState == ProcessingState.completed) {
         skipToNext();
@@ -70,8 +71,14 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
   }
 
+  // Playback Decision Flow (Requirement 21)
   Future<void> playSong(SongModel song, {List<SongModel>? queue}) async {
     try {
+      final previousSong = _currentSong;
+      if (previousSong != null && previousSong.id != song.id) {
+        _cacheManager.demoteCurrentToRecent(previousSong.id);
+      }
+
       if (queue != null && queue.isNotEmpty) {
         _playlist.clear();
         _playlist.addAll(queue);
@@ -86,7 +93,6 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _currentSong = song;
       _currentSongSubject.add(_currentSong);
 
-      // Setup Android Lockscreen & Notification MediaItem
       final item = MediaItem(
         id: song.id,
         album: song.album,
@@ -97,58 +103,90 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       );
       mediaItem.add(item);
 
-      // Determine audio source: 1. Local Sandboxed File OR 2. Instant Online Stream
+      // 1. Check PERMANENT local downloaded file
       if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
         await _player.setAudioSource(AudioSource.file(song.localFilePath!));
       } else {
-        // Resolve online stream url if missing or expired (raced + cached)
-        String? audioUrl = song.streamUrl;
-        if (audioUrl == null || audioUrl.isEmpty) {
-          audioUrl = await _musicService.getAudioStreamUrl(song.id);
-          song.streamUrl = audioUrl;
-        }
+        // 2. Check Cache tiers (Promote prefetch or use cached file)
+        await _cacheManager.promotePrefetchToCurrent(song.id);
+        final cachedFile = await _cacheManager.getCachedSongFile(song.id);
 
-        final streamHeaders = {
-          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
-          'Referer': 'https://www.youtube.com/',
-        };
+        if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 200000) {
+          await _player.setAudioSource(AudioSource.file(cachedFile.path));
+        } else {
+          // 3. Resolve authorized stream URL
+          String? audioUrl = song.streamUrl;
+          if (audioUrl == null || audioUrl.isEmpty) {
+            audioUrl = await _audioRepo.resolveAudioStreamUrl(song.id);
+            song.streamUrl = audioUrl;
+          }
 
-        if (audioUrl != null && audioUrl.isNotEmpty) {
-          try {
+          if (audioUrl != null && audioUrl.isNotEmpty) {
+            final streamHeaders = {
+              'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+              'Referer': 'https://www.youtube.com/',
+            };
+
             await _player.setAudioSource(
               AudioSource.uri(Uri.parse(audioUrl), headers: streamHeaders),
               preload: true,
             );
-          } catch (initialErr) {
-            // Automatic resilient fallback if primary link encountered 403 or network issue
-            final fallbackUrl = await _musicService.getFallbackAudioStreamUrl(song.id);
-            if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
-              song.streamUrl = fallbackUrl;
-              await _player.setAudioSource(
-                AudioSource.uri(Uri.parse(fallbackUrl), headers: streamHeaders),
-                preload: true,
-              );
-            } else {
-              rethrow;
-            }
+          } else {
+            throw Exception('Unable to resolve audio stream for track: ');
           }
-        } else {
-          throw Exception('Unable to resolve audio stream for track: ' + song.title);
         }
       }
 
       await _player.play();
 
-      // Preload next track URL in background for 0-latency skip
-      if (_currentIndex >= 0 && _currentIndex + 1 < _playlist.length) {
-        _musicService.preloadStreamUrl(_playlist[_currentIndex + 1].id);
-      }
+      // 4. Background Next-Song Prefetch (~13 seconds) (Requirement 3)
+      _triggerNextSongPrefetch();
     } catch (e) {
       playbackState.add(playbackState.value.copyWith(
         processingState: AudioProcessingState.error,
         errorMessage: e.toString(),
       ));
     }
+  }
+
+  // Prefetch first ~13 seconds (~350 KB) of upcoming track in background
+  void _triggerNextSongPrefetch() {
+    if (_currentIndex < 0 || _currentIndex + 1 >= _playlist.length) return;
+    final nextSong = _playlist[_currentIndex + 1];
+
+    Future.microtask(() async {
+      try {
+        final cached = await _cacheManager.getCachedSongFile(nextSong.id);
+        if (cached != null && await cached.exists()) return;
+
+        // Resolve stream url
+        String? nextUrl = nextSong.streamUrl;
+        if (nextUrl == null || nextUrl.isEmpty) {
+          nextUrl = await _audioRepo.resolveAudioStreamUrl(nextSong.id);
+          nextSong.streamUrl = nextUrl;
+        }
+
+        if (nextUrl == null || nextUrl.isEmpty) return;
+
+        final prefetchDir = await _cacheManager.prefetchDir;
+        final cleanId = nextSong.id.replaceAll(RegExp(r'[^\w]+'), '_');
+        final targetFile = File('/.m4a');
+
+        // Fetch initial ~350 KB with HTTP range request (~13 seconds)
+        final res = await http.get(
+          Uri.parse(nextUrl),
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+            'Referer': 'https://www.youtube.com/',
+            'Range': 'bytes=0-350000',
+          },
+        ).timeout(const Duration(seconds: 4));
+
+        if (res.statusCode == 200 || res.statusCode == 206) {
+          await targetFile.writeAsBytes(res.bodyBytes, flush: true);
+        }
+      } catch (_) {}
+    });
   }
 
   @override
@@ -189,7 +227,6 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
   }
 
-  // Audio Equalizer & Speed/Pitch controls
   Future<void> setVolume(double volume) async {
     await _player.setVolume(volume.clamp(0.0, 1.0));
   }

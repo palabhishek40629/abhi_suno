@@ -1,10 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
-import 'music_service.dart';
+import 'cache_manager.dart';
+import 'audio_providers/unified_audio_repository.dart';
 
 class DownloadService {
   static final DownloadService _instance = DownloadService._internal();
@@ -15,41 +15,54 @@ class DownloadService {
     connectTimeout: const Duration(seconds: 15),
     receiveTimeout: const Duration(seconds: 45),
   ));
-  final MusicService _musicService = MusicService();
+  final CacheManager _cacheManager = CacheManager();
+  final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
   static const String _storageKey = 'abhi_suno_offline_songs';
 
   final Map<String, double> _downloadProgress = {};
   Map<String, double> get downloadProgress => _downloadProgress;
-
-  Future<Directory> _getAppPrivateDirectory() async {
-    final appDocDir = await getApplicationDocumentsDirectory();
-    final privateVault = Directory('${appDocDir.path}/abhi_suno_vault');
-    if (!await privateVault.exists()) {
-      await privateVault.create(recursive: true);
-    }
-    return privateVault;
-  }
 
   Future<bool> downloadSong(
     SongModel song, {
     Function(double progress)? onProgress,
   }) async {
     try {
-      // 1. Resolve direct audio stream url (from cache or fast parallel lookup)
+      // 1. Check if already permanently downloaded
+      final permDir = await _cacheManager.permanentDir;
+      final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
+      final safeName = cleanId.isEmpty ? 'song_' : cleanId;
+      final filePath = '/.m4a';
+
+      if (File(filePath).existsSync() && File(filePath).lengthSync() > 1024) {
+        song.localFilePath = filePath;
+        song.isDownloaded = true;
+        await _saveOfflineTrack(song);
+        if (onProgress != null) onProgress(1.0);
+        return true;
+      }
+
+      // 2. Check if already present in temporary cache tiers to avoid network download!
+      final cachedFile = await _cacheManager.getCachedSongFile(song.id);
+      if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 50000) {
+        try {
+          await cachedFile.copy(filePath);
+          song.localFilePath = filePath;
+          song.isDownloaded = true;
+          await _saveOfflineTrack(song);
+          if (onProgress != null) onProgress(1.0);
+          return true;
+        } catch (_) {}
+      }
+
+      // 3. Resolve direct stream url via UnifiedAudioRepository
       String? streamUrl = song.streamUrl;
       if (streamUrl == null || streamUrl.isEmpty) {
-        streamUrl = await _musicService.getAudioStreamUrl(song.id);
+        streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id);
       }
 
       if (streamUrl == null || streamUrl.isEmpty) {
         return false;
       }
-
-      // 2. Prepare destination path inside app private vault
-      final vaultDir = await _getAppPrivateDirectory();
-      final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
-      final safeName = cleanId.isEmpty ? 'song_${song.title.hashCode.abs()}' : cleanId;
-      final filePath = '${vaultDir.path}/$safeName.m4a';
 
       _downloadProgress[song.id] = 0.0;
       if (onProgress != null) onProgress(0.0);
@@ -61,39 +74,18 @@ class DownloadService {
         },
       );
 
-      try {
-        await _dio.download(
-          streamUrl,
-          filePath,
-          options: downloadOptions,
-          onReceiveProgress: (received, total) {
-            if (total > 0) {
-              final progress = received / total;
-              _downloadProgress[song.id] = progress;
-              if (onProgress != null) onProgress(progress);
-            }
-          },
-        );
-      } catch (firstErr) {
-        // Fallback retry
-        final fallbackUrl = await _musicService.getFallbackAudioStreamUrl(song.id);
-        if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
-          await _dio.download(
-            fallbackUrl,
-            filePath,
-            options: downloadOptions,
-            onReceiveProgress: (received, total) {
-              if (total > 0) {
-                final progress = received / total;
-                _downloadProgress[song.id] = progress;
-                if (onProgress != null) onProgress(progress);
-              }
-            },
-          );
-        } else {
-          rethrow;
-        }
-      }
+      await _dio.download(
+        streamUrl,
+        filePath,
+        options: downloadOptions,
+        onReceiveProgress: (received, total) {
+          if (total > 0) {
+            final progress = received / total;
+            _downloadProgress[song.id] = progress;
+            if (onProgress != null) onProgress(progress);
+          }
+        },
+      );
 
       _downloadProgress.remove(song.id);
 
@@ -168,37 +160,18 @@ class DownloadService {
     } catch (_) {}
   }
 
-  // Get total offline cache storage size in MB
-  Future<double> getVaultSizeInMB() async {
-    try {
-      final vaultDir = await _getAppPrivateDirectory();
-      if (!await vaultDir.exists()) return 0.0;
-
-      int totalBytes = 0;
-      await for (final entity in vaultDir.list(recursive: true)) {
-        if (entity is File) {
-          totalBytes += await entity.length();
-        }
-      }
-      return totalBytes / (1024 * 1024);
-    } catch (_) {
-      return 0.0;
-    }
+  // Get total permanent downloads storage size in MB
+  Future<double> getPermanentStorageSizeInMB() async {
+    return await _cacheManager.getPermanentDownloadsSizeMB();
   }
 
-  // Clear cache memory
-  Future<void> clearVaultCache() async {
-    try {
-      final vaultDir = await _getAppPrivateDirectory();
-      if (await vaultDir.exists()) {
-        await for (final entity in vaultDir.list()) {
-          if (entity is File) {
-            await entity.delete();
-          }
-        }
-      }
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_storageKey);
-    } catch (_) {}
+  // Get total temporary cache storage size in MB
+  Future<double> getTemporaryCacheSizeInMB() async {
+    return await _cacheManager.getTemporaryCacheSizeMB();
+  }
+
+  // Clear ONLY temporary cache tiers (NEVER deletes permanent downloads)
+  Future<void> clearTemporaryCache() async {
+    await _cacheManager.clearTemporaryCache();
   }
 }

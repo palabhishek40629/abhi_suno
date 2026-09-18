@@ -21,8 +21,6 @@ class AppHeader extends StatelessWidget {
       builder: (context, _) {
         final textColor = theme.textColor;
         final subtextColor = theme.subtextColor;
-        final primaryColor = theme.primaryColor;
-        final isHindi = lang.isHindi;
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -85,51 +83,15 @@ class AppHeader extends StatelessWidget {
                 ],
               ),
 
-              // Header Actions: Language Switcher, Search, Settings Gear
+              // Header Actions: Search Button + Settings Gear (Language switcher moved into Settings per Req 26)
               Row(
                 children: [
-                  // Language Switcher Pill [हिन्दी / EN]
-                  InkWell(
-                    onTap: () => lang.toggleLanguage(),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: theme.cardBg,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: primaryColor.withOpacity(0.5),
-                          width: 1.2,
-                        ),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.language_rounded, size: 14, color: primaryColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            isHindi ? 'हिन्दी' : 'EN',
-                            style: TextStyle(
-                              color: textColor,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-
-                  // Optional Search Icon Button
                   if (onSearchTap != null)
                     IconButton(
                       icon: Icon(Icons.search_rounded, color: textColor, size: 24),
                       tooltip: lang.t('search'),
                       onPressed: onSearchTap,
                     ),
-
-                  // Settings Gear Icon (contains YouTube login & Abhishek Pal bio)
                   IconButton(
                     icon: Icon(Icons.settings_rounded, color: textColor, size: 24),
                     tooltip: lang.t('settings'),
