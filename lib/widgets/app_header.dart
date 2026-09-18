@@ -80,7 +80,7 @@ class AppHeader extends StatelessWidget {
                           color: Colors.white,
                           shadows: [
                             Shadow(
-                              color: Colors.black82,
+                              color: Colors.black87,
                               blurRadius: 4,
                               offset: Offset(0, 2),
                             ),
