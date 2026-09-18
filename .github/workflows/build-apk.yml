@@ -33,7 +33,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Android APK (Fat Release APK)
-        run: flutter build apk --release --no-tree-shake-icons
+        run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
       - name: Rename APK for Easy Identification
         run: |
