@@ -542,7 +542,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
           ),
           child: Row(
             children: [
-              const Icon(Icons.folder_music_rounded, color: Color(0xFF05D9E8), size: 36),
+              const Icon(Icons.audio_file_rounded, color: Color(0xFF05D9E8), size: 36),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
