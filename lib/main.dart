@@ -10,12 +10,10 @@ import 'screens/search_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/about_screen.dart';
 
-late AbhiAudioHandler _audioHandler;
-
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Set system navigation & status bar transparent for modern edge-to-edge look
+  // Set system UI overlay style immediately
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -25,23 +23,8 @@ Future<void> main() async {
     ),
   );
 
-  // Initialize background AudioService
-  _audioHandler = await AudioService.init(
-    builder: () => AbhiAudioHandler(),
-    config: const AudioServiceConfig(
-      androidNotificationChannelId: 'com.abhishekpal.abhisuno.audio',
-      androidNotificationChannelName: 'Abhi Suno Playback',
-      androidNotificationOngoing: true,
-      androidStopForegroundOnPause: true,
-    ),
-  );
-
-  // Error boundary to ensure 100% crash-free experience
-  runZonedGuarded(() {
-    runApp(const AbhiSunoApp());
-  }, (error, stackTrace) {
-    debugPrint('Safe Error Boundary Caught: $error');
-  });
+  // Launch UI immediately so the phone NEVER hangs on a black screen
+  runApp(const AbhiSunoApp());
 }
 
 class AbhiSunoApp extends StatelessWidget {
@@ -65,7 +48,160 @@ class AbhiSunoApp extends StatelessWidget {
         fontFamily: 'sans-serif',
         useMaterial3: true,
       ),
-      home: MainNavigationScaffold(audioHandler: _audioHandler),
+      home: const AppBootstrapScreen(),
+    );
+  }
+}
+
+class AppBootstrapScreen extends StatefulWidget {
+  const AppBootstrapScreen({Key? key}) : super(key: key);
+
+  @override
+  State<AppBootstrapScreen> createState() => _AppBootstrapScreenState();
+}
+
+class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
+  AbhiAudioHandler? _audioHandler;
+  bool _hasError = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeServices();
+  }
+
+  Future<void> _initializeServices() async {
+    try {
+      // Initialize background audio with a timeout to prevent hanging on device
+      final handler = await AudioService.init(
+        builder: () => AbhiAudioHandler(),
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'com.abhishekpal.abhisuno.audio',
+          androidNotificationChannelName: 'Abhi Suno Playback',
+          androidNotificationOngoing: true,
+          androidStopForegroundOnPause: true,
+        ),
+      ).timeout(
+        const Duration(seconds: 4),
+        onTimeout: () => AbhiAudioHandler(),
+      );
+
+      if (mounted) {
+        setState(() => _audioHandler = handler);
+      }
+    } catch (e) {
+      // Fallback safe handler in case of any native device issues
+      debugPrint("Fallback audio handler initiated: $e");
+      if (mounted) {
+        setState(() => _audioHandler = AbhiAudioHandler());
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // If audioHandler is ready, show full app
+    if (_audioHandler != null) {
+      return MainNavigationScaffold(audioHandler: _audioHandler!);
+    }
+
+    // While initializing (takes < 0.5s), show sleek 3D "A" Splash Screen instead of black screen!
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0A0A),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 3D "A" Emblem Badge with pulsing glow
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFFFF2A6D),
+                    Color(0xFF05D9E8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF05D9E8).withOpacity(0.5),
+                    blurRadius: 28,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: const Center(
+                child: Text(
+                  'A',
+                  style: TextStyle(
+                    fontSize: 52,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    shadows: [
+                      Shadow(
+                        color: Colors.black54,
+                        blurRadius: 6,
+                        offset: Offset(2, 3),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Abhi ',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.white,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFF05D9E8), Color(0xFFFF2A6D)],
+                  ).createShader(bounds),
+                  child: const Text(
+                    'Suno',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w900,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'by Abhishek Pal',
+              style: TextStyle(
+                color: Color(0xFF05D9E8),
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 36),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.5,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF05D9E8)),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

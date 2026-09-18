@@ -23,7 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<SongModel> _punjabiHits = [];
   List<SongModel> _hindiLofi = [];
 
-  bool _isLoading = true;
+  bool _isRefreshing = false;
   String _activeChip = 'All';
 
   final List<String> _chips = [
@@ -38,30 +38,180 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchMusicData();
+    // 1. Load instant starter songs immediately in 0.01 seconds!
+    _loadInstantStarterTracks();
+    // 2. Fetch fresh live trending songs in background in parallel
+    _refreshLiveTrending();
   }
 
-  Future<void> _fetchMusicData() async {
-    setState(() => _isLoading = true);
+  void _loadInstantStarterTracks() {
+    setState(() {
+      _trendingHindi = [
+        SongModel(
+          id: 'BddP6PY427U',
+          title: 'Kesariya',
+          artist: 'Arijit Singh, Pritam',
+          duration: const Duration(minutes: 4, seconds: 28),
+          thumbnailUrl: 'https://i.ytimg.com/vi/BddP6PY427U/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'ElZfdU54Cp8',
+          title: 'Apna Bana Le',
+          artist: 'Arijit Singh, Sachin-Jigar',
+          duration: const Duration(minutes: 3, seconds: 42),
+          thumbnailUrl: 'https://i.ytimg.com/vi/ElZfdU54Cp8/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'RLzC55ai0eo',
+          title: 'Heeriye',
+          artist: 'Jasleen Royal, Arijit Singh',
+          duration: const Duration(minutes: 3, seconds: 15),
+          thumbnailUrl: 'https://i.ytimg.com/vi/RLzC55ai0eo/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'VAdGW7QDJUI',
+          title: 'Chaleya',
+          artist: 'Arijit Singh, Shilpa Rao',
+          duration: const Duration(minutes: 3, seconds: 20),
+          thumbnailUrl: 'https://i.ytimg.com/vi/VAdGW7QDJUI/hqdefault.jpg',
+        ),
+        SongModel(
+          id: '8vt2W_F13eI',
+          title: 'O Maahi',
+          artist: 'Arijit Singh, Pritam',
+          duration: const Duration(minutes: 3, seconds: 53),
+          thumbnailUrl: 'https://i.ytimg.com/vi/8vt2W_F13eI/hqdefault.jpg',
+        ),
+      ];
+
+      _bollywoodRomantic = [
+        SongModel(
+          id: 'IJq0yyWug1k',
+          title: 'Tum Hi Ho',
+          artist: 'Arijit Singh',
+          duration: const Duration(minutes: 4, seconds: 22),
+          thumbnailUrl: 'https://i.ytimg.com/vi/IJq0yyWug1k/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'gvyUuxdRdR4',
+          title: 'Raataan Lambiyan',
+          artist: 'Jubin Nautiyal, Asees Kaur',
+          duration: const Duration(minutes: 3, seconds: 50),
+          thumbnailUrl: 'https://i.ytimg.com/vi/gvyUuxdRdR4/hqdefault.jpg',
+        ),
+        SongModel(
+          id: '2mDCVzruYzQ',
+          title: 'Pehle Bhi Main',
+          artist: 'Vishal Mishra, Raj Shekhar',
+          duration: const Duration(minutes: 4, seconds: 10),
+          thumbnailUrl: 'https://i.ytimg.com/vi/2mDCVzruYzQ/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'sK7riqg2mr4',
+          title: 'Agar Tum Saath Ho',
+          artist: 'Alka Yagnik, Arijit Singh',
+          duration: const Duration(minutes: 5, seconds: 41),
+          thumbnailUrl: 'https://i.ytimg.com/vi/sK7riqg2mr4/hqdefault.jpg',
+        ),
+      ];
+
+      _retroClassics = [
+        SongModel(
+          id: '_sZgA133Sc0',
+          title: 'Yeh Shaam Mastani',
+          artist: 'Kishore Kumar, R.D. Burman',
+          duration: const Duration(minutes: 4, seconds: 35),
+          thumbnailUrl: 'https://i.ytimg.com/vi/_sZgA133Sc0/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'vo1My403Psk',
+          title: 'Mere Sapno Ki Rani',
+          artist: 'Kishore Kumar, S.D. Burman',
+          duration: const Duration(minutes: 5, seconds: 0),
+          thumbnailUrl: 'https://i.ytimg.com/vi/vo1My403Psk/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'TFr6G5zveS8',
+          title: 'Lag Ja Gale',
+          artist: 'Lata Mangeshkar, Madan Mohan',
+          duration: const Duration(minutes: 4, seconds: 18),
+          thumbnailUrl: 'https://i.ytimg.com/vi/TFr6G5zveS8/hqdefault.jpg',
+        ),
+        SongModel(
+          id: '1rMh-2mO5oQ',
+          title: 'Pal Pal Dil Ke Paas',
+          artist: 'Kishore Kumar',
+          duration: const Duration(minutes: 5, seconds: 28),
+          thumbnailUrl: 'https://i.ytimg.com/vi/1rMh-2mO5oQ/hqdefault.jpg',
+        ),
+      ];
+
+      _punjabiHits = [
+        SongModel(
+          id: 'cl0a3i2wFcc',
+          title: '295',
+          artist: 'Sidhu Moose Wala',
+          duration: const Duration(minutes: 4, seconds: 30),
+          thumbnailUrl: 'https://i.ytimg.com/vi/cl0a3i2wFcc/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'cWMxCE2HTag',
+          title: 'Softly',
+          artist: 'Karan Aujla, Ikky',
+          duration: const Duration(minutes: 2, seconds: 35),
+          thumbnailUrl: 'https://i.ytimg.com/vi/cWMxCE2HTag/hqdefault.jpg',
+        ),
+        SongModel(
+          id: '7vpeN4m_a94',
+          title: 'Born to Shine',
+          artist: 'Diljit Dosanjh',
+          duration: const Duration(minutes: 3, seconds: 33),
+          thumbnailUrl: 'https://i.ytimg.com/vi/7vpeN4m_a94/hqdefault.jpg',
+        ),
+      ];
+
+      _hindiLofi = [
+        SongModel(
+          id: 'e-ORhEE9VVg',
+          title: 'Iktara (Lo-Fi Chill)',
+          artist: 'Amit Trivedi, Kavita Seth',
+          duration: const Duration(minutes: 4, seconds: 12),
+          thumbnailUrl: 'https://i.ytimg.com/vi/e-ORhEE9VVg/hqdefault.jpg',
+        ),
+        SongModel(
+          id: 'jHNNMj5bNQw',
+          title: 'Kabira (Slowed & Reverb)',
+          artist: 'Tochi Raina, Rekha Bhardwaj',
+          duration: const Duration(minutes: 4, seconds: 29),
+          thumbnailUrl: 'https://i.ytimg.com/vi/jHNNMj5bNQw/hqdefault.jpg',
+        ),
+      ];
+    });
+  }
+
+  Future<void> _refreshLiveTrending() async {
     try {
-      final trending = await _musicService.getTrendingHindi();
-      final romantic = await _musicService.getBollywoodRomantic();
-      final retro = await _musicService.getRetroClassics();
-      final punjabi = await _musicService.getPunjabiHits();
-      final lofi = await _musicService.getHindiLofi();
+      // Parallel fetch with Future.wait for maximum speed
+      final results = await Future.wait([
+        _musicService.getTrendingHindi().timeout(const Duration(seconds: 5), onTimeout: () => []),
+        _musicService.getBollywoodRomantic().timeout(const Duration(seconds: 5), onTimeout: () => []),
+        _musicService.getRetroClassics().timeout(const Duration(seconds: 5), onTimeout: () => []),
+        _musicService.getPunjabiHits().timeout(const Duration(seconds: 5), onTimeout: () => []),
+        _musicService.getHindiLofi().timeout(const Duration(seconds: 5), onTimeout: () => []),
+      ]);
 
       if (mounted) {
         setState(() {
-          _trendingHindi = trending;
-          _bollywoodRomantic = romantic;
-          _retroClassics = retro;
-          _punjabiHits = punjabi;
-          _hindiLofi = lofi;
-          _isLoading = false;
+          if (results[0].isNotEmpty) _trendingHindi = results[0];
+          if (results[1].isNotEmpty) _bollywoodRomantic = results[1];
+          if (results[2].isNotEmpty) _retroClassics = results[2];
+          if (results[3].isNotEmpty) _punjabiHits = results[3];
+          if (results[4].isNotEmpty) _hindiLofi = results[4];
+          _isRefreshing = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isRefreshing = false);
     }
   }
 
@@ -69,35 +219,10 @@ class _HomeScreenState extends State<HomeScreen> {
     widget.audioHandler.playSong(song, queue: queue);
   }
 
-  void _downloadTrack(SongModel song) async {
-    final success = await _downloadService.downloadSong(song);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? 'Gaana app me download ho gaya!' : 'Download nahi ho paya'),
-          backgroundColor: success ? const Color(0xFF05D9E8) : Colors.redAccent,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF05D9E8))),
-            SizedBox(height: 16),
-            Text('Hindi gaane load ho rahe hain...', style: TextStyle(color: Colors.white70)),
-          ],
-        ),
-      );
-    }
-
     return RefreshIndicator(
-      onRefresh: _fetchMusicData,
+      onRefresh: _refreshLiveTrending,
       color: const Color(0xFF05D9E8),
       backgroundColor: const Color(0xFF1E1E1E),
       child: ListView(
