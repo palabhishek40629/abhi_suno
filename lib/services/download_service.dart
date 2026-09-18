@@ -55,18 +55,47 @@ class DownloadService {
       _downloadProgress[song.id] = 0.0;
       if (onProgress != null) onProgress(0.0);
 
-      // 3. Download using Dio with stream progress
-      await _dio.download(
-        streamUrl,
-        filePath,
-        onReceiveProgress: (received, total) {
-          if (total != -1) {
-            final progress = received / total;
-            _downloadProgress[song.id] = progress;
-            if (onProgress != null) onProgress(progress);
-          }
+      // 3. Download using Dio with stream progress and mobile headers
+      final downloadOptions = Options(
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+          'Referer': 'https://www.youtube.com/',
         },
       );
+
+      try {
+        await _dio.download(
+          streamUrl,
+          filePath,
+          options: downloadOptions,
+          onReceiveProgress: (received, total) {
+            if (total != -1) {
+              final progress = received / total;
+              _downloadProgress[song.id] = progress;
+              if (onProgress != null) onProgress(progress);
+            }
+          },
+        );
+      } catch (firstErr) {
+        // Retry with fallback stream URL
+        final fallbackUrl = await _musicService.getFallbackAudioStreamUrl(song.id);
+        if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
+          await _dio.download(
+            fallbackUrl,
+            filePath,
+            options: downloadOptions,
+            onReceiveProgress: (received, total) {
+              if (total != -1) {
+                final progress = received / total;
+                _downloadProgress[song.id] = progress;
+                if (onProgress != null) onProgress(progress);
+              }
+            },
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       _downloadProgress.remove(song.id);
 

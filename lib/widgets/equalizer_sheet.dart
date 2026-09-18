@@ -12,7 +12,6 @@ class EqualizerSheet extends StatefulWidget {
 
 class _EqualizerSheetState extends State<EqualizerSheet> {
   double _volume = 1.0;
-  double _speed = 1.0;
   double _bass = 0.5;
   String _selectedPreset = 'Normal';
 
@@ -22,7 +21,6 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
   void initState() {
     super.initState();
     _volume = widget.audioHandler.player.volume;
-    _speed = widget.audioHandler.player.speed;
   }
 
   void _applyPreset(String preset) {
@@ -128,29 +126,6 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
             inactiveColor: Colors.white10,
             onChanged: (val) {
               setState(() => _bass = val);
-            },
-          ),
-          const SizedBox(height: 12),
-          // Playback Speed Slider
-          Row(
-            children: [
-              const Icon(Icons.speed_rounded, color: Color(0xFF05D9E8), size: 20),
-              const SizedBox(width: 8),
-              const Text('Playback Speed', style: TextStyle(color: Colors.white, fontSize: 14)),
-              const Spacer(),
-              Text('${_speed.toStringAsFixed(2)}x', style: const TextStyle(color: Colors.white70)),
-            ],
-          ),
-          Slider(
-            value: _speed,
-            min: 0.5,
-            max: 2.0,
-            divisions: 6,
-            activeColor: const Color(0xFF05D9E8),
-            inactiveColor: Colors.white10,
-            onChanged: (val) {
-              setState(() => _speed = val);
-              widget.audioHandler.setSpeed(val);
             },
           ),
           const SizedBox(height: 12),

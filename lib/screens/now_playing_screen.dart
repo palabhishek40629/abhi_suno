@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
 import '../services/download_service.dart';
+import '../services/playlist_service.dart';
+import '../services/language_service.dart';
 import '../widgets/equalizer_sheet.dart';
 import '../widgets/lyrics_sheet.dart';
 
@@ -77,6 +79,159 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     }
   }
 
+  void _showAddToPlaylistSheet(SongModel song) {
+    final playlistService = PlaylistService();
+    final isHindi = LanguageService().isHindi;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF181818),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return AnimatedBuilder(
+          animation: playlistService,
+          builder: (context, _) {
+            final playlists = playlistService.playlists;
+            return Container(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        isHindi ? 'प्लेलिस्ट में जोड़ें' : 'Add to Playlist',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton.icon(
+                        icon: const Icon(Icons.add, color: Color(0xFF05D9E8), size: 18),
+                        label: Text(
+                          isHindi ? 'नई प्लेलिस्ट' : 'New',
+                          style: const TextStyle(color: Color(0xFF05D9E8)),
+                        ),
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _showCreatePlaylistDialog(song);
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  if (playlists.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 20),
+                      child: Center(
+                        child: Text(
+                          isHindi ? 'कोई प्लेलिस्ट नहीं है। ऊपर "नई प्लेलिस्ट" पर टैप करें।' : 'No playlists yet. Tap "New" above.',
+                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                        ),
+                      ),
+                    )
+                  else
+                    ...playlists.map((p) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white10,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.queue_music_rounded, color: Color(0xFF05D9E8), size: 20),
+                          ),
+                          title: Text(p.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                          subtitle: Text('${p.songs.length} ${isHindi ? "गाने" : "songs"}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                          trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF05D9E8)),
+                          onTap: () async {
+                            await playlistService.addSongToPlaylist(p.id, song);
+                            if (mounted) {
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFF05D9E8),
+                                  content: Text(isHindi ? '"${p.name}" में गाना जुड़ गया!' : 'Added to "${p.name}"!'),
+                                ),
+                              );
+                            }
+                          },
+                        )),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showCreatePlaylistDialog(SongModel song) {
+    final controller = TextEditingController();
+    final isHindi = LanguageService().isHindi;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(isHindi ? 'नई प्लेलिस्ट बनाएं' : 'Create New Playlist', style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: isHindi ? 'प्लेलिस्ट का नाम...' : 'Playlist name...',
+            hintStyle: const TextStyle(color: Colors.white38),
+          ),
+        ),
+        actions: [
+          TextButton(
+            child: Text(isHindi ? 'रद्द करें' : 'Cancel', style: const TextStyle(color: Colors.white54)),
+            onPressed: () => Navigator.pop(ctx),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF05D9E8)),
+            child: Text(isHindi ? 'बनाएं' : 'Create', style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+            onPressed: () async {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                await PlaylistService().createPlaylist(name);
+                final created = PlaylistService().playlists.first;
+                await PlaylistService().addSongToPlaylist(created.id, song);
+                if (mounted) {
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: const Color(0xFF05D9E8),
+                      content: Text(isHindi ? '"$name" बन गई और गाना जुड़ गया!' : 'Created "$name" and added song!'),
+                    ),
+                  );
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   String _formatDuration(Duration? d) {
     if (d == null) return "0:00";
     final minutes = d.inMinutes.remainder(60).toString();
@@ -136,8 +291,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           ],
                         ),
                         IconButton(
-                          icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
-                          onPressed: () {},
+                          icon: const Icon(Icons.playlist_add_rounded, color: Color(0xFF05D9E8), size: 28),
+                          tooltip: 'Add to Playlist',
+                          onPressed: () => _showAddToPlaylistSheet(song),
                         ),
                       ],
                     ),
@@ -243,17 +399,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                 tooltip: 'App me Download Karein',
                                 onPressed: () => _triggerDownload(song),
                               ),
-                        // Favorite Icon
-                        IconButton(
-                          icon: Icon(
-                            song.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                            color: song.isFavorite ? const Color(0xFFFF2A6D) : Colors.white70,
-                            size: 26,
-                          ),
-                          onPressed: () {
-                            setState(() => song.isFavorite = !song.isFavorite);
-                          },
-                        ),
                       ],
                     ),
                   ),

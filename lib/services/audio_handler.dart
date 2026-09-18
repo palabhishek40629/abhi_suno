@@ -108,8 +108,28 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           song.streamUrl = audioUrl;
         }
 
+        final streamHeaders = {
+          'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1',
+          'Referer': 'https://www.youtube.com/',
+        };
+
         if (audioUrl != null && audioUrl.isNotEmpty) {
-          await _player.setAudioSource(AudioSource.uri(Uri.parse(audioUrl)));
+          try {
+            await _player.setAudioSource(
+              AudioSource.uri(Uri.parse(audioUrl), headers: streamHeaders),
+            );
+          } catch (initialErr) {
+            // Automatic resilient fallback if primary link encountered 403 or network issue
+            final fallbackUrl = await _musicService.getFallbackAudioStreamUrl(song.id);
+            if (fallbackUrl != null && fallbackUrl.isNotEmpty) {
+              song.streamUrl = fallbackUrl;
+              await _player.setAudioSource(
+                AudioSource.uri(Uri.parse(fallbackUrl), headers: streamHeaders),
+              );
+            } else {
+              rethrow;
+            }
+          }
         } else {
           throw Exception("Unable to resolve audio stream for track: ${song.title}");
         }

@@ -1,21 +1,30 @@
 import 'package:flutter/material.dart';
+import '../services/language_service.dart';
 
 class AboutScreen extends StatelessWidget {
   const AboutScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0D0D0D),
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('About Abhi Suno', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
+    return AnimatedBuilder(
+      animation: LanguageService(),
+      builder: (context, _) {
+        final isHindi = LanguageService().isHindi;
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0D0D0D),
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              isHindi ? 'अभी सुनो के बारे में' : 'About Abhi Suno',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+          ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         children: [
@@ -116,27 +125,46 @@ class AboutScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Created & Developed by',
-                        style: TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 0.5),
+                        isHindi ? 'निर्माता व डेवलपर' : 'Created & Developed by',
+                        style: const TextStyle(color: Colors.white54, fontSize: 12, letterSpacing: 0.5),
                       ),
-                      SizedBox(height: 4),
-                      Text(
+                      const SizedBox(height: 4),
+                      const Text(
                         'Abhishek Pal',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 20,
+                          fontSize: 22,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
-                      SizedBox(height: 2),
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF05D9E8).withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: const Color(0xFF05D9E8).withOpacity(0.5)),
+                        ),
+                        child: Text(
+                          isHindi ? 'कंप्यूटर साइंस एंड इंजीनियरिंग के छात्र' : 'Computer Science & Engineering Student',
+                          style: const TextStyle(
+                            color: Color(0xFF05D9E8),
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
                       Text(
-                        'Lead Developer & Creator',
-                        style: TextStyle(color: Color(0xFF05D9E8), fontSize: 13, fontWeight: FontWeight.w500),
+                        isHindi
+                            ? 'कंप्यूटर साइंस एंड इंजीनियरिंग (CSE) के छात्र अभिषेक पाल द्वारा विकसित। 100% प्योर ऑडियो और बिना किसी विज्ञापन (Ad-Free) के संगीत का आनंद लें।'
+                            : 'Developed by Abhishek Pal, Computer Science & Engineering (CSE) student. 100% pure audio, ad-free open-source music player.',
+                        style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11, height: 1.3),
                       ),
                     ],
                   ),
@@ -204,6 +232,8 @@ class AboutScreen extends StatelessWidget {
           const SizedBox(height: 16),
         ],
       ),
+    );
+      },
     );
   }
 

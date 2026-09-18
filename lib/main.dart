@@ -3,6 +3,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/audio_handler.dart';
+import 'services/language_service.dart';
 import 'widgets/app_header.dart';
 import 'widgets/mini_player.dart';
 import 'screens/home_screen.dart';
@@ -254,44 +255,51 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
           ],
         ),
       ),
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(
-          backgroundColor: const Color(0xFF0D0D0D),
-          indicatorColor: const Color(0xFF05D9E8).withOpacity(0.2),
-          labelTextStyle: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) {
-              return const TextStyle(color: Color(0xFF05D9E8), fontWeight: FontWeight.bold, fontSize: 12);
-            }
-            return TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12);
-          }),
-          iconTheme: MaterialStateProperty.resolveWith((states) {
-            if (states.contains(MaterialState.selected)) {
-              return const IconThemeData(color: Color(0xFF05D9E8));
-            }
-            return IconThemeData(color: Colors.white.withOpacity(0.5));
-          }),
-        ),
-        child: NavigationBar(
-          selectedIndex: _currentIndex,
-          onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.home_outlined),
-              selectedIcon: Icon(Icons.home_rounded),
-              label: 'Home',
+      bottomNavigationBar: AnimatedBuilder(
+        animation: LanguageService(),
+        builder: (context, _) {
+          final isHindi = LanguageService().isHindi;
+
+          return NavigationBarTheme(
+            data: NavigationBarThemeData(
+              backgroundColor: const Color(0xFF0D0D0D),
+              indicatorColor: const Color(0xFF05D9E8).withOpacity(0.2),
+              labelTextStyle: MaterialStateProperty.resolveWith((states) {
+                if (states.contains(MaterialState.selected)) {
+                  return const TextStyle(color: Color(0xFF05D9E8), fontWeight: FontWeight.bold, fontSize: 12);
+                }
+                return TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12);
+              }),
+              iconTheme: MaterialStateProperty.resolveWith((states) {
+                if (states.contains(MaterialState.selected)) {
+                  return const IconThemeData(color: Color(0xFF05D9E8));
+                }
+                return IconThemeData(color: Colors.white.withOpacity(0.5));
+              }),
             ),
-            NavigationDestination(
-              icon: Icon(Icons.search_outlined),
-              selectedIcon: Icon(Icons.search_rounded),
-              label: 'Search',
+            child: NavigationBar(
+              selectedIndex: _currentIndex,
+              onDestinationSelected: (idx) => setState(() => _currentIndex = idx),
+              destinations: [
+                NavigationDestination(
+                  icon: const Icon(Icons.home_outlined),
+                  selectedIcon: const Icon(Icons.home_rounded),
+                  label: isHindi ? 'होम' : 'Home',
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.search_outlined),
+                  selectedIcon: const Icon(Icons.search_rounded),
+                  label: isHindi ? 'सर्च' : 'Search',
+                ),
+                NavigationDestination(
+                  icon: const Icon(Icons.library_music_outlined),
+                  selectedIcon: const Icon(Icons.library_music_rounded),
+                  label: isHindi ? 'लाइब्रेरी' : 'Library',
+                ),
+              ],
             ),
-            NavigationDestination(
-              icon: Icon(Icons.download_done_outlined),
-              selectedIcon: Icon(Icons.download_done_rounded),
-              label: 'Offline Vault',
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../services/language_service.dart';
+import 'youtube_login_dialog.dart';
 
 class AppHeader extends StatelessWidget {
   final VoidCallback? onAboutTap;
@@ -147,15 +149,64 @@ class AppHeader extends StatelessWidget {
             ],
           ),
 
-          // Header Actions (Search & About Creator Profile)
+          // Header Actions (Language Toggle, YouTube Sync, Creator Profile)
           Row(
             children: [
+              // Language Switcher Pill [हिन्दी / EN]
+              AnimatedBuilder(
+                animation: LanguageService(),
+                builder: (context, _) {
+                  final isHindi = LanguageService().isHindi;
+                  return InkWell(
+                    onTap: () => LanguageService().toggleLanguage(),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white10,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFF05D9E8).withOpacity(0.5),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.language_rounded, size: 14, color: Color(0xFF05D9E8)),
+                          const SizedBox(width: 4),
+                          Text(
+                            isHindi ? 'हिन्दी' : 'EN',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 6),
+
+              // YouTube Connect & Playlist Button
+              IconButton(
+                icon: const Icon(Icons.play_circle_filled_rounded, color: Color(0xFFFF0000), size: 26),
+                tooltip: 'YouTube Playlist Import',
+                onPressed: () => YouTubeLoginDialog.show(context),
+              ),
+
+              // Search Button
               if (onSearchTap != null)
                 IconButton(
-                  icon: const Icon(Icons.search_rounded, color: Colors.white, size: 26),
-                  tooltip: 'Gana Search Karein',
+                  icon: const Icon(Icons.search_rounded, color: Colors.white, size: 24),
+                  tooltip: 'Search',
                   onPressed: onSearchTap,
                 ),
+
+              // Creator Profile (Abhishek Pal)
               IconButton(
                 icon: Container(
                   padding: const EdgeInsets.all(2),
