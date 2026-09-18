@@ -76,14 +76,20 @@ class MusicService {
     }
 
     // 2. Launch YouTube Explode and Piped in parallel race
-    final ytExplodeFuture = _getYtExplodeStream(videoId);
-    final fallbackFuture = getFallbackAudioStreamUrl(videoId);
+    final ytExplodeFuture = _getYtExplodeStream(videoId).then<String>((url) {
+      if (url != null && url.isNotEmpty) return url;
+      throw Exception('yt null');
+    });
+    final fallbackFuture = getFallbackAudioStreamUrl(videoId).then<String>((url) {
+      if (url != null && url.isNotEmpty) return url;
+      throw Exception('fallback null');
+    });
 
     try {
       // Race: whichever finishes first with a valid URL wins
       final String resolvedUrl = await Future.any<String>([
-        ytExplodeFuture.then((url) => (url != null && url.isNotEmpty) ? url : Future<String>.error('yt null')),
-        fallbackFuture.then((url) => (url != null && url.isNotEmpty) ? url : Future<String>.error('fallback null')),
+        ytExplodeFuture,
+        fallbackFuture,
       ]).timeout(const Duration(seconds: 4));
 
       if (resolvedUrl.isNotEmpty) {
@@ -92,7 +98,7 @@ class MusicService {
       }
     } catch (_) {
       // If race timed out or had errors, fallback to sequential check
-      final fallback = await ytExplodeFuture ?? await fallbackFuture;
+      final fallback = await _getYtExplodeStream(videoId) ?? await getFallbackAudioStreamUrl(videoId);
       if (fallback != null && fallback.isNotEmpty) {
         _streamCache[videoId] = fallback;
         return fallback;
