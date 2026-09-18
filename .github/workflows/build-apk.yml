@@ -1,0 +1,70 @@
+name: Build Abhi Suno APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Android Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.x'
+          channel: 'stable'
+          cache: true
+
+      - name: Get Flutter Dependencies
+        run: flutter pub get
+
+      - name: Build Android APK (Fat Release APK)
+        run: flutter build apk --release --no-tree-shake-icons
+
+      - name: Rename APK for Easy Identification
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v1.0.0-release.apk
+
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AbhiSuno-v1.0.0-release
+          path: AbhiSuno-v1.0.0-release.apk
+          retention-days: 30
+
+      - name: Create GitHub Release (On Tag or Main Push)
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.0-${{ github.run_number }}
+          name: "Abhi Suno v1.0.0 (Build ${{ github.run_number }})"
+          body: |
+            ### 🎵 Abhi Suno - Official Release
+            **Developed by Abhishek Pal**
+
+            - 🚀 Ad-free YouTube Music streaming & instant search
+            - 💾 In-App Offline Downloads
+            - 🎧 Background playback & lockscreen notification controls
+            - 📑 Real-time Lyrics & Equalizer
+            - 🎨 Modern Material 3 Dark UI with 3D "A" Logo
+
+            **Direct Download:** Download `AbhiSuno-v1.0.0-release.apk` below and install on your phone!
+          files: AbhiSuno-v1.0.0-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

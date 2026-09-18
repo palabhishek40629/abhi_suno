@@ -1,0 +1,440 @@
+import 'package:flutter/material.dart';
+import '../models/song_model.dart';
+import '../services/audio_handler.dart';
+import '../services/download_service.dart';
+import '../widgets/equalizer_sheet.dart';
+import '../widgets/lyrics_sheet.dart';
+
+class NowPlayingScreen extends StatefulWidget {
+  final AbhiAudioHandler audioHandler;
+
+  const NowPlayingScreen({Key? key, required this.audioHandler}) : super(key: key);
+
+  @override
+  State<NowPlayingScreen> createState() => _NowPlayingScreenState();
+}
+
+class _NowPlayingScreenState extends State<NowPlayingScreen> {
+  final DownloadService _downloadService = DownloadService();
+  bool _isDownloading = false;
+  double _downloadPercent = 0.0;
+  bool _isDownloaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkDownloadStatus();
+  }
+
+  Future<void> _checkDownloadStatus() async {
+    final song = widget.audioHandler.currentSong;
+    if (song != null) {
+      final downloaded = await _downloadService.isSongDownloaded(song.id);
+      if (mounted) {
+        setState(() => _isDownloaded = downloaded);
+      }
+    }
+  }
+
+  void _triggerDownload(SongModel song) async {
+    if (_isDownloaded) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Yeh gaana pehle se hi app me downloaded hai!')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isDownloading = true;
+      _downloadPercent = 0.0;
+    });
+
+    final success = await _downloadService.downloadSong(
+      song,
+      onProgress: (progress) {
+        if (mounted) {
+          setState(() => _downloadPercent = progress);
+        }
+      },
+    );
+
+    if (mounted) {
+      setState(() {
+        _isDownloading = false;
+        _isDownloaded = success;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Gaana app me download ho gaya! Offline sun sakte hain.'
+                : 'Download nahi ho paya, kripya dobara koshish karein.',
+          ),
+          backgroundColor: success ? const Color(0xFF05D9E8) : Colors.redAccent,
+        ),
+      );
+    }
+  }
+
+  String _formatDuration(Duration? d) {
+    if (d == null) return "0:00";
+    final minutes = d.inMinutes.remainder(60).toString();
+    final seconds = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return "$minutes:$seconds";
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<SongModel?>(
+      stream: widget.audioHandler.currentSongStream,
+      builder: (context, snapshot) {
+        final song = snapshot.data ?? widget.audioHandler.currentSong;
+        if (song == null) {
+          return const Scaffold(
+            backgroundColor: Color(0xFF0D0D0D),
+            body: Center(child: Text('Koi gana play nahi ho raha', style: TextStyle(color: Colors.white70))),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF0D0D0D),
+          body: Container(
+            decoration: const BoxDecoration(
+              gradient: RadialGradient(
+                center: Alignment(0, -0.4),
+                radius: 1.2,
+                colors: [
+                  Color(0xFF23173D), // Soft atmospheric deep purple
+                  Color(0xFF0D0D0D), // True black
+                ],
+              ),
+            ),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Top Navigation & Action Row
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 36),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                        Column(
+                          children: [
+                            const Text(
+                              'PLAYING FROM',
+                              style: TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 1.5),
+                            ),
+                            Text(
+                              song.album,
+                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.more_vert_rounded, color: Colors.white70),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Album Artwork with 3D Shadow & Border
+                  Center(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      height: MediaQuery.of(context).size.width * 0.8,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF05D9E8).withOpacity(0.25),
+                            blurRadius: 30,
+                            offset: const Offset(0, 15),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.8),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.network(
+                          song.thumbnailUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            color: Colors.grey.shade900,
+                            child: const Icon(Icons.music_note, color: Colors.white, size: 80),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Title, Artist, In-App Download Button & Favorite
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 28),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                song.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                song.artist,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.65),
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // In-App Download Button
+                        _isDownloading
+                            ? SizedBox(
+                                width: 38,
+                                height: 38,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      value: _downloadPercent,
+                                      strokeWidth: 3,
+                                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF05D9E8)),
+                                    ),
+                                    Text(
+                                      '${(_downloadPercent * 100).toInt()}%',
+                                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : IconButton(
+                                icon: Icon(
+                                  _isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
+                                  color: _isDownloaded ? const Color(0xFF05D9E8) : Colors.white70,
+                                  size: 28,
+                                ),
+                                tooltip: 'App me Download Karein',
+                                onPressed: () => _triggerDownload(song),
+                              ),
+                        // Favorite Icon
+                        IconButton(
+                          icon: Icon(
+                            song.isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                            color: song.isFavorite ? const Color(0xFFFF2A6D) : Colors.white70,
+                            size: 26,
+                          ),
+                          onPressed: () {
+                            setState(() => song.isFavorite = !song.isFavorite);
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  // Progress Scrubber (Seekbar)
+                  StreamBuilder<Duration>(
+                    stream: widget.audioHandler.player.positionStream,
+                    builder: (context, posSnapshot) {
+                      final pos = posSnapshot.data ?? Duration.zero;
+                      final total = song.duration.inMilliseconds > 0
+                          ? song.duration
+                          : const Duration(minutes: 3);
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Column(
+                          children: [
+                            SliderTheme(
+                              data: SliderTheme.of(context).copyWith(
+                                trackHeight: 3.5,
+                                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+                                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                                activeTrackColor: const Color(0xFF05D9E8),
+                                inactiveTrackColor: Colors.white12,
+                                thumbColor: Colors.white,
+                              ),
+                              child: Slider(
+                                value: pos.inMilliseconds.toDouble().clamp(0.0, total.inMilliseconds.toDouble()),
+                                min: 0.0,
+                                max: total.inMilliseconds.toDouble(),
+                                onChanged: (val) {
+                                  widget.audioHandler.seek(Duration(milliseconds: val.toInt()));
+                                },
+                              ),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 10),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    _formatDuration(pos),
+                                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                  ),
+                                  Text(
+                                    _formatDuration(total),
+                                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Main Controls: Shuffle, Previous, Big Play/Pause, Next, Loop
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.shuffle_rounded, color: Colors.white54, size: 24),
+                          onPressed: () {},
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 40),
+                          onPressed: () => widget.audioHandler.skipToPrevious(),
+                        ),
+                        // Big Play / Pause Button
+                        StreamBuilder<bool>(
+                          stream: widget.audioHandler.player.playingStream,
+                          builder: (context, playSnapshot) {
+                            final isPlaying = playSnapshot.data ?? widget.audioHandler.player.playing;
+                            return Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF05D9E8), Color(0xFFFF2A6D)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF05D9E8).withOpacity(0.4),
+                                    blurRadius: 18,
+                                    offset: const Offset(0, 6),
+                                  ),
+                                ],
+                              ),
+                              child: IconButton(
+                                icon: Icon(
+                                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 38,
+                                ),
+                                onPressed: () {
+                                  if (isPlaying) {
+                                    widget.audioHandler.pause();
+                                  } else {
+                                    widget.audioHandler.play();
+                                  }
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 40),
+                          onPressed: () => widget.audioHandler.skipToNext(),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.repeat_rounded, color: Colors.white54, size: 24),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const Spacer(),
+
+                  // Bottom Action Utilities (Lyrics, Equalizer & Queue)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        // Lyrics Toggle Button
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white10,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.lyrics_rounded, size: 18, color: Color(0xFF05D9E8)),
+                          label: const Text('Lyrics (बोल)', style: TextStyle(fontSize: 13)),
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              isScrollControlled: true,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => LyricsSheet(song: song),
+                            );
+                          },
+                        ),
+                        // Equalizer & Sound Effects
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white10,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          ),
+                          icon: const Icon(Icons.equalizer_rounded, size: 18, color: Color(0xFFFF2A6D)),
+                          label: const Text('Equalizer', style: TextStyle(fontSize: 13)),
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => EqualizerSheet(audioHandler: widget.audioHandler),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
