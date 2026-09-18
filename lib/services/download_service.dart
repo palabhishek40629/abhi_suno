@@ -48,7 +48,8 @@ class DownloadService {
       // 2. Prepare destination path inside app's private storage
       final vaultDir = await _getAppPrivateDirectory();
       // Clean filename for safety
-      final safeName = song.id.replaceAll(RegExp(r'[^\w\s]+'), '');
+      final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
+      final safeName = cleanId.isEmpty ? 'song_${song.title.hashCode.abs()}' : cleanId;
       final filePath = '${vaultDir.path}/$safeName.m4a';
 
       _downloadProgress[song.id] = 0.0;
