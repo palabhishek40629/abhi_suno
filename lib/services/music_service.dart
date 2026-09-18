@@ -81,7 +81,7 @@ class MusicService {
 
     try {
       // Race: whichever finishes first with a valid URL wins
-      final resolvedUrl = await Future.any([
+      final String resolvedUrl = await Future.any<String>([
         ytExplodeFuture.then((url) => (url != null && url.isNotEmpty) ? url : Future<String>.error('yt null')),
         fallbackFuture.then((url) => (url != null && url.isNotEmpty) ? url : Future<String>.error('fallback null')),
       ]).timeout(const Duration(seconds: 4));

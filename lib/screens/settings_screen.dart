@@ -348,7 +348,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFF0000),
-                            shape: BorderRadius.circular(12),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed: _isImportingYt ? null : _importYouTubePlaylist,
                           child: _isImportingYt
@@ -443,7 +443,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           side: const BorderSide(color: Colors.redAccent),
-                          shape: BorderRadius.circular(12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 18),
                         label: Text(
