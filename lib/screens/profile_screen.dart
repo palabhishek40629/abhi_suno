@@ -11,6 +11,7 @@ import '../services/theme_service.dart';
 import '../services/update_service.dart';
 import '../utils/app_constants.dart';
 import '../widgets/equalizer_sheet.dart';
+import '../widgets/tactile_3d_wrapper.dart';
 import '../services/audio_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -217,6 +218,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _updateStatusMessage = '${_lang.t('update_available')} (v${info.latestVersion})';
         } else {
           _updateStatusMessage = _lang.t('up_to_date');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF00E676),
+              duration: const Duration(seconds: 3),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.black),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _lang.isHindi
+                          ? 'आपका ऐप पहले से ही नवीनतम वर्ज़न (v' + _installedVersion + ') पर है! कोई नया अपडेट उपलब्ध नहीं है।'
+                          : 'Your app is already on the latest version (v' + _installedVersion + ')!',
+                      style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
       });
     }
@@ -707,6 +728,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
 
                 // ================================================================
+                // EXPANDABLE ACCORDION SECTION: 🎨 App Theme
+                // ================================================================
+                _buildAccordionCard(
+                  title: _lang.isHindi ? 'ऐप थीम (App Theme)' : 'App Theme',
+                  subtitle: _getThemeName(_theme.currentMode),
+                  icon: Icons.palette_rounded,
+                  accentColor: const Color(0xFF00E5FF),
+                  children: [
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.light,
+                          title: _lang.isHindi ? 'लाइट' : 'Light',
+                          subtitle: 'Clean Bright',
+                          icon: Icons.light_mode_rounded,
+                          color: const Color(0xFFFFB300),
+                        ),
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.dark,
+                          title: _lang.isHindi ? 'डार्क' : 'Dark',
+                          subtitle: 'AMOLED Black',
+                          icon: Icons.dark_mode_rounded,
+                          color: const Color(0xFF9E9E9E),
+                        ),
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.transparent,
+                          title: _lang.isHindi ? 'ट्रांसपेरेंट' : 'Transparent',
+                          subtitle: 'Glassmorphism',
+                          icon: Icons.blur_on_rounded,
+                          color: const Color(0xFF00E5FF),
+                        ),
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.defaultMode,
+                          title: _lang.isHindi ? 'डिफ़ॉल्ट' : 'Default',
+                          subtitle: 'Cyberpunk Neon',
+                          icon: Icons.flash_on_rounded,
+                          color: const Color(0xFFFF2A6D),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // ================================================================
                 // EXPANDABLE ACCORDION SECTION 3: 💾 Storage, Cache & Vault
                 // ================================================================
                 _buildAccordionCard(
@@ -782,6 +851,100 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           onPressed: _confirmDeleteAllDownloads,
                         ),
                       ],
+                    ),
+                  ],
+                ),
+
+                // ================================================================
+                // DEDICATED APP SHARE SECTION: 📲 दोस्तों के साथ शेयर करें
+                // ================================================================
+                _buildAccordionCard(
+                  title: _lang.isHindi ? 'दोस्तों के साथ ऐप शेयर करें' : 'Share App with Friends',
+                  subtitle: _lang.isHindi ? 'WhatsApp, Telegram या Bluetooth से भेजें' : 'Share via WhatsApp, Telegram & more',
+                  icon: Icons.share_rounded,
+                  accentColor: const Color(0xFFFF007F),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFFF007F).withOpacity(0.12),
+                            const Color(0xFF00E5FF).withOpacity(0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFF007F).withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFFFF007F).withOpacity(0.2),
+                                ),
+                                child: const Icon(Icons.favorite_rounded, color: Color(0xFFFF007F), size: 20),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _lang.isHindi ? 'अभी सुनो - 100% फ्री एवं एड-फ्री म्यूजिक' : 'Abhi Suno - 100% Free & Ad-Free',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    Text(
+                                      _lang.isHindi ? 'अपने दोस्तों और परिवार को भी बेहतरीन संगीत से जोड़ें' : 'Invite your friends to enjoy pure lossless audio',
+                                      style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: Tactile3DWrapper(
+                              onTap: _shareApp,
+                              scaleElevation: 1.03,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF25D366).withOpacity(0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.share_rounded, color: Colors.white, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _lang.isHindi ? '1-क्लिक में WhatsApp पर शेयर करें' : 'Share on WhatsApp & Apps',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -932,23 +1095,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          side: const BorderSide(color: Color(0xFFFF007F)),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                        ),
-                        icon: const Icon(Icons.share_rounded, color: Color(0xFFFF007F), size: 18),
-                        label: Text(
-                          _lang.t('share_app'),
-                          style: const TextStyle(color: Color(0xFFFF007F), fontWeight: FontWeight.bold),
-                        ),
-                        onPressed: _shareApp,
-                      ),
-                    ),
+
                   ],
                 ),
               ],
@@ -956,6 +1103,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
+    );
+  }
+
+
+  String _getThemeName(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return _lang.isHindi ? 'लाइट थीम (Light)' : 'Light';
+      case AppThemeMode.dark:
+        return _lang.isHindi ? 'डार्क थीम (Dark)' : 'Dark';
+      case AppThemeMode.transparent:
+        return _lang.isHindi ? 'ट्रांसपेरेंट ग्लास (Transparent)' : 'Transparent';
+      case AppThemeMode.defaultMode:
+      default:
+        return _lang.isHindi ? 'डिफ़ॉल्ट साइबरपंक (Default)' : 'Default (Cyberpunk)';
+    }
+  }
+
+  Widget _buildThemeOptionChip({
+    required AppThemeMode mode,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isSelected = _theme.currentMode == mode;
+    return Tactile3DWrapper(
+      onTap: () => _theme.setTheme(mode),
+      scaleElevation: 1.04,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        width: (MediaQuery.of(context).size.width - 76) / 2,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.18) : Colors.white.withOpacity(0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? color : Colors.white12,
+            width: isSelected ? 1.8 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: color.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? color : Colors.white60, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.white70,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isSelected ? color : Colors.white38,
+                      fontSize: 10,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              Icon(Icons.check_circle_rounded, color: color, size: 16),
+          ],
+        ),
+      ),
     );
   }
 

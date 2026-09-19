@@ -10,6 +10,7 @@ import '../services/theme_service.dart';
 import '../services/favorites_service.dart';
 import '../widgets/screen_bubble_celebration.dart';
 import 'now_playing_screen.dart';
+import '../widgets/tactile_3d_wrapper.dart';
 
 class HomeScreen extends StatefulWidget {
   final AbhiAudioHandler audioHandler;
@@ -980,8 +981,10 @@ class _HomeScreenState extends State<HomeScreen> {
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, i) {
               final song = songs[i];
-              return GestureDetector(
+              return Tactile3DWrapper(
                 onTap: () => _playTrack(song, songs),
+                scaleElevation: 1.06,
+                borderRadius: BorderRadius.circular(12),
                 child: SizedBox(
                   width: 135,
                   child: Column(

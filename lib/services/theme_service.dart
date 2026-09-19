@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 enum AppThemeMode {
+  defaultMode,
   dark,
   light,
   transparent,
@@ -15,8 +16,10 @@ class ThemeService extends ChangeNotifier {
       case AppThemeMode.transparent:
         return 'transparent';
       case AppThemeMode.dark:
-      default:
         return 'dark';
+      case AppThemeMode.defaultMode:
+      default:
+        return 'default';
     }
   }
 
@@ -25,8 +28,10 @@ class ThemeService extends ChangeNotifier {
       setTheme(AppThemeMode.light);
     } else if (theme == 'transparent') {
       setTheme(AppThemeMode.transparent);
-    } else {
+    } else if (theme == 'dark') {
       setTheme(AppThemeMode.dark);
+    } else {
+      setTheme(AppThemeMode.defaultMode);
     }
   }
 
@@ -36,9 +41,10 @@ class ThemeService extends ChangeNotifier {
     _loadTheme();
   }
 
-  AppThemeMode _currentMode = AppThemeMode.dark;
+  AppThemeMode _currentMode = AppThemeMode.defaultMode;
   AppThemeMode get currentMode => _currentMode;
 
+  bool get isDefault => _currentMode == AppThemeMode.defaultMode;
   bool get isDark => _currentMode == AppThemeMode.dark;
   bool get isLight => _currentMode == AppThemeMode.light;
   bool get isTransparent => _currentMode == AppThemeMode.transparent;
@@ -46,13 +52,15 @@ class ThemeService extends ChangeNotifier {
   Future<void> _loadTheme() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final modeStr = prefs.getString('app_theme_mode') ?? 'dark';
+      final modeStr = prefs.getString('app_theme_mode') ?? 'default';
       if (modeStr == 'light') {
         _currentMode = AppThemeMode.light;
       } else if (modeStr == 'transparent') {
         _currentMode = AppThemeMode.transparent;
-      } else {
+      } else if (modeStr == 'dark') {
         _currentMode = AppThemeMode.dark;
+      } else {
+        _currentMode = AppThemeMode.defaultMode;
       }
       notifyListeners();
     } catch (_) {}
@@ -63,25 +71,28 @@ class ThemeService extends ChangeNotifier {
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();
-      final modeStr = mode == AppThemeMode.light
-          ? 'light'
-          : (mode == AppThemeMode.transparent ? 'transparent' : 'dark');
+      String modeStr = 'default';
+      if (mode == AppThemeMode.light) modeStr = 'light';
+      if (mode == AppThemeMode.transparent) modeStr = 'transparent';
+      if (mode == AppThemeMode.dark) modeStr = 'dark';
       await prefs.setString('app_theme_mode', modeStr);
     } catch (_) {}
   }
 
-  Color get primaryColor => const Color(0xFF05D9E8);
+  Color get primaryColor => const Color(0xFF00E5FF);
   Color get secondaryColor => const Color(0xFFFF2A6D);
 
   Color get scaffoldBg {
     switch (_currentMode) {
       case AppThemeMode.light:
-        return const Color(0xFFF6F8FA);
+        return const Color(0xFFF4F6F9);
       case AppThemeMode.transparent:
-        return const Color(0xFF10121A);
+        return const Color(0xFF0C0E17);
       case AppThemeMode.dark:
+        return const Color(0xFF000000);
+      case AppThemeMode.defaultMode:
       default:
-        return const Color(0xFF0A0A0A);
+        return const Color(0xFF090A10);
     }
   }
 
@@ -92,17 +103,20 @@ class ThemeService extends ChangeNotifier {
       case AppThemeMode.transparent:
         return Colors.white.withOpacity(0.08);
       case AppThemeMode.dark:
+        return const Color(0xFF121212);
+      case AppThemeMode.defaultMode:
       default:
-        return const Color(0xFF1A1A1A);
+        return const Color(0xFF141522);
     }
   }
 
   Color get textColor {
     switch (_currentMode) {
       case AppThemeMode.light:
-        return const Color(0xFF1A1A1A);
+        return const Color(0xFF111827);
       case AppThemeMode.transparent:
       case AppThemeMode.dark:
+      case AppThemeMode.defaultMode:
       default:
         return Colors.white;
     }
@@ -115,8 +129,10 @@ class ThemeService extends ChangeNotifier {
       case AppThemeMode.transparent:
         return Colors.white70;
       case AppThemeMode.dark:
+        return const Color(0xFF888888);
+      case AppThemeMode.defaultMode:
       default:
-        return const Color(0xFF9E9E9E);
+        return const Color(0xFF9E9EB2);
     }
   }
 
@@ -125,9 +141,9 @@ class ThemeService extends ChangeNotifier {
       return const BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Color(0xFF181126),
-            Color(0xFF0B1424),
-            Color(0xFF050510),
+            Color(0xFF160E26),
+            Color(0xFF0A1224),
+            Color(0xFF04060E),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -135,11 +151,23 @@ class ThemeService extends ChangeNotifier {
       );
     } else if (_currentMode == AppThemeMode.light) {
       return const BoxDecoration(
-        color: Color(0xFFF6F8FA),
+        color: Color(0xFFF4F6F9),
+      );
+    } else if (_currentMode == AppThemeMode.dark) {
+      return const BoxDecoration(
+        color: Color(0xFF000000),
       );
     } else {
       return const BoxDecoration(
-        color: Color(0xFF0A0A0A),
+        gradient: LinearGradient(
+          colors: [
+            Color(0xFF110C1B),
+            Color(0xFF0A0F1D),
+            Color(0xFF080911),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
       );
     }
   }
@@ -148,13 +176,12 @@ class ThemeService extends ChangeNotifier {
     if (_currentMode == AppThemeMode.light) {
       return ThemeData(
         brightness: Brightness.light,
-        scaffoldBackgroundColor: const Color(0xFFF6F8FA),
+        scaffoldBackgroundColor: const Color(0xFFF4F6F9),
         primaryColor: const Color(0xFF007AFF),
         colorScheme: const ColorScheme.light(
           primary: Color(0xFF007AFF),
           secondary: Color(0xFFFF2A6D),
           surface: Colors.white,
-          background: Color(0xFFF6F8FA),
         ),
         fontFamily: 'sans-serif',
         useMaterial3: true,
@@ -169,7 +196,6 @@ class ThemeService extends ChangeNotifier {
         primary: primaryColor,
         secondary: secondaryColor,
         surface: cardBg,
-        background: scaffoldBg,
       ),
       fontFamily: 'sans-serif',
       useMaterial3: true,

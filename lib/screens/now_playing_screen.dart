@@ -11,6 +11,7 @@ import '../services/share_helper.dart';
 import '../widgets/equalizer_sheet.dart';
 import '../widgets/lyrics_sheet.dart';
 import '../widgets/screen_bubble_celebration.dart';
+import '../widgets/tactile_3d_wrapper.dart';
 
 class NowPlayingScreen extends StatefulWidget {
   final AbhiAudioHandler audioHandler;
@@ -466,21 +467,16 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           ),
                         ),
 
-                        // LOTTIE LIKE BUTTON (Using User's exact LottieFiles Animation + Rising 3-Clone Animation)
+                        // ROCK-SOLID ANIMATED LIKE BUTTON (Elastic Bounce + 3 Rising Clones)
                         AnimatedBuilder(
                           animation: _favoritesService,
                           builder: (context, _) {
                             final isFav = _favoritesService.isFavorite(song.id);
-                            return GestureDetector(
+                            return Tactile3DWrapper(
                               onTap: () async {
                                 final added = await _favoritesService.toggleFavorite(song);
                                 if (added) {
-                                  _lottieController.animateTo(0.5, curve: Curves.easeOut);
                                   ScreenBubbleCelebration.show(context);
-                                } else {
-                                  _lottieController.animateTo(1.0, curve: Curves.easeIn).then((_) {
-                                    if (mounted) _lottieController.reset();
-                                  });
                                 }
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -496,46 +492,81 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                   );
                                 }
                               },
+                              scaleElevation: 1.08,
+                              borderRadius: BorderRadius.circular(24),
                               child: Container(
-                                width: 48,
-                                height: 48,
-                                margin: const EdgeInsets.symmetric(horizontal: 6),
+                                width: 44,
+                                height: 44,
+                                margin: const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: isFav
                                         ? [primaryPink, const Color(0xFFFF007F)]
-                                        : [primaryCyan, const Color(0xFF0077FE)],
+                                        : [primaryCyan.withOpacity(0.25), Colors.white.withOpacity(0.08)],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
+                                  border: Border.all(
+                                    color: isFav ? primaryPink : primaryCyan.withOpacity(0.6),
+                                    width: 1.4,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: (isFav ? primaryPink : primaryCyan).withOpacity(0.45),
+                                      color: (isFav ? primaryPink : primaryCyan).withOpacity(0.4),
                                       blurRadius: 14,
-                                      offset: const Offset(0, 4),
+                                      offset: const Offset(0, 3),
                                     ),
                                   ],
                                 ),
-                                child: ClipOval(
-                                  child: Center(
-                                    child: Lottie.asset(
-                                      'assets/animations/like_heart.json',
-                                      controller: _lottieController,
-                                      width: 44,
-                                      height: 44,
-                                      fit: BoxFit.contain,
-                                      errorBuilder: (_, __, ___) => Icon(
-                                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                    ),
+                                child: Center(
+                                  child: Icon(
+                                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                    color: isFav ? Colors.white : primaryCyan,
+                                    size: 23,
                                   ),
                                 ),
                               ),
                             );
                           },
+                        ),
+
+                        // RESTORED RADIANT SONG SHARE BUTTON
+                        Tactile3DWrapper(
+                          onTap: () {
+                            ShareHelper.shareSong(
+                              title: song.title,
+                              artist: song.artist,
+                              streamUrl: song.streamUrl,
+                            );
+                          },
+                          scaleElevation: 1.08,
+                          borderRadius: BorderRadius.circular(24),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: LinearGradient(
+                                colors: [
+                                  const Color(0xFFFF9100).withOpacity(0.25),
+                                  const Color(0xFFFF5252).withOpacity(0.15),
+                                ],
+                              ),
+                              border: Border.all(color: const Color(0xFFFF9100).withOpacity(0.6), width: 1.2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFF9100).withOpacity(0.3),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.share_rounded, color: Color(0xFFFF9100), size: 21),
+                            ),
+                          ),
                         ),
 
                         // RADIANT IN-APP DOWNLOAD BUTTON
@@ -713,7 +744,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           stream: widget.audioHandler.player.playingStream,
                           builder: (context, playSnapshot) {
                             final isPlaying = playSnapshot.data ?? widget.audioHandler.player.playing;
-                            return Container(
+                            return Tactile3DWrapper(
+                              scaleElevation: 1.08,
+                              borderRadius: BorderRadius.circular(36),
+                              glowColor: const Color(0xFF00E5FF),
+                              child: Container(
                               width: 68,
                               height: 68,
                               decoration: BoxDecoration(
@@ -745,6 +780,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                   }
                                 },
                               ),
+                            ),
                             );
                           },
                         ),
@@ -880,43 +916,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           ),
                         ),
 
-                        // DEDICATED RADIANT SHARE BUTTON IN BOTTOM SECTION!
-                        InkWell(
-                          onTap: () {
-                            ShareHelper.shareSong(
-                              title: song.title,
-                              artist: song.artist,
-                              streamUrl: song.streamUrl,
-                            );
-                          },
-                          borderRadius: BorderRadius.circular(16),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFFFF9100), Color(0xFFFF5252)],
-                              ),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFF9100).withOpacity(0.4),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.share_rounded, size: 16, color: Colors.white),
-                                const SizedBox(width: 6),
-                                Text(
-                                  LanguageService().isHindi ? 'शेयर करें' : 'Share',
-                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+
                       ],
                     ),
                   ),

@@ -8,6 +8,7 @@ import '../models/song_model.dart';
 import 'cache_manager.dart';
 import 'playback_history_service.dart';
 import 'audio_providers/unified_audio_repository.dart';
+import 'audio_providers/jiosaavn_adapter.dart';
 
 class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
@@ -248,6 +249,16 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           String? audioUrl = song.streamUrl;
           if (audioUrl == null || audioUrl.isEmpty) {
             audioUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: '320kbps');
+            if (audioUrl == null || audioUrl.isEmpty) {
+              try {
+                final cleanQ = '${song.title} ${song.artist}'.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+                final matches = await JioSaavnAdapter().searchSongs(cleanQ, limit: 1);
+                if (matches.isNotEmpty && matches.first.streamUrl != null && matches.first.streamUrl!.isNotEmpty) {
+                  audioUrl = matches.first.streamUrl;
+                  _audioRepo.cacheStreamUrl(song.id, audioUrl!);
+                }
+              } catch (_) {}
+            }
             song.streamUrl = audioUrl;
           }
 

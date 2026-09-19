@@ -5,18 +5,18 @@ class AppConstants {
 
   // Local asset mappings
   static const String logoAsset = 'assets/images/logo_square.png';
-  static const String startupAsset = 'assets/images/startup_wide.png';
+  static const String startupAsset = 'assets/images/startup_portrait.png';
   static const String startupSquareAsset = 'assets/images/startup_square.png';
 
   // App Metadata
   static const String appName = 'Abhi Suno';
-  static const String appVersion = '3.6.0';
-  static const int appBuildNumber = 7;
+  static const String appVersion = '3.7.0';
+  static const int appBuildNumber = 8;
   static const String developerName = 'Abhishek Pal';
   static const String developerRole = 'Computer Science & Engineering Student';
 
   // GitHub Release Repository
   static const String repoOwner = 'palabhishek40629';
   static const String repoName = 'abhi_suno';
-  static const String releaseApkUrl = 'https://github.com/palabhishek40629/abhi_suno/releases/latest/download/AbhiSuno-v3.6.0-release.apk';
+  static const String releaseApkUrl = 'https://github.com/palabhishek40629/abhi_suno/releases/latest/download/AbhiSuno-v3.7.0-release.apk';
 }

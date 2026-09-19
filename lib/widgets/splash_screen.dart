@@ -58,9 +58,13 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
           children: [
             // Layer 1: Ambient Blurred Background Glow (No black borders; seamlessly matches poster colors)
             Image.asset(
-              'assets/images/startup_wide.png',
+              'assets/images/startup_portrait.png',
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0B0D14)),
+              errorBuilder: (_, __, ___) => Image.asset(
+                'assets/images/startup_wide.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0B0D14)),
+              ),
             ),
             BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
@@ -69,18 +73,24 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
               ),
             ),
             // Layer 2: 100% Crisp, Complete, Uncut & Unzoomed Poster in Center
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
-                child: Image.asset(
-                  'assets/images/startup_wide.png',
-                  fit: BoxFit.contain, // Complete poster without ANY zoom or cuts!
-                  errorBuilder: (_, __, ___) => Image.asset(
-                    AppConstants.startupAsset,
-                    fit: BoxFit.contain,
+            SafeArea(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  child: Image.asset(
+                    'assets/images/startup_portrait.png',
+                    fit: BoxFit.contain, // Complete poster without ANY zoom or cuts!
                     errorBuilder: (_, __, ___) => Image.asset(
-                      AppConstants.logoAsset,
+                      'assets/images/startup_wide.png',
                       fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Image.asset(
+                        AppConstants.startupAsset,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => Image.asset(
+                          AppConstants.logoAsset,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
                     ),
                   ),
                 ),

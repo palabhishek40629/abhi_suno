@@ -39,23 +39,23 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.6.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.7.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v3.6.0-release
-          path: AbhiSuno-v3.6.0-release.apk
+          name: AbhiSuno-v3.7.0-release
+          path: AbhiSuno-v3.7.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.6.0-${{ github.run_number }}
-          name: "Abhi Suno v3.6.0 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v3.7.0-${{ github.run_number }}
+          name: "Abhi Suno v3.7.0 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v3.6.0 Master Edition - Next-Gen Audio & DJ Engine
+            ### 🎧 Abhi Suno v3.7.0 Master Edition - Next-Gen Audio & DJ Engine
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
             - 🎧 **Next-Gen Audio & DJ Engine:**
@@ -79,8 +79,8 @@ jobs:
             - 🎤 **Synchronized Karaoke Lyrics Engine:**
               - Multi-engine search with synchronized glowing line-by-line karaoke tracking.
 
-            **Direct APK Download:** `AbhiSuno-v3.6.0-release.apk`
-          files: AbhiSuno-v3.6.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v3.7.0-release.apk`
+          files: AbhiSuno-v3.7.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

@@ -8,6 +8,7 @@ import '../services/language_service.dart';
 import '../services/music_service.dart';
 import '../services/performance_guard.dart';
 import '../services/theme_service.dart';
+import '../widgets/tactile_3d_wrapper.dart';
 
 class ExploreScreen extends StatefulWidget {
   final AbhiAudioHandler audioHandler;
@@ -623,6 +624,24 @@ class _ExploreScreenState extends State<ExploreScreen> {
     );
   }
 
+
+  String _getCategoryImageUrl(Map<String, dynamic> cat) {
+    final key = (cat['key'] ?? '').toString().toLowerCase();
+    final section = (cat['section'] ?? '').toString().toLowerCase();
+
+    if (key.contains('chhath')) return 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&q=80';
+    if (key.contains('dj') || key.contains('party') || key.contains('club')) return 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80';
+    if (key.contains('bolbam') || key.contains('devi') || section == 'devotional' || key.contains('bhakti') || key.contains('aarti')) return 'https://images.unsplash.com/photo-1609342122563-a43ac8917a3a?w=500&q=80';
+    if (key.contains('romantic') || key.contains('love')) return 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=500&q=80';
+    if (key.contains('lofi') || key.contains('chill')) return 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80';
+    if (key.contains('retro') || key.contains('90s') || key.contains('classic') || key.contains('birha')) return 'https://images.unsplash.com/photo-1539375665275-f9de415ef9ac?w=500&q=80';
+    if (key.contains('gym') || key.contains('workout')) return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80';
+    if (section == 'punjabi') return 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&q=80';
+    if (section == 'bollywood') return 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80';
+
+    return 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -756,75 +775,108 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   final cat = categories[index];
                   final List<Color> gradient = cat['gradient'] as List<Color>;
 
-                  return InkWell(
+                  return Tactile3DWrapper(
                     onTap: () => _openCategory(context, cat),
+                    scaleElevation: 1.06,
                     borderRadius: BorderRadius.circular(16),
+                    glowColor: gradient[0],
                     child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        gradient: LinearGradient(
-                          colors: [
-                            gradient[0].withOpacity(0.85),
-                            gradient[1].withOpacity(0.45),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        border: Border.all(color: Colors.white.withOpacity(0.18)),
+                        border: Border.all(color: Colors.white.withOpacity(0.2)),
                         boxShadow: [
                           BoxShadow(
-                            color: gradient[0].withOpacity(0.25),
-                            blurRadius: 10,
+                            color: gradient[0].withOpacity(0.3),
+                            blurRadius: 12,
                             offset: const Offset(0, 4),
                           ),
                         ],
                       ),
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withOpacity(0.35),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(cat['icon'] as IconData, color: Colors.white, size: 20),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            // 1. Related Genre Background Image
+                            Image.network(
+                              _getCategoryImageUrl(cat),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                color: gradient[0].withOpacity(0.6),
                               ),
-                              Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 12),
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                isHindi ? (cat['labelHi'] as String) : (cat['labelEn'] as String),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.2,
+                            ),
+                            // 2. Legibility Dark Gradient Overlay
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    gradient[0].withOpacity(0.85),
+                                    Colors.black.withOpacity(0.88),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
                                 ),
                               ),
-                              const SizedBox(height: 2),
-                              Text(
-                                cat['desc'] as String,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: Colors.white.withOpacity(0.75),
-                                  fontSize: 10,
-                                ),
+                            ),
+                            // 3. Category Content (Icon, Label, Description)
+                            Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.4),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white24, width: 0.8),
+                                        ),
+                                        child: Icon(cat['icon'] as IconData, color: Colors.white, size: 20),
+                                      ),
+                                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 12),
+                                    ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isHindi ? (cat['labelHi'] as String) : (cat['labelEn'] as String),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 0.2,
+                                          shadows: [
+                                            Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
+                                          ],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        cat['desc'] as String,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: Colors.white.withOpacity(0.8),
+                                          fontSize: 10,
+                                          shadows: const [
+                                            Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   );
@@ -937,6 +989,24 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
         ),
       );
     }
+  }
+
+
+  String _getCategoryImageUrl(Map<String, dynamic> cat) {
+    final key = (cat['key'] ?? '').toString().toLowerCase();
+    final section = (cat['section'] ?? '').toString().toLowerCase();
+
+    if (key.contains('chhath')) return 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=500&q=80';
+    if (key.contains('dj') || key.contains('party') || key.contains('club')) return 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500&q=80';
+    if (key.contains('bolbam') || key.contains('devi') || section == 'devotional' || key.contains('bhakti') || key.contains('aarti')) return 'https://images.unsplash.com/photo-1609342122563-a43ac8917a3a?w=500&q=80';
+    if (key.contains('romantic') || key.contains('love')) return 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=500&q=80';
+    if (key.contains('lofi') || key.contains('chill')) return 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=500&q=80';
+    if (key.contains('retro') || key.contains('90s') || key.contains('classic') || key.contains('birha')) return 'https://images.unsplash.com/photo-1539375665275-f9de415ef9ac?w=500&q=80';
+    if (key.contains('gym') || key.contains('workout')) return 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80';
+    if (section == 'punjabi') return 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=500&q=80';
+    if (section == 'bollywood') return 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=500&q=80';
+
+    return 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500&q=80';
   }
 
   @override
