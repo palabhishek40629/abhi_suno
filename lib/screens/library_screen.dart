@@ -1,6 +1,7 @@
 import 'now_playing_screen.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
 import '../services/download_service.dart';
@@ -860,18 +861,6 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                       itemCount: sortedDownloads.length,
                       itemBuilder: (context, index) {
                         final song = sortedDownloads[index];
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          leading: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 22,
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    color: Colors.white.withOpacity(0.4),
-                                    fontSize: 12,
                         return StreamBuilder<MediaItem?>(
                           stream: widget.audioHandler.mediaItem,
                           builder: (context, mediaSnap) {

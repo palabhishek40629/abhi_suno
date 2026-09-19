@@ -1,6 +1,7 @@
 import 'now_playing_screen.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:audio_service/audio_service.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
 import '../services/download_service.dart';
