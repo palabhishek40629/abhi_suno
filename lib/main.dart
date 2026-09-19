@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/audio_handler.dart';
 import 'services/language_service.dart';
+import 'services/performance_guard.dart';
 import 'services/theme_service.dart';
 import 'widgets/app_header.dart';
 import 'widgets/mini_player.dart';
@@ -15,6 +16,9 @@ import 'screens/library_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize Anti-Hang Watchdog & Image Cache Throttling
+  PerformanceGuard.initialize();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -41,7 +45,14 @@ class AbhiSunoApp extends StatelessWidget {
         return MaterialApp(
           title: 'Abhi Suno',
           debugShowCheckedModeBanner: false,
-          theme: themeService.themeData,
+          theme: themeService.themeData.copyWith(
+            pageTransitionsTheme: const PageTransitionsTheme(
+              builders: {
+                TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+                TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+              },
+            ),
+          ),
           home: const AppBootstrapScreen(),
         );
       },
@@ -96,7 +107,7 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
     final bool isReady = _audioHandler != null && _splashCompleted;
 
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 300),
       transitionBuilder: (child, animation) {
         return FadeTransition(opacity: animation, child: child);
       },
@@ -126,10 +137,41 @@ class MainNavigationScaffold extends StatefulWidget {
   State<MainNavigationScaffold> createState() => _MainNavigationScaffoldState();
 }
 
-class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
+class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with WidgetsBindingObserver {
   int _currentIndex = 0;
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
+  static const MethodChannel _nativeChannel = MethodChannel('com.abhishekpal.abhisuno/native');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkExternalShareIntent();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _checkExternalShareIntent();
+    }
+  }
+
+  Future<void> _checkExternalShareIntent() async {
+    try {
+      final sharedLink = await _nativeChannel.invokeMethod<String>('getSharedLink');
+      if (sharedLink != null && sharedLink.trim().isNotEmpty) {
+        // Switch to Search tab immediately to discover the shared track
+        setState(() => _currentIndex = 2);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +196,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> {
             child: SafeArea(
               child: Column(
                 children: [
-                  // Top 3D Golden Logo & App Header
+                  // Top 3D Logo & App Header
                   AppHeader(
                     onSearchTap: () => setState(() => _currentIndex = 2),
                   ),

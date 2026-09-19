@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
@@ -5,6 +6,7 @@ import '../services/audio_handler.dart';
 import '../services/download_service.dart';
 import '../services/language_service.dart';
 import '../services/music_service.dart';
+import '../services/performance_guard.dart';
 import '../services/theme_service.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -25,15 +27,25 @@ class _SearchScreenState extends State<SearchScreen> {
 
   List<SongModel> _results = [];
   List<String> _history = [];
+  List<String> _liveSuggestions = [];
   bool _isSearching = false;
   bool _hasSearched = false;
+  String _activeFilter = 'all'; // 'all', 'songs', 'artists', 'playlists'
 
+  Timer? _debounceTimer;
   static const String _historyKey = 'abhi_suno_search_history';
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
@@ -80,22 +92,97 @@ class _SearchScreenState extends State<SearchScreen> {
     } catch (_) {}
   }
 
+  void _onQueryChanged(String val) {
+    _debounceTimer?.cancel();
+    final query = val.trim();
+    if (query.length < 2) {
+      if (mounted) {
+        setState(() => _liveSuggestions = []);
+      }
+      return;
+    }
+
+    _debounceTimer = Timer(const Duration(milliseconds: 350), () async {
+      try {
+        final songs = await PerformanceGuard.safeAsync<List<SongModel>>(
+          _musicService.searchSongs(query),
+          timeout: const Duration(seconds: 4),
+          fallback: <SongModel>[],
+        );
+        if (mounted) {
+          final titles = songs.map((s) => s.title).take(5).toList();
+          setState(() {
+            _liveSuggestions = titles;
+          });
+        }
+      } catch (_) {}
+    });
+  }
+
   void _search(String query) async {
-    if (query.trim().isEmpty) return;
-    _addToHistory(query);
+    final clean = query.trim();
+    if (clean.isEmpty) return;
+
+    _debounceTimer?.cancel();
+    _addToHistory(clean);
 
     setState(() {
       _isSearching = true;
       _hasSearched = true;
+      _liveSuggestions = [];
     });
 
-    final res = await _musicService.searchSongs(query);
-    if (mounted) {
-      setState(() {
-        _results = res;
-        _isSearching = false;
-      });
+    try {
+      final res = await PerformanceGuard.safeAsync<List<SongModel>>(
+        _musicService.searchSongs(clean),
+        timeout: const Duration(seconds: 7),
+        fallback: <SongModel>[],
+      );
+      if (mounted) {
+        setState(() {
+          _results = res;
+          _isSearching = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isSearching = false);
+      }
     }
+  }
+
+  void _confirmDeleteHistory(String query) {
+    final isHindi = _lang.isHindi;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        title: Text(
+          isHindi ? 'खोज इतिहास से हटाएं?' : 'Remove from search history?',
+          style: const TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          isHindi
+              ? 'क्या आप वाकई "$query" को खोज इतिहास से हटाना चाहते हैं?'
+              : 'Are you sure you want to remove "$query" from history?',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(isHindi ? 'रद्द करें' : 'Cancel', style: const TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () {
+              Navigator.pop(ctx);
+              _removeFromHistory(query);
+            },
+            child: Text(isHindi ? 'हटाएं' : 'Remove', style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _playSong(SongModel song) {
@@ -107,13 +194,24 @@ class _SearchScreenState extends State<SearchScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success
-              ? (_lang.isHindi ? 'गाना डाउनलोड हो गया!' : 'Song downloaded successfully!')
-              : (_lang.isHindi ? 'डाउनलोड विफल हुआ' : 'Download failed')),
-          backgroundColor: success ? const Color(0xFF05D9E8) : Colors.redAccent,
+          backgroundColor: success ? const Color(0xFF00E676) : Colors.redAccent,
+          content: Text(
+            success
+                ? (_lang.isHindi ? '"${song.title}" डाउनलोड हो गया!' : '"${song.title}" downloaded!')
+                : (_lang.isHindi ? 'डाउनलोड विफल रहा।' : 'Download failed.'),
+          ),
         ),
       );
     }
+  }
+
+  List<SongModel> get _filteredResults {
+    if (_activeFilter == 'all' || _activeFilter == 'songs') return _results;
+    if (_activeFilter == 'artists') {
+      final query = _controller.text.toLowerCase().trim();
+      return _results.where((s) => s.artist.toLowerCase().contains(query)).toList();
+    }
+    return _results;
   }
 
   @override
@@ -125,39 +223,67 @@ class _SearchScreenState extends State<SearchScreen> {
         final subtextColor = _theme.subtextColor;
         final cardColor = _theme.cardBg;
         final primaryColor = _theme.primaryColor;
+        final isHindi = _lang.isHindi;
+
+        final displayResults = _filteredResults;
 
         return Column(
           children: [
-            // Search Input Bar
+            // Search Input Field Bar with Circular History Quick Action
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
               child: Container(
                 decoration: BoxDecoration(
                   color: cardColor,
-                  borderRadius: BorderRadius.circular(28),
-                  border: Border.all(color: Colors.white12),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: primaryColor.withOpacity(0.35)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
                 child: TextField(
                   controller: _controller,
-                  style: TextStyle(color: textColor),
+                  style: TextStyle(color: textColor, fontSize: 14),
                   textInputAction: TextInputAction.search,
+                  onChanged: _onQueryChanged,
                   onSubmitted: _search,
                   decoration: InputDecoration(
-                    hintText: _lang.t('search_hint'),
-                    hintStyle: TextStyle(color: subtextColor.withOpacity(0.5)),
+                    hintText: isHindi ? 'गाना, कलाकार, एल्बम या प्लेलिस्ट खोजें...' : 'Search songs, artists, playlists...',
+                    hintStyle: TextStyle(color: subtextColor.withOpacity(0.6), fontSize: 13),
                     prefixIcon: Icon(Icons.search_rounded, color: primaryColor),
-                    suffixIcon: _controller.text.isNotEmpty
-                        ? IconButton(
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_history.isNotEmpty && _controller.text.isEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.history_rounded, size: 20),
+                            color: primaryColor,
+                            tooltip: isHindi ? 'हालिया खोज' : 'Recent Search',
+                            onPressed: () {
+                              if (_history.isNotEmpty) {
+                                _controller.text = _history.first;
+                                _search(_history.first);
+                              }
+                            },
+                          ),
+                        if (_controller.text.isNotEmpty)
+                          IconButton(
                             icon: Icon(Icons.clear_rounded, color: subtextColor),
                             onPressed: () {
                               _controller.clear();
                               setState(() {
                                 _results = [];
+                                _liveSuggestions = [];
                                 _hasSearched = false;
                               });
                             },
-                          )
-                        : null,
+                          ),
+                      ],
+                    ),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 14),
                   ),
@@ -165,7 +291,47 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            // When user has not searched: SHOW PERSISTENT SEARCH HISTORY ONLY (NO SUGGESTIONS)
+            // Filter Pills (All / Songs / Artists / Playlists)
+            if (_hasSearched)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    _buildFilterChip('all', isHindi ? 'सभी' : 'All', primaryColor, textColor, cardColor),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('songs', isHindi ? 'गाने' : 'Songs', primaryColor, textColor, cardColor),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('artists', isHindi ? 'कलाकार' : 'Artists', primaryColor, textColor, cardColor),
+                  ],
+                ),
+              ),
+
+            // Live Suggestions Dropdown (Appears while typing)
+            if (_liveSuggestions.isNotEmpty && !_hasSearched)
+              Container(
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                decoration: BoxDecoration(
+                  color: cardColor,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Column(
+                  children: _liveSuggestions.map((sug) {
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(Icons.search_rounded, color: subtextColor, size: 18),
+                      title: Text(sug, style: TextStyle(color: textColor, fontSize: 13)),
+                      trailing: Icon(Icons.north_west_rounded, color: subtextColor, size: 14),
+                      onTap: () {
+                        _controller.text = sug;
+                        _search(sug);
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+
+            // When user has not searched: SHOW PERSISTENT SEARCH HISTORY
             if (!_hasSearched)
               Expanded(
                 child: _history.isEmpty
@@ -208,6 +374,44 @@ class _SearchScreenState extends State<SearchScreen> {
                             ],
                           ),
                           const SizedBox(height: 8),
+                          // Horizontal Circular History Chips
+                          SizedBox(
+                            height: 38,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _history.length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (context, i) {
+                                final h = _history[i];
+                                return InkWell(
+                                  onTap: () {
+                                    _controller.text = h;
+                                    _search(h);
+                                  },
+                                  onLongPress: () => _confirmDeleteHistory(h),
+                                  borderRadius: BorderRadius.circular(19),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: cardColor,
+                                      borderRadius: BorderRadius.circular(19),
+                                      border: Border.all(color: primaryColor.withOpacity(0.3)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.history_rounded, size: 14, color: primaryColor),
+                                        const SizedBox(width: 6),
+                                        Text(h, style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.w500)),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Divider(color: Colors.white10),
                           ..._history.map((query) {
                             return ListTile(
                               contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
@@ -224,6 +428,7 @@ class _SearchScreenState extends State<SearchScreen> {
                                 _controller.text = query;
                                 _search(query);
                               },
+                              onLongPress: () => _confirmDeleteHistory(query),
                             );
                           }).toList(),
                         ],
@@ -239,10 +444,10 @@ class _SearchScreenState extends State<SearchScreen> {
                           valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                         ),
                       )
-                    : _results.isEmpty
+                    : displayResults.isEmpty
                         ? Center(
                             child: Text(
-                              _lang.isHindi
+                              isHindi
                                   ? 'कोई गाना नहीं मिला। कृपया दूसरा नाम खोजें।'
                                   : 'No songs found. Try a different query.',
                               style: TextStyle(color: subtextColor),
@@ -251,9 +456,9 @@ class _SearchScreenState extends State<SearchScreen> {
                         : ListView.builder(
                             physics: const BouncingScrollPhysics(),
                             padding: const EdgeInsets.only(bottom: 90),
-                            itemCount: _results.length,
+                            itemCount: displayResults.length,
                             itemBuilder: (context, index) {
-                              final song = _results[index];
+                              final song = displayResults[index];
                               return ListTile(
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                                 leading: ClipRRect(
@@ -305,6 +510,30 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildFilterChip(String key, String label, Color primary, Color text, Color card) {
+    final isSelected = _activeFilter == key;
+    return InkWell(
+      onTap: () => setState(() => _activeFilter = key),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? primary : card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: isSelected ? primary : Colors.white12),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.black : text,
+            fontSize: 12,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+      ),
     );
   }
 }

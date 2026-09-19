@@ -1,22 +1,44 @@
 package com.abhishekpal.abhisuno
 
+import android.app.Activity
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.os.Environment
+import android.os.StatFs
+import android.provider.MediaStore
+import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity: AudioServiceActivity() {
     private val SHARE_CHANNEL = "com.abhishekpal.abhisuno/share"
     private val NATIVE_CHANNEL = "com.abhishekpal.abhisuno/native"
+    private val PICK_IMAGE_REQ = 2001
+    private var imagePickCallback: MethodChannel.Result? = null
+
+    private var initialSharedText: String? = null
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleSendIntent(intent)
+    }
+
+    private fun handleSendIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
+            initialSharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        handleSendIntent(intent)
 
-        // Legacy Share Channel for backwards compatibility
+        // Legacy Share Channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHARE_CHANNEL).setMethodCallHandler { call, result ->
             if (call.method == "shareText") {
                 val text = call.argument<String>("text") ?: ""
@@ -27,8 +49,7 @@ class MainActivity: AudioServiceActivity() {
                         putExtra(Intent.EXTRA_TEXT, text)
                         type = "text/plain"
                     }
-                    val shareIntent = Intent.createChooser(sendIntent, title)
-                    startActivity(shareIntent)
+                    startActivity(Intent.createChooser(sendIntent, title))
                     result.success(true)
                 } catch (e: Exception) {
                     result.error("SHARE_ERROR", e.message, null)
@@ -38,7 +59,7 @@ class MainActivity: AudioServiceActivity() {
             }
         }
 
-        // Production Native Channel: Version, APK Installer, Export Audio, Audio Sharing
+        // Production Native Channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NATIVE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "getAppVersion" -> {
@@ -46,7 +67,57 @@ class MainActivity: AudioServiceActivity() {
                         val pInfo = packageManager.getPackageInfo(packageName, 0)
                         result.success(pInfo.versionName)
                     } catch (e: Exception) {
-                        result.success("3.3.0")
+                        result.success("3.4.0")
+                    }
+                }
+                "getInitialSharedText" -> {
+                    val text = initialSharedText
+                    initialSharedText = null
+                    result.success(text)
+                }
+                "getStorageInfo" -> {
+                    try {
+                        val dataPath = Environment.getDataDirectory().path
+                        val stat = StatFs(dataPath)
+                        val blockSize = stat.blockSizeLong
+                        val totalBlocks = stat.blockCountLong
+                        val availBlocks = stat.availableBlocksLong
+                        val totalBytes = totalBlocks * blockSize
+                        val freeBytes = availBlocks * blockSize
+                        val map = HashMap<String, Long>()
+                        map["totalBytes"] = totalBytes
+                        map["freeBytes"] = freeBytes
+                        result.success(map)
+                    } catch (e: Exception) {
+                        result.error("STORAGE_ERROR", e.message, null)
+                    }
+                }
+                "pickProfileImage" -> {
+                    try {
+                        imagePickCallback = result
+                        val pickIntent = Intent(Intent.ACTION_GET_CONTENT).apply {
+                            type = "image/*"
+                            addCategory(Intent.CATEGORY_OPENABLE)
+                        }
+                        startActivityForResult(Intent.createChooser(pickIntent, "Select Profile Picture"), PICK_IMAGE_REQ)
+                    } catch (e: Exception) {
+                        result.error("PICK_ERROR", e.message, null)
+                    }
+                }
+                "openInstallSettings" -> {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                data = Uri.parse("package:$packageName")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } else {
+                            result.success(true)
+                        }
+                    } catch (e: Exception) {
+                        result.error("SETTINGS_ERROR", e.message, null)
                     }
                 }
                 "installApk" -> {
@@ -83,7 +154,6 @@ class MainActivity: AudioServiceActivity() {
                             if (!musicDir.exists()) musicDir.mkdirs()
                             val destFile = File(musicDir, fileName)
                             srcFile.copyTo(destFile, overwrite = true)
-                            // Notify MediaScanner
                             val scanIntent = Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE).apply {
                                 data = Uri.fromFile(destFile)
                             }
@@ -119,6 +189,29 @@ class MainActivity: AudioServiceActivity() {
                 }
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == PICK_IMAGE_REQ) {
+            if (resultCode == Activity.RESULT_OK && data?.data != null) {
+                try {
+                    val uri = data.data!!
+                    val inputStream = contentResolver.openInputStream(uri)
+                    val profileFile = File(filesDir, "user_profile_avatar.png")
+                    val outputStream = FileOutputStream(profileFile)
+                    inputStream?.copyTo(outputStream)
+                    inputStream?.close()
+                    outputStream.close()
+                    imagePickCallback?.success(profileFile.absolutePath)
+                } catch (e: Exception) {
+                    imagePickCallback?.error("COPY_FAIL", e.message, null)
+                }
+            } else {
+                imagePickCallback?.success(null)
+            }
+            imagePickCallback = null
         }
     }
 }

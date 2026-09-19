@@ -28,7 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _tempCacheMB = 0.0;
   double _permStorageMB = 0.0;
   String _audioQuality = '320kbps';
-  String _installedVersion = '3.3.0';
+  String _installedVersion = '3.4.0';
 
   bool _isCheckingUpdate = false;
   UpdateInfo? _updateInfo;

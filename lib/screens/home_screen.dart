@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
 import '../services/language_service.dart';
 import '../services/music_service.dart';
+import '../services/performance_guard.dart';
 import '../services/playback_history_service.dart';
 import '../services/theme_service.dart';
+import 'now_playing_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final AbhiAudioHandler audioHandler;
@@ -20,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
   final PlaybackHistoryService _historyService = PlaybackHistoryService();
+  final ScrollController _scrollController = ScrollController();
 
   List<SongModel> _trendingHindi = [];
   List<SongModel> _bollywoodRomantic = [];
@@ -27,23 +31,46 @@ class _HomeScreenState extends State<HomeScreen> {
   List<SongModel> _punjabiHits = [];
   List<SongModel> _hindiLofi = [];
   List<SongModel> _artistSongs = [];
+  List<SongModel> _dynamicFeedSongs = [];
   String _cachedArtistQuery = '';
 
   String _activeChip = 'all';
+  bool _isContinueDismissed = false;
+  bool _isLoadingMore = false;
+  bool _isOfflineDetected = false;
+  String _userName = 'Abhishek Pal';
 
   @override
   void initState() {
     super.initState();
     _loadInstantStarterTracks();
     _refreshLiveTrending();
+    _loadUserProfile();
     _historyService.addListener(_onHistoryUpdated);
     _loadMoreByArtist();
+
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
+        _loadDynamicFeedPage();
+      }
+    });
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _historyService.removeListener(_onHistoryUpdated);
     super.dispose();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final name = prefs.getString('user_custom_profile_name');
+      if (mounted && name != null && name.trim().isNotEmpty) {
+        setState(() => _userName = name.trim());
+      }
+    } catch (_) {}
   }
 
   void _onHistoryUpdated() {
@@ -61,13 +88,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _cachedArtistQuery = primaryArtist;
     try {
-      final songs = await _musicService.searchSongs(primaryArtist);
+      final songs = await PerformanceGuard.safeAsync<List<SongModel>>(
+        _musicService.searchSongs(primaryArtist),
+        timeout: const Duration(seconds: 5),
+        fallback: <SongModel>[],
+      );
       if (mounted) {
         setState(() {
           _artistSongs = songs.where((s) => s.id != lastSong.id).take(10).toList();
         });
       }
     } catch (_) {}
+  }
+
+  Future<void> _loadDynamicFeedPage() async {
+    if (_isLoadingMore) return;
+    setState(() => _isLoadingMore = true);
+
+    try {
+      final additional = await PerformanceGuard.safeAsync<List<SongModel>>(
+        _musicService.searchSongs('Hindi acoustic romantic chartbusters'),
+        timeout: const Duration(seconds: 6),
+        fallback: <SongModel>[],
+      );
+      if (mounted) {
+        setState(() {
+          _dynamicFeedSongs.addAll(additional.take(8));
+          _isLoadingMore = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingMore = false);
+    }
   }
 
   void _loadInstantStarterTracks() {
@@ -204,11 +256,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshLiveTrending() async {
     try {
       final results = await Future.wait([
-        _musicService.getTrendingHindi().timeout(const Duration(seconds: 5), onTimeout: () => []),
-        _musicService.getBollywoodRomantic().timeout(const Duration(seconds: 5), onTimeout: () => []),
-        _musicService.getRetroClassics().timeout(const Duration(seconds: 5), onTimeout: () => []),
-        _musicService.getPunjabiHits().timeout(const Duration(seconds: 5), onTimeout: () => []),
-        _musicService.getHindiLofi().timeout(const Duration(seconds: 5), onTimeout: () => []),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getTrendingHindi(), timeout: const Duration(seconds: 5), fallback: []),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getBollywoodRomantic(), timeout: const Duration(seconds: 5), fallback: []),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getRetroClassics(), timeout: const Duration(seconds: 5), fallback: []),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getPunjabiHits(), timeout: const Duration(seconds: 5), fallback: []),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getHindiLofi(), timeout: const Duration(seconds: 5), fallback: []),
       ]);
 
       if (mounted) {
@@ -218,13 +270,23 @@ class _HomeScreenState extends State<HomeScreen> {
           if (results[2].isNotEmpty) _retroClassics = results[2];
           if (results[3].isNotEmpty) _punjabiHits = results[3];
           if (results[4].isNotEmpty) _hindiLofi = results[4];
+          _isOfflineDetected = false;
         });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        setState(() => _isOfflineDetected = true);
+      }
+    }
   }
 
   void _playTrack(SongModel song, List<SongModel> queue) {
     widget.audioHandler.playSong(song, queue: queue);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
+      ),
+    );
   }
 
   @override
@@ -236,9 +298,10 @@ class _HomeScreenState extends State<HomeScreen> {
         final subtextColor = _theme.subtextColor;
         final cardColor = _theme.cardBg;
         final primaryColor = _theme.primaryColor;
+        final isHindi = _lang.isHindi;
 
         final chips = [
-          {'key': 'all', 'label': _lang.isHindi ? 'सभी' : 'All'},
+          {'key': 'all', 'label': isHindi ? 'सभी' : 'All'},
           {'key': 'trending', 'label': _lang.t('trending')},
           {'key': 'romantic', 'label': _lang.t('romantic')},
           {'key': 'retro', 'label': _lang.t('retro_classics')},
@@ -251,9 +314,34 @@ class _HomeScreenState extends State<HomeScreen> {
           color: primaryColor,
           backgroundColor: cardColor,
           child: ListView(
+            controller: _scrollController,
             physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.only(bottom: 90),
             children: [
+              // Offline Notice Banner
+              if (_isOfflineDetected)
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade900.withOpacity(0.3),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.wifi_off_rounded, color: Colors.amber, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          isHindi ? 'ऑफलाइन मोड: इंटरनेट उपलब्ध नहीं है।' : 'Offline Mode: You are offline.',
+                          style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
               // Filter Chips Row
               SizedBox(
                 height: 48,
@@ -288,16 +376,24 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
 
-              // Continue Listening Hero Card
-              if (_activeChip == 'all' && _historyService.lastPlayedSong != null)
-                _buildContinueListeningCard(_historyService.lastPlayedSong!, _historyService.lastPosition, textColor, subtextColor, primaryColor, cardColor),
+              // Continue Listening Hero Card (with close dismiss button)
+              if (_activeChip == 'all' && !_isContinueDismissed && _historyService.lastPlayedSong != null)
+                _buildContinueListeningCard(
+                  _historyService.lastPlayedSong!,
+                  _historyService.lastPosition,
+                  textColor,
+                  subtextColor,
+                  primaryColor,
+                  cardColor,
+                  isHindi,
+                ),
 
               // Recently Played Section
               if (_activeChip == 'all' && _historyService.recentHistory.isNotEmpty)
                 _buildSongSection(
-                  _lang.isHindi ? 'हाल ही में बजाए गए' : 'Recently Played',
+                  isHindi ? 'हाल ही में बजाए गए' : 'Recently Played',
                   _historyService.recentHistory,
                   textColor,
                   subtextColor,
@@ -307,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // More by Artist Section
               if (_activeChip == 'all' && _artistSongs.isNotEmpty && _historyService.lastPlayedSong != null)
                 _buildSongSection(
-                  _lang.isHindi ? 'कलाकार के अन्य लोकप्रिय गीत' : 'More by ${_historyService.lastPlayedSong!.artist.split(',').first.trim()}',
+                  isHindi ? 'कलाकार के अन्य लोकप्रिय गीत' : 'More by ${_historyService.lastPlayedSong!.artist.split(',').first.trim()}',
                   _artistSongs,
                   textColor,
                   subtextColor,
@@ -333,6 +429,27 @@ class _HomeScreenState extends State<HomeScreen> {
               // Lo-Fi Section
               if (_activeChip == 'all' || _activeChip == 'lofi')
                 _buildSongSection(_lang.t('lofi'), _hindiLofi, textColor, subtextColor, primaryColor),
+
+              // Dynamic Pagination Feed
+              if (_dynamicFeedSongs.isNotEmpty)
+                _buildSongSection(
+                  isHindi ? 'आपके लिए विशेष सुझाव' : 'Recommended for You',
+                  _dynamicFeedSongs,
+                  textColor,
+                  subtextColor,
+                  primaryColor,
+                ),
+
+              if (_isLoadingMore)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
             ],
           ),
         );
@@ -347,6 +464,7 @@ class _HomeScreenState extends State<HomeScreen> {
     Color subtextColor,
     Color primaryColor,
     Color cardColor,
+    bool isHindi,
   ) {
     final durSec = song.duration.inSeconds > 0 ? song.duration.inSeconds : 1;
     final posSec = position.inSeconds.clamp(0, durSec);
@@ -359,7 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -385,73 +503,90 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Icon(Icons.history_rounded, size: 14, color: primaryColor),
-                const SizedBox(width: 6),
-                Text(
-                  _lang.isHindi ? 'सुनना जारी रखें' : 'CONTINUE LISTENING',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.8,
-                    color: primaryColor,
+                Row(
+                  children: [
+                    Icon(Icons.history_rounded, size: 14, color: primaryColor),
+                    const SizedBox(width: 6),
+                    Text(
+                      isHindi ? 'सुनना जारी रखें' : 'CONTINUE LISTENING',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                // Close / Dismiss Button
+                InkWell(
+                  onTap: () => setState(() => _isContinueDismissed = true),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: Icon(Icons.close_rounded, size: 16, color: subtextColor.withOpacity(0.6)),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            Row(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: Image.network(
-                    song.thumbnailUrl,
-                    width: 58,
-                    height: 58,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Container(
+            InkWell(
+              onTap: () => _playTrack(song, [song]),
+              child: Row(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      song.thumbnailUrl,
                       width: 58,
                       height: 58,
-                      color: Colors.black45,
-                      child: const Icon(Icons.music_note, color: Colors.white54),
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        width: 58,
+                        height: 58,
+                        color: Colors.black45,
+                        child: const Icon(Icons.music_note, color: Colors.white54),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: textColor,
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          song.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: textColor,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        song.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: subtextColor,
-                          fontSize: 12,
+                        const SizedBox(height: 3),
+                        Text(
+                          song.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: subtextColor,
+                            fontSize: 12,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  iconSize: 42,
-                  padding: EdgeInsets.zero,
-                  icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor),
-                  onPressed: () => _playTrack(song, [song]),
-                ),
-              ],
+                  IconButton(
+                    iconSize: 42,
+                    padding: EdgeInsets.zero,
+                    icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor),
+                    onPressed: () => _playTrack(song, [song]),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 10),
             ClipRRect(
