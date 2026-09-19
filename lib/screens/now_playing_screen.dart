@@ -916,21 +916,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                 height: 48,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  gradient: theme.brightness == Brightness.light
-                                      ? LinearGradient(
-                                          colors: isRepeat
-                                              ? [const Color(0xFFFF2A6D), const Color(0xFFFF7597)]
-                                              : [const Color(0xFFFF2A6D).withOpacity(0.2), Colors.black.withOpacity(0.06)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        )
-                                      : LinearGradient(
-                                          colors: isRepeat
-                                              ? [const Color(0xFFFF2A6D), const Color(0xFFFF7597)]
-                                              : [const Color(0xFFFF2A6D).withOpacity(0.2), Colors.white.withOpacity(0.06)],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
+                                  gradient: LinearGradient(
+                                    colors: isRepeat
+                                        ? [const Color(0xFFFF2A6D), const Color(0xFFFF7597)]
+                                        : [const Color(0xFFFF2A6D).withOpacity(0.2), Colors.white.withOpacity(0.06)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+
                                   border: Border.all(
                                     color: isRepeat ? const Color(0xFFFF2A6D) : Colors.white24,
                                     width: 1.4,
