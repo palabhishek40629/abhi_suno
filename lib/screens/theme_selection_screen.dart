@@ -22,7 +22,7 @@ class ThemeSelectionScreen extends StatelessWidget {
 
         final themes = [
           _ThemeItem(
-            mode: AppThemeMode.cyberpunk,
+            mode: AppThemeMode.defaultMode,
             title: isHindi ? 'साइबरपंक (Cyberpunk Neon)' : 'Cyberpunk Neon',
             desc: isHindi ? 'नियॉन स्यान और पिंक का 3D भविष्य' : 'Signature neon cyan & hot pink',
             accent: const Color(0xFF00E5FF),
@@ -43,11 +43,11 @@ class ThemeSelectionScreen extends StatelessWidget {
             previewColors: [Colors.white, const Color(0xFFF5F5F5), const Color(0xFFFFB300)],
           ),
           _ThemeItem(
-            mode: AppThemeMode.amoledPitch,
-            title: isHindi ? 'मिडनाइट पिच (Midnight Pitch)' : 'Midnight Pitch',
-            desc: isHindi ? 'काले रंग के साथ एमराल्ड ग्रीन चमक' : 'Deep obsidian with emerald neon glow',
-            accent: const Color(0xFF00E676),
-            previewColors: [Colors.black, const Color(0xFF121212), const Color(0xFF00E676)],
+            mode: AppThemeMode.transparent,
+            title: isHindi ? 'ट्रांसपेरेंट ग्लास (Glassmorphism)' : 'Glassmorphism Translucent',
+            desc: isHindi ? 'पारदर्शी फ्रॉस्टेड ग्लास एवं नियॉन ग्लो' : 'Deep translucent obsidian with neon glow',
+            accent: const Color(0xFFAB47BC),
+            previewColors: [const Color(0xFF160A2C), const Color(0xFF7B1FA2), const Color(0xFF00E5FF)],
           ),
         ];
 
@@ -79,7 +79,7 @@ class ThemeSelectionScreen extends StatelessWidget {
                 return Tactile3DWrapper(
                   onTap: () {
                     HapticFeedback.mediumImpact();
-                    theme.setThemeMode(item.mode);
+                    theme.setTheme(item.mode);
                   },
                   scaleElevation: 1.05,
                   glowColor: item.accent,

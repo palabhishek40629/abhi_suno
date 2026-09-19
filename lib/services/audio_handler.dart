@@ -338,24 +338,6 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _repeatSubject.add(_isRepeat);
   }
 
-  void reorderQueue(int oldIndex, int newIndex) {
-    if (oldIndex < 0 || oldIndex >= _playlist.length) return;
-    if (newIndex < 0 || newIndex > _playlist.length) return;
-
-    if (newIndex > oldIndex) {
-      newIndex -= 1;
-    }
-
-    final song = _playlist.removeAt(oldIndex);
-    _playlist.insert(newIndex, song);
-
-    if (_currentSong != null) {
-      _currentIndex = _playlist.indexWhere((s) => s.id == _currentSong!.id);
-    }
-
-    _playlistSubject.add(List.unmodifiable(_playlist));
-  }
-
   @override
   Future<void> play() async {
     await _player.play();

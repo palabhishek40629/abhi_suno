@@ -226,10 +226,10 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
           'percent': percent,
         };
       },
-    ).then((apkFile) {
+    ).then((apkPath) {
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      if (apkFile != null) {
-        _updateService.installApk(apkFile.path);
+      if (apkPath != null && apkPath.isNotEmpty) {
+        _updateService.installApk(apkPath);
       }
     }).catchError((_) {
       if (mounted) Navigator.of(context, rootNavigator: true).pop();
