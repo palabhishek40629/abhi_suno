@@ -248,7 +248,9 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         title: song.title,
         artist: song.artist,
         duration: song.duration > Duration.zero ? song.duration : null,
-        artUri: song.thumbnailUrl.isNotEmpty ? Uri.tryParse(song.thumbnailUrl) : null,
+        artUri: (song.localThumbnailPath != null && File(song.localThumbnailPath!).existsSync())
+            ? Uri.file(song.localThumbnailPath!)
+            : (song.thumbnailUrl.isNotEmpty ? Uri.tryParse(song.thumbnailUrl) : null),
       );
       mediaItem.add(item);
 
@@ -336,6 +338,24 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     _repeatSubject.add(_isRepeat);
   }
 
+  void reorderQueue(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= _playlist.length) return;
+    if (newIndex < 0 || newIndex > _playlist.length) return;
+
+    if (newIndex > oldIndex) {
+      newIndex -= 1;
+    }
+
+    final song = _playlist.removeAt(oldIndex);
+    _playlist.insert(newIndex, song);
+
+    if (_currentSong != null) {
+      _currentIndex = _playlist.indexWhere((s) => s.id == _currentSong!.id);
+    }
+
+    _playlistSubject.add(List.unmodifiable(_playlist));
+  }
+
   @override
   Future<void> play() async {
     await _player.play();
@@ -414,6 +434,38 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     try {
       await _player.setVolume(gain.clamp(0.0, 2.0));
     } catch (_) {}
+  }
+
+  void reorderQueue(int oldIndex, int newIndex) {
+    if (oldIndex < 0 || oldIndex >= _playlist.length) return;
+    if (newIndex < 0 || newIndex > _playlist.length) return;
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    final item = _playlist.removeAt(oldIndex);
+    _playlist.insert(newIndex, item);
+    if (_currentSong != null) {
+      final newCurrent = _playlist.indexWhere((s) => s.id == _currentSong!.id);
+      if (newCurrent != -1) {
+        _currentIndex = newCurrent;
+      }
+    }
+    _playlistSubject.add(List.unmodifiable(_playlist));
+  }
+
+  void removeFromQueue(int index) {
+    if (index < 0 || index >= _playlist.length) return;
+    if (_playlist.length <= 1) return;
+    _playlist.removeAt(index);
+    if (_currentSong != null) {
+      final newCurrent = _playlist.indexWhere((s) => s.id == _currentSong!.id);
+      if (newCurrent != -1) {
+        _currentIndex = newCurrent;
+      } else {
+        _currentIndex = _currentIndex.clamp(0, _playlist.length - 1);
+      }
+    }
+    _playlistSubject.add(List.unmodifiable(_playlist));
   }
 }
 

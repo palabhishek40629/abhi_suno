@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/song_model.dart';
@@ -44,7 +45,32 @@ class _LyricsSheetState extends State<LyricsSheet> {
   }
 
   Future<void> _loadLyrics() async {
-    final rawLyrics = await _musicService.fetchLyrics(widget.song.title, widget.song.artist);
+    String rawLyrics = '';
+
+    // 1. Check local offline lyrics file
+    if (widget.song.localLyricsPath != null) {
+      try {
+        final lrcFile = File(widget.song.localLyricsPath!);
+        if (lrcFile.existsSync()) {
+          rawLyrics = await lrcFile.readAsString();
+        }
+      } catch (_) {}
+    }
+
+    // 2. Check song.lyrics property
+    if (rawLyrics.isEmpty && widget.song.lyrics != null && widget.song.lyrics!.isNotEmpty) {
+      rawLyrics = widget.song.lyrics!;
+    }
+
+    // 3. Fallback to online multi-source query (JioSaavn + LRCLIB)
+    if (rawLyrics.isEmpty) {
+      rawLyrics = await _musicService.fetchLyrics(
+        widget.song.title,
+        widget.song.artist,
+        songId: widget.song.id,
+      );
+    }
+
     _parseLyrics(rawLyrics);
 
     if (mounted) {

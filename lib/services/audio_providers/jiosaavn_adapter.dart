@@ -256,6 +256,31 @@ class JioSaavnAdapter implements AudioProviderAdapter {
     }
   }
 
+  /// Fetch official JioSaavn lyrics by song ID
+  Future<String?> fetchLyrics(String songId) async {
+    try {
+      if (songId.isEmpty) return null;
+      final uri = Uri.parse(
+        '$_baseUrl?__call=lyrics.getLyrics&ctx=web6dot0&api_version=4&_format=json&lyrics_id=${Uri.encodeComponent(songId)}',
+      );
+      final response = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 4));
+      if (response.statusCode != 200) return null;
+
+      final data = json.decode(response.body);
+      if (data is Map<String, dynamic> && data.containsKey('lyrics')) {
+        final rawLyrics = data['lyrics']?.toString() ?? '';
+        if (rawLyrics.trim().isNotEmpty) {
+          final cleanLyrics = rawLyrics
+              .replaceAll('<br>', '\n')
+              .replaceAll('<br/>', '\n')
+              .replaceAll('<br />', '\n');
+          return _decodeHtmlEntities(cleanLyrics);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
   String _decodeHtmlEntities(String text) {
     return text
         .replaceAll('&quot;', '"')

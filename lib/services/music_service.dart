@@ -74,11 +74,22 @@ class MusicService {
     return [];
   }
 
-  /// Multi-Source Lyrics Engine (LRCLIB Search + JioSaavn API + Synced LRC Timestamps)
-  Future<String> fetchLyrics(String title, String artist) async {
+  /// Multi-Source Lyrics Engine (JioSaavn Official Lyrics + LRCLIB Synced LRC Timestamps)
+  Future<String> fetchLyrics(String title, String artist, {String? songId}) async {
     final cacheKey = '$title-$artist'.toLowerCase();
     if (_lyricsCache.containsKey(cacheKey)) {
       return _lyricsCache[cacheKey]!;
+    }
+
+    // 1. First Priority: Direct Official JioSaavn Lyrics
+    if (songId != null && songId.isNotEmpty) {
+      try {
+        final saavnLyrics = await _saavnAdapter.fetchLyrics(songId);
+        if (saavnLyrics != null && saavnLyrics.trim().isNotEmpty) {
+          _lyricsCache[cacheKey] = saavnLyrics;
+          return saavnLyrics;
+        }
+      } catch (_) {}
     }
 
     final cleanT = _cleanTitle(title);
@@ -88,14 +99,14 @@ class MusicService {
         .first
         .trim();
 
-    // 1. LRCLIB Fuzzy Search endpoint (works on Indian tracks with synced LRC lines)
+    // 2. LRCLIB Fuzzy Search endpoint (synced LRC lines for karaoke)
     try {
       final searchUrl = Uri.parse(
-        'https://lrclib.net/api/search?q=\${Uri.encodeComponent("\$cleanT \$cleanA")}',
+        'https://lrclib.net/api/search?q=${Uri.encodeComponent("$cleanT $cleanA")}',
       );
       final res = await http.get(
         searchUrl,
-        headers: {'User-Agent': 'AbhiSuno/3.5.0 (palabhishek40629@gmail.com)'},
+        headers: {'User-Agent': 'AbhiSuno/4.1.0 (palabhishek40629@gmail.com)'},
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
@@ -115,14 +126,14 @@ class MusicService {
       }
     } catch (_) {}
 
-    // 2. LRCLIB Exact Get endpoint
+    // 3. LRCLIB Exact Get endpoint
     try {
       final exactUrl = Uri.parse(
-        'https://lrclib.net/api/get?track_name=\${Uri.encodeComponent(cleanT)}&artist_name=\${Uri.encodeComponent(cleanA)}',
+        'https://lrclib.net/api/get?track_name=${Uri.encodeComponent(cleanT)}&artist_name=${Uri.encodeComponent(cleanA)}',
       );
       final res = await http.get(
         exactUrl,
-        headers: {'User-Agent': 'AbhiSuno/3.5.0 (palabhishek40629@gmail.com)'},
+        headers: {'User-Agent': 'AbhiSuno/4.1.0 (palabhishek40629@gmail.com)'},
       ).timeout(const Duration(seconds: 3));
 
       if (res.statusCode == 200) {
@@ -140,7 +151,7 @@ class MusicService {
       }
     } catch (_) {}
 
-    // 3. Fallback lyrics
+    // 4. Fallback lyrics
     const fallback = 'गीत के बोल उपलब्ध नहीं हैं।\n\nअभी सुनो - शुद्ध भारतीय संगीत प्लेयर';
     _lyricsCache[cacheKey] = fallback;
     return fallback;

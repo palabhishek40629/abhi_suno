@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
@@ -77,18 +78,32 @@ class MiniPlayer extends StatelessWidget {
                           // Artwork Thumbnail
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              song.thumbnailUrl,
-                              width: 46,
-                              height: 46,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 46,
-                                height: 46,
-                                color: Colors.grey.shade900,
-                                child: const Icon(Icons.music_note, color: Colors.white70),
-                              ),
-                            ),
+                            child: (song.localThumbnailPath != null &&
+                                    File(song.localThumbnailPath!).existsSync())
+                                ? Image.file(
+                                    File(song.localThumbnailPath!),
+                                    width: 46,
+                                    height: 46,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 46,
+                                      height: 46,
+                                      color: Colors.grey.shade900,
+                                      child: const Icon(Icons.music_note, color: Colors.white70),
+                                    ),
+                                  )
+                                : Image.network(
+                                    song.thumbnailUrl,
+                                    width: 46,
+                                    height: 46,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => Container(
+                                      width: 46,
+                                      height: 46,
+                                      color: Colors.grey.shade900,
+                                      child: const Icon(Icons.music_note, color: Colors.white70),
+                                    ),
+                                  ),
                           ),
                           const SizedBox(width: 12),
                           // Title & Artist

@@ -736,74 +736,85 @@ class _SearchScreenState extends State<SearchScreen> {
                                        return StreamBuilder<MediaItem?>(
                                          stream: widget.audioHandler.mediaItem,
                                          builder: (context, mediaSnap) {
-                                           final isCurrentTrack = mediaSnap.data?.id == song.id;
-                                           final isPlaying = isCurrentTrack && widget.audioHandler.playbackState.value.playing;
+                                           return StreamBuilder<PlaybackState>(
+                                             stream: widget.audioHandler.playbackState,
+                                             builder: (context, playSnap) {
+                                               final isCurrentTrack = mediaSnap.data?.id == song.id;
+                                               final isPlaying = isCurrentTrack &&
+                                                   (playSnap.data?.playing ?? widget.audioHandler.playbackState.value.playing);
 
-                                           return ListTile(
-                                             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                             leading: ClipRRect(
-                                               borderRadius: BorderRadius.circular(8),
-                                               child: Stack(
-                                                 alignment: Alignment.center,
-                                                 children: [
-                                                   Image.network(
-                                                     song.thumbnailUrl,
-                                                     width: 52,
-                                                     height: 52,
-                                                     fit: BoxFit.cover,
-                                                     errorBuilder: (_, __, ___) => Container(
-                                                       width: 52,
-                                                       height: 52,
-                                                       color: Colors.grey.shade900,
-                                                       child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                                               return Tactile3DWrapper(
+                                                 scaleElevation: 1.03,
+                                                 borderRadius: BorderRadius.circular(12),
+                                                 glowColor: primaryColor,
+                                                 onTap: () => _playSong(song),
+                                                 child: ListTile(
+                                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                                   leading: ClipRRect(
+                                                     borderRadius: BorderRadius.circular(8),
+                                                     child: Stack(
+                                                       alignment: Alignment.center,
+                                                       children: [
+                                                         Image.network(
+                                                           song.thumbnailUrl,
+                                                           width: 52,
+                                                           height: 52,
+                                                           fit: BoxFit.cover,
+                                                           errorBuilder: (_, __, ___) => Container(
+                                                             width: 52,
+                                                             height: 52,
+                                                             color: Colors.grey.shade900,
+                                                             child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                                                           ),
+                                                         ),
+                                                         if (isCurrentTrack)
+                                                           Container(
+                                                             width: 52,
+                                                             height: 52,
+                                                             color: Colors.black.withOpacity(0.4),
+                                                             child: const Icon(Icons.equalizer_rounded, color: Color(0xFF00E5FF), size: 24),
+                                                           ),
+                                                       ],
                                                      ),
                                                    ),
-                                                   if (isCurrentTrack)
-                                                     Container(
-                                                       width: 52,
-                                                       height: 52,
-                                                       color: Colors.black.withOpacity(0.4),
-                                                       child: const Icon(Icons.equalizer_rounded, color: Color(0xFF00E5FF), size: 24),
+                                                   title: Text(
+                                                     song.title,
+                                                     maxLines: 1,
+                                                     overflow: TextOverflow.ellipsis,
+                                                     style: TextStyle(
+                                                       color: isCurrentTrack ? const Color(0xFF00E5FF) : textColor,
+                                                       fontWeight: FontWeight.w600,
                                                      ),
-                                                 ],
-                                               ),
-                                             ),
-                                             title: Text(
-                                               song.title,
-                                               maxLines: 1,
-                                               overflow: TextOverflow.ellipsis,
-                                               style: TextStyle(
-                                                 color: isCurrentTrack ? const Color(0xFF00E5FF) : textColor,
-                                                 fontWeight: FontWeight.w600,
-                                               ),
-                                             ),
-                                             subtitle: Text(
-                                               song.artist,
-                                               maxLines: 1,
-                                               overflow: TextOverflow.ellipsis,
-                                               style: TextStyle(color: subtextColor, fontSize: 12),
-                                             ),
-                                             trailing: Row(
-                                               mainAxisSize: MainAxisSize.min,
-                                               children: [
-                                                 IconButton(
-                                                   icon: Icon(Icons.download_rounded, color: subtextColor, size: 22),
-                                                   tooltip: _lang.t('download'),
-                                                   onPressed: () => _downloadSong(song),
-                                                 ),
-                                                 IconButton(
-                                                   icon: Icon(
-                                                     isPlaying
-                                                         ? Icons.pause_circle_filled_rounded
-                                                         : Icons.play_circle_fill_rounded,
-                                                     color: isCurrentTrack ? const Color(0xFF00E5FF) : primaryColor,
-                                                     size: 32,
                                                    ),
-                                                   onPressed: () => _playSongOnly(song),
+                                                   subtitle: Text(
+                                                     song.artist,
+                                                     maxLines: 1,
+                                                     overflow: TextOverflow.ellipsis,
+                                                     style: TextStyle(color: subtextColor, fontSize: 12),
+                                                   ),
+                                                   trailing: Row(
+                                                     mainAxisSize: MainAxisSize.min,
+                                                     children: [
+                                                       IconButton(
+                                                         icon: Icon(Icons.download_rounded, color: subtextColor, size: 22),
+                                                         tooltip: _lang.t('download'),
+                                                         onPressed: () => _downloadSong(song),
+                                                       ),
+                                                       IconButton(
+                                                         icon: Icon(
+                                                           isPlaying
+                                                               ? Icons.pause_circle_filled_rounded
+                                                               : Icons.play_circle_fill_rounded,
+                                                           color: isCurrentTrack ? const Color(0xFF00E5FF) : primaryColor,
+                                                           size: 32,
+                                                         ),
+                                                         onPressed: () => _playSongOnly(song),
+                                                       ),
+                                                     ],
+                                                   ),
                                                  ),
-                                               ],
-                                             ),
-                                             onTap: () => _playSong(song),
+                                               );
+                                             },
                                            );
                                          },
                                        );

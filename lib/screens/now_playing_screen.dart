@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
@@ -217,6 +218,199 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   const SizedBox(height: 10),
                 ],
               ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showQueueSheet(BuildContext context) {
+    final isHindi = LanguageService().isHindi;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.92,
+          expand: false,
+          builder: (context, scrollController) {
+            return StreamBuilder<List<SongModel>>(
+              stream: widget.audioHandler.playlistStream,
+              initialData: widget.audioHandler.playlist,
+              builder: (context, snapshot) {
+                final queue = snapshot.data ?? [];
+                final currentSong = widget.audioHandler.currentSong;
+
+                return Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFFFB300).withOpacity(0.15),
+                            ),
+                            child: const Icon(Icons.queue_music_rounded, color: Color(0xFFFFB300), size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  isHindi ? 'प्लेलिस्ट कतार (Queue)' : 'Up Next / Queue',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  isHindi
+                                      ? '${queue.length} गाने • पकड़ कर ऊपर-नीचे बदलें'
+                                      : '${queue.length} songs • Drag to reorder',
+                                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Divider(color: Colors.white10, height: 24),
+                    if (queue.isEmpty)
+                      Expanded(
+                        child: Center(
+                          child: Text(
+                            isHindi ? 'कतार खाली है' : 'Queue is empty',
+                            style: const TextStyle(color: Colors.white38),
+                          ),
+                        ),
+                      )
+                    else
+                      Expanded(
+                        child: ReorderableListView.builder(
+                          scrollController: scrollController,
+                          itemCount: queue.length,
+                          onReorder: (oldIndex, newIndex) {
+                            widget.audioHandler.reorderQueue(oldIndex, newIndex);
+                          },
+                          itemBuilder: (context, index) {
+                            final s = queue[index];
+                            final isPlaying = currentSong?.id == s.id;
+                            return Container(
+                              key: ValueKey('queue_${s.id}_$index'),
+                              margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isPlaying
+                                    ? const Color(0xFF00E5FF).withOpacity(0.12)
+                                    : Colors.white.withOpacity(0.04),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: isPlaying
+                                      ? const Color(0xFF00E5FF).withOpacity(0.4)
+                                      : Colors.transparent,
+                                ),
+                              ),
+                              child: ListTile(
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: (s.localThumbnailPath != null &&
+                                          File(s.localThumbnailPath!).existsSync())
+                                      ? Image.file(
+                                          File(s.localThumbnailPath!),
+                                          width: 44,
+                                          height: 44,
+                                          fit: BoxFit.cover,
+                                        )
+                                      : Image.network(
+                                          s.thumbnailUrl,
+                                          width: 44,
+                                          height: 44,
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (_, __, ___) => Container(
+                                            width: 44,
+                                            height: 44,
+                                            color: Colors.white12,
+                                            child: const Icon(Icons.music_note, color: Colors.white54),
+                                          ),
+                                        ),
+                                ),
+                                title: Text(
+                                  s.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isPlaying ? const Color(0xFF00E5FF) : Colors.white,
+                                    fontWeight: isPlaying ? FontWeight.bold : FontWeight.normal,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  s.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isPlaying
+                                        ? const Color(0xFF00E5FF).withOpacity(0.8)
+                                        : Colors.white54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (isPlaying)
+                                      const Icon(Icons.volume_up_rounded, color: Color(0xFF00E5FF), size: 20)
+                                    else
+                                      IconButton(
+                                        icon: const Icon(Icons.close_rounded, color: Colors.white38, size: 18),
+                                        onPressed: () {
+                                          widget.audioHandler.removeFromQueue(index);
+                                        },
+                                      ),
+                                    ReorderableDragStartListener(
+                                      index: index,
+                                      child: const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                                        child: Icon(Icons.drag_handle_rounded, color: Colors.white54, size: 22),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                onTap: () {
+                                  widget.audioHandler.playSong(s);
+                                },
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                  ],
+                );
+              },
             );
           },
         );
@@ -467,14 +661,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(24),
-                        child: Image.network(
-                          song.thumbnailUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            color: Colors.grey.shade900,
-                            child: const Icon(Icons.music_note, color: Colors.white, size: 80),
-                          ),
-                        ),
+                        child: (song.localThumbnailPath != null &&
+                                File(song.localThumbnailPath!).existsSync())
+                            ? Image.file(
+                                File(song.localThumbnailPath!),
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade900,
+                                  child: const Icon(Icons.music_note, color: Colors.white, size: 80),
+                                ),
+                              )
+                            : Image.network(
+                                song.thumbnailUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  color: Colors.grey.shade900,
+                                  child: const Icon(Icons.music_note, color: Colors.white, size: 80),
+                                ),
+                              ),
                       ),
                     ),
                   ),
@@ -981,28 +1185,28 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           scaleElevation: 1.12,
                           glowColor: primaryCyan,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [primaryCyan.withOpacity(0.25), const Color(0xFF00B0FF).withOpacity(0.12)],
                               ),
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: primaryCyan.withOpacity(0.6), width: 1.4),
                               boxShadow: [
                                 BoxShadow(
                                   color: primaryCyan.withOpacity(0.25),
-                                  blurRadius: 12,
+                                  blurRadius: 10,
                                   offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.lyrics_rounded, size: 18, color: primaryCyan),
-                                const SizedBox(width: 8),
+                                const Icon(Icons.lyrics_rounded, size: 16, color: primaryCyan),
+                                const SizedBox(width: 6),
                                 Text(
                                   LanguageService().t('lyrics'),
-                                  style: const TextStyle(color: primaryCyan, fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(color: primaryCyan, fontSize: 12, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -1022,28 +1226,62 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           scaleElevation: 1.12,
                           glowColor: primaryPink,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 colors: [primaryPink.withOpacity(0.25), const Color(0xFFFF007F).withOpacity(0.12)],
                               ),
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.circular(16),
                               border: Border.all(color: primaryPink.withOpacity(0.6), width: 1.4),
                               boxShadow: [
                                 BoxShadow(
                                   color: primaryPink.withOpacity(0.25),
-                                  blurRadius: 12,
+                                  blurRadius: 10,
                                   offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.equalizer_rounded, size: 18, color: primaryPink),
-                                const SizedBox(width: 8),
+                                const Icon(Icons.equalizer_rounded, size: 16, color: primaryPink),
+                                const SizedBox(width: 6),
                                 Text(
                                   LanguageService().t('equalizer'),
-                                  style: const TextStyle(color: primaryPink, fontSize: 13, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(color: primaryPink, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // Spotify Reorderable Queue
+                        Tactile3DWrapper(
+                          onTap: () => _showQueueSheet(context),
+                          scaleElevation: 1.12,
+                          glowColor: const Color(0xFFFFB300),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [const Color(0xFFFFB300).withOpacity(0.25), const Color(0xFFFF8F00).withOpacity(0.12)],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFFFFB300).withOpacity(0.6), width: 1.4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFFB300).withOpacity(0.25),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.queue_music_rounded, size: 16, color: Color(0xFFFFB300)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  LanguageService().isHindi ? 'कतार' : 'Queue',
+                                  style: const TextStyle(color: Color(0xFFFFB300), fontSize: 12, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -27,6 +28,7 @@ class PartyRoomService extends ChangeNotifier {
 
   Timer? _heartbeatTimer;
   Timer? _pollTimer;
+  WebSocket? _webSocket;
   http.Client? _streamClient;
   StreamSubscription? _streamSubscription;
   final Set<String> _knownPeers = {};
@@ -147,6 +149,8 @@ class PartyRoomService extends ChangeNotifier {
     _heartbeatTimer?.cancel();
     _pollTimer?.cancel();
     _streamSubscription?.cancel();
+    _webSocket?.close();
+    _webSocket = null;
     _streamClient?.close();
     _streamClient = null;
 
@@ -213,8 +217,40 @@ class PartyRoomService extends ChangeNotifier {
 
   void _connectToTopic(String topic) async {
     _streamSubscription?.cancel();
+    _webSocket?.close();
+    _webSocket = null;
     _streamClient?.close();
+    _streamClient = null;
 
+    // 1. High-speed WebSocket connection first
+    try {
+      final wsUri = Uri.parse('wss://ntfy.sh/$topic/ws');
+      _webSocket = await WebSocket.connect(wsUri.toString()).timeout(const Duration(seconds: 5));
+      _streamSubscription = _webSocket!.listen(
+        (data) {
+          if (data is String && data.trim().isNotEmpty) {
+            try {
+              final outer = jsonDecode(data);
+              if (outer is Map && outer.containsKey('message')) {
+                final msg = outer['message'] as String;
+                final payload = jsonDecode(msg);
+                if (payload is Map<String, dynamic>) {
+                  _handleIncomingEvent(payload);
+                }
+              }
+            } catch (_) {}
+          }
+        },
+        onError: (_) => _reconnectStreamLater(topic),
+        onDone: () => _reconnectStreamLater(topic),
+        cancelOnError: true,
+      );
+      return;
+    } catch (_) {
+      // WebSocket failed, fallback to HTTP streaming
+    }
+
+    // 2. Fallback: HTTP streaming SSE
     _streamClient = http.Client();
     try {
       final request = http.Request('GET', Uri.parse('https://ntfy.sh/$topic/json'));

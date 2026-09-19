@@ -85,7 +85,7 @@ class MainActivity: AudioServiceActivity() {
                         val pInfo = packageManager.getPackageInfo(packageName, 0)
                         result.success(pInfo.versionName)
                     } catch (e: Exception) {
-                        result.success("4.0.0")
+                        result.success("4.1.0")
                     }
 
                 }

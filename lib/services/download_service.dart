@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import 'cache_manager.dart';
 import 'audio_providers/unified_audio_repository.dart';
+import 'music_service.dart';
 
 class DownloadService extends ChangeNotifier {
   static final DownloadService _instance = DownloadService._internal();
@@ -150,6 +151,18 @@ class DownloadService extends ChangeNotifier {
         }
       } catch (_) {}
 
+      // Download lyrics for 100% offline reading
+      final lyricsPath = '${permDir.path}/$safeName.lrc';
+      try {
+        final lyrics = await MusicService().fetchLyrics(song.title, song.artist, songId: song.id);
+        if (lyrics.isNotEmpty && !lyrics.contains('गीत के बोल उपलब्ध नहीं हैं')) {
+          final lrcFile = File(lyricsPath);
+          await lrcFile.writeAsString(lyrics);
+          song.localLyricsPath = lyricsPath;
+          song.lyrics = lyrics;
+        }
+      } catch (_) {}
+
       await _saveOfflineTrack(song);
       return true;
     } catch (e) {
@@ -200,6 +213,12 @@ class DownloadService extends ChangeNotifier {
           final thumb = File(song.localThumbnailPath!);
           if (await thumb.exists()) {
             await thumb.delete();
+          }
+        }
+        if (song.localLyricsPath != null) {
+          final lrc = File(song.localLyricsPath!);
+          if (await lrc.exists()) {
+            await lrc.delete();
           }
         }
       }

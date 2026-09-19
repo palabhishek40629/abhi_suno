@@ -32,6 +32,8 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
 
   // Sorting state for offline downloads: 'newest', 'a-z', 'z-a', 'oldest'
   String _downloadSortOrder = 'newest';
+  String _downloadSearchQuery = '';
+  String _likedSearchQuery = '';
 
   @override
   void initState() {
@@ -443,20 +445,102 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                               itemCount: playlist.songs.length,
                               itemBuilder: (context, i) {
                                 final song = playlist.songs[i];
-                                return ListTile(
-                                  leading: const Icon(Icons.music_note, color: Color(0xFF05D9E8)),
-                                  title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white)),
-                                  subtitle: Text(song.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                                  trailing: IconButton(
-                                    icon: const Icon(Icons.remove_circle_outline, color: Colors.white38),
-                                    onPressed: () async {
-                                      await _playlistService.removeSongFromPlaylist(playlist.id, song.id);
-                                      setModalState(() {});
-                                    },
-                                  ),
-                                  onTap: () {
-                                    _playSong(song, playlist.songs);
-                                    Navigator.pop(ctx);
+                                return StreamBuilder<MediaItem?>(
+                                  stream: widget.audioHandler.mediaItem,
+                                  builder: (context, mediaSnap) {
+                                    return StreamBuilder<PlaybackState>(
+                                      stream: widget.audioHandler.playbackState,
+                                      builder: (context, playSnap) {
+                                        final isCurrentTrack = mediaSnap.data?.id == song.id;
+                                        final isPlaying = isCurrentTrack &&
+                                            (playSnap.data?.playing ?? widget.audioHandler.playbackState.value.playing);
+
+                                        return Tactile3DWrapper(
+                                          scaleElevation: 1.03,
+                                          borderRadius: BorderRadius.circular(12),
+                                          glowColor: const Color(0xFF05D9E8),
+                                          onTap: () {
+                                            _playSong(song, playlist.songs);
+                                            Navigator.pop(ctx);
+                                          },
+                                          child: ListTile(
+                                            leading: ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  song.thumbnailUrl.isNotEmpty
+                                                      ? Image.network(
+                                                          song.thumbnailUrl,
+                                                          width: 44,
+                                                          height: 44,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (_, __, ___) => Container(
+                                                            width: 44,
+                                                            height: 44,
+                                                            color: Colors.white10,
+                                                            child: const Icon(Icons.music_note, color: Colors.white54),
+                                                          ),
+                                                        )
+                                                      : Container(
+                                                          width: 44,
+                                                          height: 44,
+                                                          color: Colors.white10,
+                                                          child: const Icon(Icons.music_note, color: Colors.white54),
+                                                        ),
+                                                  if (isCurrentTrack)
+                                                    Container(
+                                                      width: 44,
+                                                      height: 44,
+                                                      color: Colors.black.withOpacity(0.4),
+                                                      child: const Icon(Icons.equalizer_rounded,
+                                                          color: Color(0xFF00E5FF), size: 22),
+                                                    ),
+                                                ],
+                                              ),
+                                            ),
+                                            title: Text(
+                                              song.title,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                color: isCurrentTrack ? const Color(0xFF00E5FF) : Colors.white,
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            subtitle: Text(
+                                              song.artist,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(color: Colors.white54, fontSize: 12),
+                                            ),
+                                            trailing: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                IconButton(
+                                                  icon: const Icon(Icons.remove_circle_outline, color: Colors.white38, size: 20),
+                                                  onPressed: () async {
+                                                    await _playlistService.removeSongFromPlaylist(playlist.id, song.id);
+                                                    setModalState(() {});
+                                                  },
+                                                ),
+                                                IconButton(
+                                                  icon: Icon(
+                                                    isPlaying
+                                                        ? Icons.pause_circle_filled_rounded
+                                                        : Icons.play_circle_filled_rounded,
+                                                    color: isCurrentTrack ? const Color(0xFF00E5FF) : const Color(0xFF05D9E8),
+                                                    size: 30,
+                                                  ),
+                                                  onPressed: () => _playSongOnly(song, playlist.songs),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    );
                                   },
                                 );
                               },
@@ -710,6 +794,12 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
       builder: (context, _) {
         final rawDownloads = _downloadService.downloadedSongs;
         final sortedDownloads = _getSortedDownloads(rawDownloads);
+        final filteredDownloads = _downloadSearchQuery.isEmpty
+            ? sortedDownloads
+            : sortedDownloads.where((s) {
+                final q = _downloadSearchQuery.toLowerCase();
+                return s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q);
+              }).toList();
         final totalMb = _calculateDownloadsSizeMb(rawDownloads).toStringAsFixed(1);
 
         return Column(
@@ -828,9 +918,39 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
               ),
             ),
 
+            // Spotify-Style Live Search Filter Bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+              child: Container(
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: TextField(
+                  onChanged: (val) => setState(() => _downloadSearchQuery = val.trim()),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF05D9E8), size: 18),
+                    suffixIcon: _downloadSearchQuery.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () => setState(() => _downloadSearchQuery = ''),
+                            child: const Icon(Icons.close_rounded, color: Colors.white54, size: 16),
+                          )
+                        : null,
+                    hintText: isHindi ? 'डाउनलोड्स में खोजें...' : 'Filter downloaded tracks...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                ),
+              ),
+            ),
+
             // Downloads List
             Expanded(
-              child: sortedDownloads.isEmpty
+              child: filteredDownloads.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -838,7 +958,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           Icon(Icons.cloud_download_outlined, size: 64, color: Colors.white.withOpacity(0.2)),
                           const SizedBox(height: 16),
                           Text(
-                            isHindi ? 'कोई डाउनलोड किया गया गाना नहीं है' : 'No downloaded songs yet',
+                            isHindi ? 'कोई गाना नहीं मिला' : 'No matching songs found',
                             style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 6),
@@ -858,108 +978,123 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.only(bottom: 90),
-                      itemCount: sortedDownloads.length,
+                      itemCount: filteredDownloads.length,
                       itemBuilder: (context, index) {
-                        final song = sortedDownloads[index];
+                        final song = filteredDownloads[index];
                         return StreamBuilder<MediaItem?>(
                           stream: widget.audioHandler.mediaItem,
                           builder: (context, mediaSnap) {
-                            final isCurrentTrack = mediaSnap.data?.id == song.id;
-                            final isPlaying = isCurrentTrack && widget.audioHandler.playbackState.value.playing;
+                            return StreamBuilder<PlaybackState>(
+                              stream: widget.audioHandler.playbackState,
+                              builder: (context, playSnap) {
+                                final isCurrentTrack = mediaSnap.data?.id == song.id;
+                                final isPlaying = isCurrentTrack &&
+                                    (playSnap.data?.playing ?? widget.audioHandler.playbackState.value.playing);
 
-                            return ListTile(
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    song.localThumbnailPath != null && File(song.localThumbnailPath!).existsSync()
-                                        ? Image.file(
-                                            File(song.localThumbnailPath!),
-                                            width: 48,
-                                            height: 48,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => Container(
-                                              width: 48,
-                                              height: 48,
-                                              color: Colors.white10,
-                                              child: const Icon(Icons.music_note, color: Colors.white54),
-                                            ),
-                                          )
-                                        : song.thumbnailUrl.isNotEmpty
-                                            ? Image.network(
-                                                song.thumbnailUrl,
-                                                width: 48,
-                                                height: 48,
-                                                fit: BoxFit.cover,
-                                                errorBuilder: (_, __, ___) => Container(
+                                return Tactile3DWrapper(
+                                  scaleElevation: 1.03,
+                                  borderRadius: BorderRadius.circular(12),
+                                  glowColor: const Color(0xFF05D9E8),
+                                  onTap: () => _playSong(song, filteredDownloads),
+                                  child: ListTile(
+                                    leading: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          song.localThumbnailPath != null &&
+                                                  File(song.localThumbnailPath!).existsSync()
+                                              ? Image.file(
+                                                  File(song.localThumbnailPath!),
                                                   width: 48,
                                                   height: 48,
-                                                  color: Colors.white10,
-                                                  child: const Icon(Icons.music_note, color: Colors.white54),
-                                                ),
-                                              )
-                                            : Container(
-                                                width: 48,
-                                                height: 48,
-                                                color: Colors.white10,
-                                                child: const Icon(Icons.music_note, color: Colors.white54),
-                                              ),
-                                    if (isCurrentTrack)
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        color: Colors.black.withOpacity(0.4),
-                                        child: const Icon(Icons.equalizer_rounded, color: Color(0xFF00E5FF), size: 24),
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (_, __, ___) => Container(
+                                                    width: 48,
+                                                    height: 48,
+                                                    color: Colors.white10,
+                                                    child: const Icon(Icons.music_note, color: Colors.white54),
+                                                  ),
+                                                )
+                                              : song.thumbnailUrl.isNotEmpty
+                                                  ? Image.network(
+                                                      song.thumbnailUrl,
+                                                      width: 48,
+                                                      height: 48,
+                                                      fit: BoxFit.cover,
+                                                      errorBuilder: (_, __, ___) => Container(
+                                                        width: 48,
+                                                        height: 48,
+                                                        color: Colors.white10,
+                                                        child: const Icon(Icons.music_note, color: Colors.white54),
+                                                      ),
+                                                    )
+                                                  : Container(
+                                                      width: 48,
+                                                      height: 48,
+                                                      color: Colors.white10,
+                                                      child: const Icon(Icons.music_note, color: Colors.white54),
+                                                    ),
+                                          if (isCurrentTrack)
+                                            Container(
+                                              width: 48,
+                                              height: 48,
+                                              color: Colors.black.withOpacity(0.4),
+                                              child: const Icon(Icons.equalizer_rounded,
+                                                  color: Color(0xFF00E5FF), size: 24),
+                                            ),
+                                        ],
                                       ),
-                                  ],
-                                ),
-                              ),
-                              title: Text(
-                                song.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: isCurrentTrack ? const Color(0xFF00E5FF) : Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              subtitle: Row(
-                                children: [
-                                  const Icon(Icons.check_circle_rounded, color: Color(0xFF00E676), size: 12),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      '${song.artist} • 320 kbps',
+                                    ),
+                                    title: Text(
+                                      song.title,
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                                      style: TextStyle(
+                                        color: isCurrentTrack ? const Color(0xFF00E5FF) : Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    subtitle: Row(
+                                      children: [
+                                        const Icon(Icons.check_circle_rounded, color: Color(0xFF00E676), size: 12),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            '${song.artist} • 320 kbps',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 11),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.more_vert_rounded, color: Colors.white54),
+                                          tooltip: isHindi ? 'अधिक विकल्प' : 'Options',
+                                          onPressed: () => _showSongActionMenu(song, isHindi),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            isPlaying
+                                                ? Icons.pause_circle_filled_rounded
+                                                : Icons.play_circle_filled_rounded,
+                                            color: isCurrentTrack
+                                                ? const Color(0xFF00E5FF)
+                                                : const Color(0xFF05D9E8),
+                                            size: 30,
+                                          ),
+                                          onPressed: () => _playSongOnly(song, filteredDownloads),
+                                        ),
+                                      ],
                                     ),
                                   ),
-                                ],
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.more_vert_rounded, color: Colors.white54),
-                                    tooltip: isHindi ? 'अधिक विकल्प' : 'Options',
-                                    onPressed: () => _showSongActionMenu(song, isHindi),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(
-                                      isPlaying
-                                          ? Icons.pause_circle_filled_rounded
-                                          : Icons.play_circle_filled_rounded,
-                                      color: isCurrentTrack ? const Color(0xFF00E5FF) : const Color(0xFF05D9E8),
-                                      size: 30,
-                                    ),
-                                    onPressed: () => _playSongOnly(song, sortedDownloads),
-                                  ),
-                                ],
-                              ),
-                              onTap: () => _playSong(song, sortedDownloads),
+                                );
+                              },
                             );
                           },
                         );
@@ -1004,6 +1139,12 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
       animation: _favoritesService,
       builder: (context, _) {
         final likedSongs = _favoritesService.favoriteSongs;
+        final filteredLiked = _likedSearchQuery.isEmpty
+            ? likedSongs
+            : likedSongs.where((s) {
+                final q = _likedSearchQuery.toLowerCase();
+                return s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q);
+              }).toList();
 
         return Column(
           children: [
@@ -1061,8 +1202,39 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                 ],
               ),
             ),
+
+            // Spotify-Style Live Search Filter Bar for Liked Songs
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Container(
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: TextField(
+                  onChanged: (val) => setState(() => _likedSearchQuery = val.trim()),
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFFF2A6D), size: 18),
+                    suffixIcon: _likedSearchQuery.isNotEmpty
+                        ? GestureDetector(
+                            onTap: () => setState(() => _likedSearchQuery = ''),
+                            child: const Icon(Icons.close_rounded, color: Colors.white54, size: 16),
+                          )
+                        : null,
+                    hintText: isHindi ? 'पसंदीदा गानों में खोजें...' : 'Filter liked tracks...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  ),
+                ),
+              ),
+            ),
+
             Expanded(
-              child: likedSongs.isEmpty
+              child: filteredLiked.isEmpty
                   ? Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1070,7 +1242,7 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           Icon(Icons.favorite_border_rounded, size: 64, color: Colors.white.withOpacity(0.2)),
                           const SizedBox(height: 16),
                           Text(
-                            isHindi ? 'कोई पसंदीदा गाना नहीं है' : 'No liked songs yet',
+                            isHindi ? 'कोई पसंदीदा गाना नहीं मिला' : 'No matching songs found',
                             style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 6),
@@ -1086,79 +1258,94 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                   : ListView.builder(
                       physics: const BouncingScrollPhysics(),
                       padding: const EdgeInsets.only(bottom: 90),
-                      itemCount: likedSongs.length,
+                      itemCount: filteredLiked.length,
                       itemBuilder: (context, index) {
-                        final song = likedSongs[index];
+                        final song = filteredLiked[index];
                         return StreamBuilder<MediaItem?>(
                           stream: widget.audioHandler.mediaItem,
                           builder: (context, mediaSnap) {
-                            final isCurrentTrack = mediaSnap.data?.id == song.id;
-                            final isPlaying = isCurrentTrack && widget.audioHandler.playbackState.value.playing;
+                            return StreamBuilder<PlaybackState>(
+                              stream: widget.audioHandler.playbackState,
+                              builder: (context, playSnap) {
+                                final isCurrentTrack = mediaSnap.data?.id == song.id;
+                                final isPlaying = isCurrentTrack &&
+                                    (playSnap.data?.playing ?? widget.audioHandler.playbackState.value.playing);
 
-                            return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    Image.network(
-                                      song.thumbnailUrl,
-                                      width: 48,
-                                      height: 48,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        width: 48,
-                                        height: 48,
-                                        color: Colors.white10,
-                                        child: const Icon(Icons.music_note, color: Colors.white54),
+                                return Tactile3DWrapper(
+                                  scaleElevation: 1.03,
+                                  borderRadius: BorderRadius.circular(12),
+                                  glowColor: const Color(0xFFFF2A6D),
+                                  onTap: () => _playSong(song, filteredLiked),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                    leading: ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Image.network(
+                                            song.thumbnailUrl,
+                                            width: 48,
+                                            height: 48,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              width: 48,
+                                              height: 48,
+                                              color: Colors.white10,
+                                              child: const Icon(Icons.music_note, color: Colors.white54),
+                                            ),
+                                          ),
+                                          if (isCurrentTrack)
+                                            Container(
+                                              width: 48,
+                                              height: 48,
+                                              color: Colors.black.withOpacity(0.4),
+                                              child: const Icon(Icons.equalizer_rounded,
+                                                  color: Color(0xFF00E5FF), size: 24),
+                                            ),
+                                        ],
                                       ),
                                     ),
-                                    if (isCurrentTrack)
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        color: Colors.black.withOpacity(0.4),
-                                        child: const Icon(Icons.equalizer_rounded, color: Color(0xFF00E5FF), size: 24),
+                                    title: Text(
+                                      song.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: isCurrentTrack ? const Color(0xFF00E5FF) : Colors.white,
+                                        fontWeight: FontWeight.w600,
                                       ),
-                                  ],
-                                ),
-                              ),
-                              title: Text(
-                                song.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: isCurrentTrack ? const Color(0xFF00E5FF) : Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              subtitle: Text(
-                                song.artist,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                              ),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.favorite_rounded, color: Color(0xFFFF2A6D), size: 22),
-                                    onPressed: () => _favoritesService.toggleFavorite(song),
-                                  ),
-                                  IconButton(
-                                    icon: Icon(
-                                      isPlaying
-                                          ? Icons.pause_circle_filled_rounded
-                                          : Icons.play_circle_filled_rounded,
-                                      color: isCurrentTrack ? const Color(0xFF00E5FF) : const Color(0xFF05D9E8),
-                                      size: 28,
                                     ),
-                                    onPressed: () => _playSongOnly(song, likedSongs),
+                                    subtitle: Text(
+                                      song.artist,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                                    ),
+                                    trailing: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.favorite_rounded,
+                                              color: Color(0xFFFF2A6D), size: 22),
+                                          onPressed: () => _favoritesService.toggleFavorite(song),
+                                        ),
+                                        IconButton(
+                                          icon: Icon(
+                                            isPlaying
+                                                ? Icons.pause_circle_filled_rounded
+                                                : Icons.play_circle_filled_rounded,
+                                            color: isCurrentTrack
+                                                ? const Color(0xFF00E5FF)
+                                                : const Color(0xFF05D9E8),
+                                            size: 28,
+                                          ),
+                                          onPressed: () => _playSongOnly(song, filteredLiked),
+                                        ),
+                                      ],
+                                    ),
                                   ),
-                                ],
-                              ),
-                              onTap: () => _playSong(song, likedSongs),
+                                );
+                              },
                             );
                           },
                         );

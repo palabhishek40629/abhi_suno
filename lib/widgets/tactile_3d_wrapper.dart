@@ -31,11 +31,21 @@ class Tactile3DWrapper extends StatefulWidget {
 
 class _Tactile3DWrapperState extends State<Tactile3DWrapper> {
   bool _isPressed = false;
+  Offset _downPos = Offset.zero;
 
-  void _onPointerDown() {
+  void _onPointerDown(PointerDownEvent e) {
+    _downPos = e.position;
     if (mounted) {
       setState(() => _isPressed = true);
       HapticFeedback.selectionClick();
+    }
+  }
+
+  void _onPointerMove(PointerMoveEvent e) {
+    if (_isPressed && (e.position - _downPos).distance > 10) {
+      if (mounted) {
+        setState(() => _isPressed = false);
+      }
     }
   }
 
@@ -53,7 +63,8 @@ class _Tactile3DWrapperState extends State<Tactile3DWrapper> {
     return Container(
       margin: widget.margin,
       child: Listener(
-        onPointerDown: (_) => _onPointerDown(),
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
         onPointerUp: (_) => _onPointerUp(),
         onPointerCancel: (_) => _onPointerUp(),
         child: GestureDetector(

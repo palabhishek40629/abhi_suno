@@ -798,80 +798,73 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         child: Stack(
                           fit: StackFit.expand,
                           children: [
-                            // 1. Related Genre Background Image
-                            Image.network(
-                              _getCategoryImageUrl(cat),
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                color: gradient[0].withOpacity(0.6),
-                              ),
-                            ),
-                            // 2. Legibility Dark Gradient Overlay
+                            // 1. Vibrant gradient background
                             Container(
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
                                   colors: [
-                                    gradient[0].withOpacity(0.85),
-                                    Colors.black.withOpacity(0.88),
+                                    gradient[0],
+                                    gradient.length > 1 ? gradient[1] : gradient[0].withOpacity(0.8),
                                   ],
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
                                 ),
                               ),
                             ),
-                            // 3. Category Content (Icon, Label, Description)
+                            // 2. Spotify-Style 25° Angled Artwork in bottom-right corner
+                            Positioned(
+                              right: -16,
+                              bottom: -8,
+                              child: Transform.rotate(
+                                angle: 0.42,
+                                child: Container(
+                                  width: 68,
+                                  height: 68,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(8),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.45),
+                                        blurRadius: 10,
+                                        offset: const Offset(-2, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(8),
+                                    child: Image.network(
+                                      _getCategoryImageUrl(cat),
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        color: Colors.black26,
+                                        child: Icon(cat['icon'] as IconData, color: Colors.white70),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            // 3. Category Title & Icon at Top-Left
                             Padding(
                               padding: const EdgeInsets.all(12),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black.withOpacity(0.4),
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white24, width: 0.8),
-                                        ),
-                                        child: Icon(cat['icon'] as IconData, color: Colors.white, size: 20),
-                                      ),
-                                      const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 12),
-                                    ],
-                                  ),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        isHindi ? (cat['labelHi'] as String) : (cat['labelEn'] as String),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.bold,
-                                          letterSpacing: 0.2,
-                                          shadows: [
-                                            Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
-                                          ],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        cat['desc'] as String,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: Colors.white.withOpacity(0.8),
-                                          fontSize: 10,
-                                          shadows: const [
-                                            Shadow(color: Colors.black, blurRadius: 4, offset: Offset(0, 1)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
+                                  Icon(cat['icon'] as IconData, color: Colors.white, size: 22),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    isHindi ? (cat['labelHi'] as String) : (cat['labelEn'] as String),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -0.2,
+                                      shadows: [
+                                        Shadow(color: Colors.black45, blurRadius: 4, offset: Offset(0, 1)),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
@@ -1146,93 +1139,104 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                     return StreamBuilder<MediaItem?>(
                       stream: widget.audioHandler.mediaItem,
                       builder: (context, mediaSnap) {
-                        final isCurrentTrack = mediaSnap.data?.id == song.id;
-                        final isPlaying = isCurrentTrack && widget.audioHandler.playbackState.value.playing;
+                        return StreamBuilder<PlaybackState>(
+                          stream: widget.audioHandler.playbackState,
+                          builder: (context, playSnap) {
+                            final isCurrentTrack = mediaSnap.data?.id == song.id;
+                            final isPlaying = isCurrentTrack &&
+                                (playSnap.data?.playing ?? widget.audioHandler.playbackState.value.playing);
 
-                        return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                          leading: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                child: Text(
-                                  '${index + 1}',
-                                  style: TextStyle(
-                                    color: isCurrentTrack ? primaryColor : subtextColor,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Stack(
-                                  alignment: Alignment.center,
+                            return Tactile3DWrapper(
+                              scaleElevation: 1.03,
+                              borderRadius: BorderRadius.circular(12),
+                              glowColor: primaryColor,
+                              onTap: () => _playSong(song),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                leading: Row(
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Image.network(
-                                      song.thumbnailUrl,
-                                      width: 48,
-                                      height: 48,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => Container(
-                                        width: 48,
-                                        height: 48,
-                                        color: Colors.grey.shade900,
-                                        child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                                    SizedBox(
+                                      width: 24,
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          color: isCurrentTrack ? primaryColor : subtextColor,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                        ),
                                       ),
                                     ),
-                                    if (isCurrentTrack)
-                                      Container(
-                                        width: 48,
-                                        height: 48,
-                                        color: Colors.black.withOpacity(0.4),
-                                        child: Icon(Icons.equalizer_rounded, color: primaryColor, size: 24),
+                                    const SizedBox(width: 8),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Image.network(
+                                            song.thumbnailUrl,
+                                            width: 48,
+                                            height: 48,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              width: 48,
+                                              height: 48,
+                                              color: Colors.grey.shade900,
+                                              child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                                            ),
+                                          ),
+                                          if (isCurrentTrack)
+                                            Container(
+                                              width: 48,
+                                              height: 48,
+                                              color: Colors.black.withOpacity(0.4),
+                                              child: Icon(Icons.equalizer_rounded, color: primaryColor, size: 24),
+                                            ),
+                                        ],
                                       ),
+                                    ),
+                                  ],
+                                ),
+                                title: Text(
+                                  song.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: isCurrentTrack ? primaryColor : textColor,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  song.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(color: subtextColor, fontSize: 12),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: const Icon(Icons.download_rounded, size: 22),
+                                      color: subtextColor,
+                                      tooltip: _lang.t('download'),
+                                      onPressed: () => _downloadSong(song),
+                                    ),
+                                    IconButton(
+                                      icon: Icon(
+                                        isPlaying
+                                            ? Icons.pause_circle_filled_rounded
+                                            : Icons.play_circle_fill_rounded,
+                                        color: primaryColor,
+                                        size: 32,
+                                      ),
+                                      onPressed: () => _playSongOnly(song),
+                                    ),
                                   ],
                                 ),
                               ),
-                            ],
-                          ),
-                          title: Text(
-                            song.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: isCurrentTrack ? primaryColor : textColor,
-                              fontWeight: FontWeight.w600,
-                              fontSize: 14,
-                            ),
-                          ),
-                          subtitle: Text(
-                            song.artist,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: subtextColor, fontSize: 12),
-                          ),
-                          trailing: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.download_rounded, size: 22),
-                                color: subtextColor,
-                                tooltip: _lang.t('download'),
-                                onPressed: () => _downloadSong(song),
-                              ),
-                              IconButton(
-                                icon: Icon(
-                                  isPlaying
-                                      ? Icons.pause_circle_filled_rounded
-                                      : Icons.play_circle_fill_rounded,
-                                  color: isCurrentTrack ? primaryColor : primaryColor,
-                                  size: 32,
-                                ),
-                                onPressed: () => _playSongOnly(song),
-                              ),
-                            ],
-                          ),
-                          onTap: () => _playSong(song),
+                            );
+                          },
                         );
                       },
                     );
