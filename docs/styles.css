@@ -49,13 +49,18 @@
 /* Download button pulse halo effect */
 @keyframes pulseGlow {
   0%, 100% {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.35);
+    box-shadow: 0 0 20px rgba(0, 229, 255, 0.35);
   }
   50% {
-    box-shadow: 0 0 35px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 35px rgba(0, 229, 255, 0.65);
   }
 }
 
 #main-download-btn {
   animation: pulseGlow 3s infinite ease-in-out;
+}
+
+/* Admin Floating Dock */
+.admin-dock-badge {
+  box-shadow: 0 10px 25px -5px rgba(0, 229, 255, 0.4);
 }

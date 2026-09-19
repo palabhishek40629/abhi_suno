@@ -81,8 +81,12 @@
         <a href="#faqs" class="hover:text-cyan-400 transition-colors">FAQs</a>
       </nav>
 
-      <!-- Action Button -->
-      <div class="flex items-center gap-3">
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <button type="button" id="admin-login-nav-btn" class="inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-cyan-300 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 px-3 py-2 rounded-xl transition-all" title="एडमिन लॉगिन (abhisunoji@gmail.com)">
+          <i class="fa-solid fa-lock text-cyan-400"></i>
+          <span class="hidden sm:inline font-medium">Admin</span>
+        </button>
         <a href="https://github.com/palabhishek40629/abhi_suno" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl transition-all">
           <i class="fa-brands fa-github text-sm"></i>
           <span>GitHub</span>
@@ -94,6 +98,14 @@
       </div>
     </div>
   </header>
+
+  <!-- Admin Announcement Banner (Toggleable from Admin Panel) -->
+  <div id="admin-announcement-banner" class="hidden bg-gradient-to-r from-cyan-900/90 via-indigo-950 to-purple-900/90 border-b border-cyan-500/30 text-white text-xs py-2.5 px-4 text-center relative z-40 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto flex items-center justify-center gap-2">
+      <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+      <span id="announcement-text" class="font-semibold text-cyan-200">🎉 Abhi Suno v3.9.0 Master Edition Live!</span>
+    </div>
+  </div>
 
   <!-- Hero Section -->
   <section id="download" class="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden">
@@ -769,6 +781,216 @@
       </div>
     </div>
   </footer>
+
+  <!-- ======================================================== -->
+  <!-- ADMIN SYSTEM (अभिषेक पाल के लिए नो-कोड कंट्रोल पैनल)       -->
+  <!-- ======================================================== -->
+
+  <!-- Admin Login Modal -->
+  <div id="admin-login-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/85 backdrop-blur-md hidden p-4">
+    <div class="bg-slate-900 border border-cyan-500/40 rounded-3xl max-w-md w-full p-7 text-left shadow-2xl relative animate-fade-in">
+      
+      <button type="button" id="close-admin-login-btn" class="absolute top-5 right-5 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-12 h-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 text-xl shadow-lg">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div>
+          <h3 class="text-xl font-black text-white">एडमिन लॉगिन (Admin)</h3>
+          <p class="text-xs text-cyan-400 font-medium">Abhi Suno Website Control Panel</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-5 leading-relaxed">
+        बिना कोडिंग के APK लिंक, वर्जन और वेबसाइट का टेक्स्ट बदलने के लिए अपनी Gmail और पासवर्ड से लॉगिन करें।
+      </p>
+
+      <form id="admin-login-form" class="space-y-4">
+        <div>
+          <label for="admin-email-input" class="block text-xs font-semibold text-slate-300 mb-1.5">
+            एडमिन ईमेल (Admin Gmail)
+          </label>
+          <input type="email" id="admin-email-input" value="abhisunoji@gmail.com" required class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all font-mono">
+        </div>
+
+        <div>
+          <label for="admin-password-input" class="block text-xs font-semibold text-slate-300 mb-1.5">
+            एडमिन पासवर्ड (Password)
+          </label>
+          <input type="password" id="admin-password-input" required placeholder="अपना पासवर्ड डालें (डिफ़ॉल्ट: abhi@2026)" class="w-full px-4 py-3 rounded-xl bg-slate-950 border border-slate-700 text-white text-sm focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-all">
+          <p class="text-[11px] text-slate-500 mt-1">डिफ़ॉल्ट पासवर्ड: <strong class="text-cyan-400 font-mono">abhi@2026</strong> (अंदर जाकर बदल सकते हैं)</p>
+        </div>
+
+        <div id="admin-login-error" class="hidden p-3 rounded-xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs font-medium"></div>
+
+        <button type="submit" class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-extrabold py-3 px-4 rounded-xl transition-all shadow-lg shadow-cyan-500/25">
+          <i class="fa-solid fa-right-to-bracket"></i>
+          <span>लॉगिन करें (Open Control Panel)</span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Admin Control Dashboard Modal -->
+  <div id="admin-panel-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/90 backdrop-blur-md hidden p-4 overflow-y-auto">
+    <div class="bg-slate-900 border border-cyan-500/50 rounded-3xl max-w-2xl w-full p-6 sm:p-8 text-left shadow-2xl relative my-8 animate-fade-in max-h-[90vh] overflow-y-auto">
+      
+      <!-- Panel Header -->
+      <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 to-indigo-500 p-0.5">
+            <img src="assets/images/logo.png" alt="Abhi Suno" class="w-full h-full object-cover rounded-[9px]">
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-white flex items-center gap-2">
+              <span>नो-कोड कंट्रोल पैनल</span>
+              <span class="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 px-2 py-0.5 rounded-full font-bold">Admin Active</span>
+            </h3>
+            <p class="text-xs text-cyan-400 font-mono">abhisunoji@gmail.com</p>
+          </div>
+        </div>
+
+        <button type="button" id="close-admin-panel-btn" class="text-slate-400 hover:text-white text-xl p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Panel Form Body -->
+      <form id="admin-settings-form" class="space-y-6 pt-5">
+        
+        <!-- Section: App & APK Settings -->
+        <div class="space-y-4">
+          <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-mobile-screen"></i> 1. ऐप एवं APK डाउनलोड सेटिंग्स
+          </h4>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">ऐप का नाम (App Name)</label>
+              <input type="text" id="cfg-app-name" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">वर्जन (Version Tag)</label>
+              <input type="text" id="cfg-app-version" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">डायरेक्ट APK डाउनलोड लिंक (APK Download Link)</label>
+            <input type="url" id="cfg-download-url" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-cyan-300 text-xs focus:outline-none focus:border-cyan-400 font-mono" placeholder="https://...">
+            <p class="text-[11px] text-slate-500 mt-1">Google Drive, MediaFire या GitHub Release का डायरेक्ट डाउनलोड लिंक यहाँ डालें।</p>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">फाइल साइज (Size)</label>
+              <input type="text" id="cfg-file-size" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">मिनिमम एंड्रॉइड (Android)</label>
+              <input type="text" id="cfg-min-android" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400">
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">पैकेज नेम (Package)</label>
+              <input type="text" id="cfg-package-name" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400 font-mono">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">ऐप टैगलाइन / विवरण (Description)</label>
+            <textarea id="cfg-description" rows="2" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400"></textarea>
+          </div>
+        </div>
+
+        <!-- Section: Announcement Banner -->
+        <div class="space-y-3 pt-3 border-t border-slate-800">
+          <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-bullhorn"></i> 2. सूचना पट्टी (Top Announcement Banner)
+          </h4>
+          
+          <div class="flex items-center gap-3">
+            <input type="checkbox" id="cfg-announcement-enabled" class="w-4 h-4 rounded text-cyan-500 bg-slate-950 border-slate-700 focus:ring-cyan-400">
+            <label for="cfg-announcement-enabled" class="text-xs font-semibold text-slate-300">
+              वेबसाइट के ऊपर अनाउंसमेंट बैनर दिखाएं
+            </label>
+          </div>
+
+          <div>
+            <input type="text" id="cfg-announcement-text" class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400" placeholder="उदा. 🎉 Abhi Suno v4.0 जल्द आ रहा है!">
+          </div>
+        </div>
+
+        <!-- Section: Security & Password -->
+        <div class="space-y-3 pt-3 border-t border-slate-800">
+          <h4 class="text-xs font-bold text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
+            <i class="fa-solid fa-key"></i> 3. एडमिन पासवर्ड बदलें (Security)
+          </h4>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-300 mb-1">नया पासवर्ड (New Password)</label>
+              <input type="password" id="cfg-new-password" placeholder="नया पासवर्ड सेट करें" class="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-cyan-400">
+            </div>
+            <div class="text-[11px] text-slate-500 flex items-center">
+              खाली छोड़ने पर पुराना पासवर्ड ही रहेगा।
+            </div>
+          </div>
+        </div>
+
+        <!-- Success Toast inside panel -->
+        <div id="admin-panel-alert" class="hidden p-3 rounded-xl text-xs font-semibold"></div>
+
+        <!-- Action Buttons Footer -->
+        <div class="pt-4 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <button type="button" id="admin-reset-btn" class="px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 hover:border-slate-500 text-slate-400 hover:text-white text-xs transition-colors">
+              <i class="fa-solid fa-rotate-left mr-1"></i> डिफ़ॉल्ट रीसेट
+            </button>
+            <button type="button" id="admin-logout-btn" class="px-3 py-2 rounded-xl bg-rose-950/40 border border-rose-500/30 hover:bg-rose-900/50 text-rose-300 text-xs transition-colors">
+              <i class="fa-solid fa-right-from-bracket mr-1"></i> लॉगआउट
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button type="button" id="admin-download-config-btn" class="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition-colors">
+              <i class="fa-solid fa-download mr-1"></i> कॉन्फ़िग डाउनलोड
+            </button>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-400 to-indigo-500 hover:from-cyan-300 hover:to-indigo-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 transition-all">
+              <i class="fa-solid fa-floppy-disk mr-1"></i> तुरंत सेव करें (Save)
+            </button>
+          </div>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Admin Mode Floating Dock (Visible when logged in) -->
+  <div id="admin-floating-dock" class="fixed bottom-5 right-5 z-40 hidden animate-fade-in">
+    <div class="admin-dock-badge bg-slate-900/95 border border-cyan-500/60 rounded-full px-4 py-2 flex items-center gap-3 backdrop-blur-xl shadow-2xl">
+      <div class="flex items-center gap-2 text-xs font-bold text-cyan-300">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span class="hidden sm:inline">Admin:</span>
+        <span class="font-mono text-white text-[11px]">abhisunoji@gmail.com</span>
+      </div>
+      <div class="flex items-center gap-1.5 border-l border-slate-700 pl-2">
+        <button type="button" id="dock-open-panel-btn" class="bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 px-2.5 py-1 rounded-lg text-xs font-bold transition-colors" title="एडमिन सेटिंग्स खोलें">
+          <i class="fa-solid fa-sliders"></i> Edit Site
+        </button>
+        <button type="button" id="dock-logout-btn" class="text-slate-400 hover:text-rose-400 p-1 text-xs transition-colors" title="लॉगआउट">
+          <i class="fa-solid fa-power-off"></i>
+        </button>
+      </div>
+    </div>
+  </div>
 
   <!-- App Script -->
   <script src="app.js"></script>
