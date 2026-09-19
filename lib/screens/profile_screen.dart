@@ -626,7 +626,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     children: [
                       RadioListTile<AppThemeMode>(
                         value: AppThemeMode.dark,
-                        groupValue: _theme.currentTheme,
+                        groupValue: _theme.currentMode,
                         activeColor: primaryColor,
                         title: Text(_lang.t('theme_dark'), style: TextStyle(color: textColor, fontSize: 13)),
                         onChanged: (val) => _theme.setTheme(val!),
@@ -634,7 +634,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const Divider(color: Colors.white10, height: 1),
                       RadioListTile<AppThemeMode>(
                         value: AppThemeMode.light,
-                        groupValue: _theme.currentTheme,
+                        groupValue: _theme.currentMode,
                         activeColor: primaryColor,
                         title: Text(_lang.t('theme_light'), style: TextStyle(color: textColor, fontSize: 13)),
                         onChanged: (val) => _theme.setTheme(val!),
@@ -642,7 +642,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const Divider(color: Colors.white10, height: 1),
                       RadioListTile<AppThemeMode>(
                         value: AppThemeMode.transparent,
-                        groupValue: _theme.currentTheme,
+                        groupValue: _theme.currentMode,
                         activeColor: primaryColor,
                         title: Text(_lang.t('theme_transparent'), style: TextStyle(color: textColor, fontSize: 13)),
                         onChanged: (val) => _theme.setTheme(val!),

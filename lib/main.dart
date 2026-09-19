@@ -46,7 +46,7 @@ class AbhiSunoApp extends StatelessWidget {
           title: 'Abhi Suno',
           debugShowCheckedModeBanner: false,
           theme: themeService.themeData.copyWith(
-            pageTransitionsTheme: const PageTransitionsTheme(
+            pageTransitionsTheme: PageTransitionsTheme(
               builders: {
                 TargetPlatform.android: CupertinoPageTransitionsBuilder(),
                 TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
