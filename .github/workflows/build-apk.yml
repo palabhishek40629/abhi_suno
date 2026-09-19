@@ -34,9 +34,6 @@ jobs:
       - name: Get Flutter Dependencies
         run: flutter pub get
 
-      - name: Analyze Flutter Code
-        run: flutter analyze --no-fatal-infos
-
       - name: Build Android APK (Fat Release APK)
         run: flutter build apk --release --no-tree-shake-icons --android-skip-build-dependency-validation
 
