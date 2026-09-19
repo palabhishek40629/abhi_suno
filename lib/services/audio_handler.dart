@@ -9,6 +9,7 @@ import 'cache_manager.dart';
 import 'playback_history_service.dart';
 import 'audio_providers/unified_audio_repository.dart';
 import 'audio_providers/jiosaavn_adapter.dart';
+import 'party_room_service.dart';
 
 class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
@@ -237,6 +238,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _currentSongSubject.add(_currentSong);
       _historyService.recordSongPlay(song);
       _historyService.updatePosition(Duration.zero);
+      PartyRoomService().onLocalSongChanged(song);
 
       final item = MediaItem(
         id: song.id,
@@ -333,10 +335,16 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   }
 
   @override
-  Future<void> play() async => await _player.play();
+  Future<void> play() async {
+    await _player.play();
+    PartyRoomService().onLocalResume();
+  }
 
   @override
-  Future<void> pause() async => await _player.pause();
+  Future<void> pause() async {
+    await _player.pause();
+    PartyRoomService().onLocalPause();
+  }
 
   @override
   Future<void> stop() async => await _player.stop();

@@ -59,6 +59,8 @@ class JioSaavnAdapter implements AudioProviderAdapter {
           directStreamUrl = DesHelper.decryptJioSaavnUrl(encUrl, quality: '320kbps');
         }
 
+        final permaUrl = (item['perma_url'] ?? item['more_info']?['perma_url'] ?? '').toString();
+
         songs.add(
           SongModel(
             id: songId,
@@ -68,6 +70,7 @@ class JioSaavnAdapter implements AudioProviderAdapter {
             duration: Duration(seconds: durationSeconds),
             thumbnailUrl: hdImage,
             streamUrl: directStreamUrl,
+            permaUrl: permaUrl.isNotEmpty ? permaUrl : null,
           ),
         );
       }
@@ -232,6 +235,8 @@ class JioSaavnAdapter implements AudioProviderAdapter {
           directStreamUrl = DesHelper.decryptJioSaavnUrl(encUrl, quality: '320kbps');
         }
 
+        final permaUrl = (item['perma_url'] ?? item['more_info']?['perma_url'] ?? '').toString();
+
         songs.add(
           SongModel(
             id: songId,
@@ -241,6 +246,7 @@ class JioSaavnAdapter implements AudioProviderAdapter {
             duration: Duration(seconds: durationSec),
             thumbnailUrl: hdImage,
             streamUrl: directStreamUrl,
+            permaUrl: permaUrl.isNotEmpty ? permaUrl : null,
           ),
         );
       }

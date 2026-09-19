@@ -3,6 +3,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'services/audio_handler.dart';
+import 'services/party_room_service.dart';
 import 'services/language_service.dart';
 import 'services/performance_guard.dart';
 import 'services/theme_service.dart';
@@ -85,12 +86,15 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
         onTimeout: () => AbhiAudioHandler(),
       );
 
+      PartyRoomService().audioHandler = handler;
       if (mounted) {
         setState(() => _audioHandler = handler);
       }
     } catch (_) {
+      final fallbackHandler = AbhiAudioHandler();
+      PartyRoomService().audioHandler = fallbackHandler;
       if (mounted) {
-        setState(() => _audioHandler = AbhiAudioHandler());
+        setState(() => _audioHandler = fallbackHandler);
       }
     }
   }

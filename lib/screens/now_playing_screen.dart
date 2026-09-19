@@ -587,6 +587,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                               title: song.title,
                               artist: song.artist,
                               streamUrl: song.streamUrl,
+                              permaUrl: song.permaUrl,
                             );
                           },
                           scaleElevation: 1.15,

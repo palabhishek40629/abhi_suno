@@ -39,43 +39,46 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.8.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.9.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v3.8.0-release
-          path: AbhiSuno-v3.8.0-release.apk
+          name: AbhiSuno-v3.9.0-release
+          path: AbhiSuno-v3.9.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.8.0-${{ github.run_number }}
-          name: "Abhi Suno v3.8.0 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v3.9.0-${{ github.run_number }}
+          name: "Abhi Suno v3.9.0 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v3.8.0 Master Edition - Party Room & Instant Next Engine
+            ### 🎧 Abhi Suno v3.9.0 Master Edition - Real-Time Party Sync & Interactive Profile
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 🚀 **Zero-Delay Next Track Playback:**
-              - Next button instantly transitions from 0:00 to the subsequent track with 0 delay.
-              - Auto-fetches next recommendation batch seamlessly when queue reaches last 2 tracks, completely eliminating single-track looping.
-            - 👥 **पार्टी रूम ("सुनो साथ में" / Listen Together):**
-              - Positioned elegantly in Profile Screen directly between Audio & DJ Engine and Language Settings.
-              - **Option 1 (पार्टी रूम बनाएं / Generate Code):** Generates unique 6-digit party room code (`ABHI-XXXX`), real-time device counter, and WhatsApp invite sharing.
-              - **Option 2 (रूम से जुड़ें / Join Room):** Modal input to connect unlimited devices to stream music together in real-time.
-            - 🔍 **Live JioSaavn Instant Search & Playlists:**
-              - Autocomplete search suggestions directly powered by JioSaavn live catalog (<50ms response).
-              - Dedicated **Playlists & Albums** section in search results with cover art, track count badge, and instant tap-to-play.
-              - Added `playlists` filter chip alongside `all`, `songs`, and `artists`.
-            - 💎 **Radiant Glowing Buttons App-Wide:**
-              - All playback controls (Previous, Next, Shuffle, Repeat, Like, Song Share, Download, Lyrics, EQ, PiP) styled with radiant circular gradients and luminous ambient drop shadows matching the Big Play button.
-            - 🌟 **Enhanced 3D Touch/Elevation Effect:**
-              - Noticeably smoother, larger 3D tactile elevation (`scaleElevation: 1.15`, `Curves.easeOutBack`, 28px radiant bloom) on touch across all controls and interactive cards.
+            - 👥 **पार्टी रूम ("सुनो साथ में" / Listen Together) Real-Time Sync:**
+              - Real-time global network synchronization across unlimited devices via ultra-fast pub/sub channel.
+              - Live play/pause/resume sync, song queue tracking, and real-time active listener counts.
+              - Share party room code directly to WhatsApp with 1-tap invitation link.
+            - 👤 **Customizable Profile & Login System:**
+              - Edit user name, avatar (custom photo or 6 musical avatars), and status/bio (editable "Computer Science & Engineering Student").
+              - Beautiful 3D Dynamic **"प्रोफ़ाइल अपडेट करें (Update Profile)"** elevation button with instant local persistence.
+            - 🔗 **Direct Playable Song Link in Sharing:**
+              - Song share now sends direct playable JioSaavn web links (`perma_url`) and app download link.
+            - 🎯 **Split Tap UX & Active Song Highlighting:**
+              - Tapping the Play button on any song tile directly plays/pauses without opening the full player.
+              - Tapping anywhere else on the row opens the full Now Playing screen.
+              - Active song indicator (live equalizer animation + cyan glow + dynamic play/pause state) in playlists and search.
+            - 📄 **Dedicated Next-Page Navigation:**
+              - "About Application" opens as a dedicated full screen with rich dev info, version details, and social links.
+              - "Language & Region" opens as an expansive full-screen selector with search filter and native language scripts.
+            - 🧹 **Clean Home Feed:**
+              - Removed "Continue Listening" section for a cleaner, faster home browsing experience.
 
-            **Direct APK Download:** `AbhiSuno-v3.8.0-release.apk`
-          files: AbhiSuno-v3.8.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v3.9.0-release.apk`
+          files: AbhiSuno-v3.9.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

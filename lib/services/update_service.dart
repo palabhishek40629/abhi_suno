@@ -46,7 +46,7 @@ class UpdateService {
         return version;
       }
     } catch (_) {}
-    return '3.8.0';
+    return '3.9.0';
   }
 
 

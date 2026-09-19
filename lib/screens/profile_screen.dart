@@ -9,11 +9,15 @@ import '../services/music_service.dart';
 import '../services/playlist_service.dart';
 import '../services/theme_service.dart';
 import '../services/update_service.dart';
+import '../services/user_service.dart';
 import '../utils/app_constants.dart';
 import '../widgets/equalizer_sheet.dart';
 import '../widgets/tactile_3d_wrapper.dart';
 import '../widgets/party_room_card.dart';
 import '../services/audio_handler.dart';
+import 'about_screen.dart';
+import 'language_screen.dart';
+import 'edit_profile_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AbhiAudioHandler? audioHandler;
@@ -27,6 +31,7 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
+  final UserService _user = UserService();
   final DownloadService _downloadService = DownloadService();
   final MusicService _musicService = MusicService();
   final PlaylistService _playlistService = PlaylistService();
@@ -56,6 +61,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void initState() {
     super.initState();
+    _user.init();
     _loadProfileData();
   }
 
@@ -473,7 +479,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_theme, _lang]),
+      animation: Listenable.merge([_theme, _lang, _user]),
       builder: (context, _) {
         final textColor = _theme.textColor;
         final subtextColor = _theme.subtextColor;
@@ -500,40 +506,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
               children: [
-                // SECTION 1: Profile Avatar & Editable Name
+                // SECTION 1: Profile Avatar, Editable Name & Bio
                 Center(
                   child: Stack(
                     children: [
-                      Container(
-                        width: 108,
-                        height: 108,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF00E5FF).withOpacity(0.35),
-                              blurRadius: 20,
-                              spreadRadius: 2,
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                          );
+                        },
+                        child: Container(
+                          width: 108,
+                          height: 108,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(3.5),
-                        child: ClipOval(
-                          child: _profileImagePath != null && File(_profileImagePath!).existsSync()
-                              ? Image.file(File(_profileImagePath!), fit: BoxFit.cover)
-                              : Image.asset(AppConstants.logoAsset, fit: BoxFit.cover),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFF00E5FF).withOpacity(0.35),
+                                blurRadius: 20,
+                                spreadRadius: 2,
+                              ),
+                            ],
+                          ),
+                          padding: const EdgeInsets.all(3.5),
+                          child: ClipOval(
+                            child: _user.profileImagePath != null && File(_user.profileImagePath!).existsSync()
+                                ? Image.file(File(_user.profileImagePath!), fit: BoxFit.cover)
+                                : Image.asset(AppConstants.logoAsset, fit: BoxFit.cover),
+                          ),
                         ),
                       ),
                       Positioned(
                         bottom: 0,
                         right: 0,
                         child: GestureDetector(
-                          onTap: _pickProfileImage,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                            );
+                          },
                           child: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
@@ -541,7 +558,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: const Color(0xFF00E5FF),
                               border: Border.all(color: Colors.black, width: 2),
                             ),
-                            child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.black),
+                            child: const Icon(Icons.edit_rounded, size: 16, color: Colors.black),
                           ),
                         ),
                       ),
@@ -549,17 +566,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                // Editable Name Row with Pencil Icon
+                // User Name
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      _userName,
-                      style: TextStyle(color: textColor, fontSize: 21, fontWeight: FontWeight.bold),
+                      _user.userName,
+                      style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(width: 8),
                     InkWell(
-                      onTap: _showEditNameDialog,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                        );
+                      },
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         padding: const EdgeInsets.all(6),
@@ -574,10 +595,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
                 const SizedBox(height: 4),
+                // User Bio / Tagline (e.g. Computer Science & Engineering Student)
                 Center(
                   child: Text(
-                    AppConstants.developerRole,
-                    style: const TextStyle(color: Color(0xFF00E5FF), fontSize: 12, fontWeight: FontWeight.w600),
+                    _user.userBio,
+                    style: const TextStyle(color: Color(0xFF00E5FF), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // 3D DYNAMIC 'UPDATE PROFILE' BUTTON
+                Center(
+                  child: Tactile3DWrapper(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                      );
+                    },
+                    scaleElevation: 1.12,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00E5FF).withOpacity(0.4),
+                            blurRadius: 14,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.manage_accounts_rounded, color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                          Text(
+                            _lang.isHindi ? 'प्रोफ़ाइल अपडेट करें' : 'Update Profile',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              letterSpacing: 0.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 
@@ -714,23 +783,55 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
 
                 // ================================================================
-                // EXPANDABLE ACCORDION SECTION 2: 🌐 Language & Region
+                // DEDICATED FULL-PAGE NAVIGATION: 🌐 Language & Region
                 // ================================================================
-                _buildAccordionCard(
-                  title: _lang.t('language_title'),
-                  subtitle: '${LanguageService.supportedLanguages.firstWhere((l) => l.code == _lang.currentCode, orElse: () => LanguageService.supportedLanguages.first).nativeName} (${LanguageService.supportedLanguages.length} Languages)',
-                  icon: Icons.translate_rounded,
-                  accentColor: const Color(0xFF00E676),
-                  children: [
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.language_rounded, color: Color(0xFF00E676)),
-                      title: Text(_lang.isHindi ? 'भाषा बदलें' : 'Change App Language', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
-                      subtitle: Text(_lang.isHindi ? '21+ भारतीय एवं अंतर्राष्ट्रीय भाषाएं' : '21+ Indian and Global languages', style: TextStyle(color: subtextColor, fontSize: 12)),
-                      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00E676), size: 16),
-                      onTap: _showLanguagePicker,
+                Tactile3DWrapper(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
+                    );
+                  },
+                  scaleElevation: 1.05,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF00E676).withOpacity(0.15),
+                          ),
+                          child: const Icon(Icons.translate_rounded, color: Color(0xFF00E676), size: 22),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                _lang.t('language_title'),
+                                style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${LanguageService.supportedLanguages.firstWhere((l) => l.code == _lang.currentCode, orElse: () => LanguageService.supportedLanguages.first).nativeName} (${LanguageService.supportedLanguages.length} Languages)',
+                                style: TextStyle(color: subtextColor, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00E676), size: 16),
+                      ],
+                    ),
+                  ),
                 ),
 
                 const SizedBox(height: 12),
@@ -1061,24 +1162,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 12),
 
                 // ================================================================
-                // EXPANDABLE ACCORDION SECTION 5: ℹ️ About & Developer
+                // DEDICATED FULL-PAGE NAVIGATION: ℹ️ About & Developer
                 // ================================================================
-                _buildAccordionCard(
-                  title: _lang.t('about_developer'),
-                  subtitle: '${AppConstants.appName} by ${AppConstants.developerName}',
-                  icon: Icons.info_outline_rounded,
-                  accentColor: const Color(0xFFFF007F),
-                  children: [
-                    Row(
+                Tactile3DWrapper(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const AboutScreen()),
+                    );
+                  },
+                  scaleElevation: 1.05,
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: cardColor,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                    ),
+                    child: Row(
                       children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.asset(
-                            AppConstants.logoAsset,
-                            width: 54,
-                            height: 54,
-                            fit: BoxFit.cover,
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFFFF007F).withOpacity(0.15),
                           ),
+                          child: const Icon(Icons.info_outline_rounded, color: Color(0xFFFF007F), size: 22),
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -1086,25 +1196,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                AppConstants.appName,
-                                style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                                _lang.t('about_developer'),
+                                style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold),
                               ),
+                              const SizedBox(height: 2),
                               Text(
-                                'Version $_installedVersion Master Edition',
-                                style: const TextStyle(color: Color(0xFFFF007F), fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                _lang.t('developer_bio'),
-                                style: TextStyle(color: subtextColor, fontSize: 11),
+                                '${AppConstants.appName} v$_installedVersion by ${AppConstants.developerName}',
+                                style: TextStyle(color: subtextColor, fontSize: 12),
                               ),
                             ],
                           ),
                         ),
+                        const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFFF007F), size: 16),
                       ],
                     ),
-
-                  ],
+                  ),
                 ),
               ],
             ),

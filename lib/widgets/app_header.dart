@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
+import '../services/user_service.dart';
 import '../screens/profile_screen.dart';
 
 class AppHeader extends StatefulWidget {
@@ -20,37 +20,18 @@ class AppHeader extends StatefulWidget {
 class _AppHeaderState extends State<AppHeader> {
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
-  String? _customProfilePath;
-  String _userName = 'Abhishek Pal';
+  final UserService _user = UserService();
 
   @override
   void initState() {
     super.initState();
-    _loadProfileData();
-  }
-
-  Future<void> _loadProfileData() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final path = prefs.getString('user_custom_profile_image');
-      final name = prefs.getString('user_custom_profile_name');
-      if (mounted) {
-        setState(() {
-          if (path != null && File(path).existsSync()) {
-            _customProfilePath = path;
-          }
-          if (name != null && name.trim().isNotEmpty) {
-            _userName = name.trim();
-          }
-        });
-      }
-    } catch (_) {}
+    _user.init();
   }
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_theme, _lang]),
+      animation: Listenable.merge([_theme, _lang, _user]),
       builder: (context, _) {
         final textColor = _theme.textColor;
         final subtextColor = _theme.subtextColor;
@@ -108,8 +89,8 @@ class _AppHeaderState extends State<AppHeader> {
                         ),
                       ),
                       Text(
-                        'by $_userName',
-                        style: TextStyle(
+                        'by ${_user.userName}',
+                        style: const TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.8,
@@ -138,18 +119,18 @@ class _AppHeaderState extends State<AppHeader> {
                         border: Border.all(color: primaryCyan.withOpacity(0.3)),
                       ),
                       child: IconButton(
-                        icon: Icon(Icons.search_rounded, color: primaryCyan, size: 22),
+                        icon: const Icon(Icons.search_rounded, color: primaryCyan, size: 20),
                         tooltip: _lang.t('search'),
                         onPressed: widget.onSearchTap,
                       ),
                     ),
-                  // Radiant Profile Button with Avatar or Glowing Icon
+
+                  // Dedicated Radiant Profile Avatar Action
                   InkWell(
-                    onTap: () async {
-                      await Navigator.of(context).push(
+                    onTap: () {
+                      Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const ProfileScreen()),
                       );
-                      _loadProfileData();
                     },
                     borderRadius: BorderRadius.circular(22),
                     child: Container(
@@ -168,9 +149,9 @@ class _AppHeaderState extends State<AppHeader> {
                         ],
                       ),
                       child: ClipOval(
-                        child: _customProfilePath != null
+                        child: _user.profileImagePath != null && File(_user.profileImagePath!).existsSync()
                             ? Image.file(
-                                File(_customProfilePath!),
+                                File(_user.profileImagePath!),
                                 width: 34,
                                 height: 34,
                                 fit: BoxFit.cover,
@@ -179,7 +160,7 @@ class _AppHeaderState extends State<AppHeader> {
                                 width: 34,
                                 height: 34,
                                 color: const Color(0xFF141414),
-                                child: Icon(Icons.person_rounded, color: primaryCyan, size: 22),
+                                child: const Icon(Icons.person_rounded, color: primaryCyan, size: 22),
                               ),
                       ),
                     ),

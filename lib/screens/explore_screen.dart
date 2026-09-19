@@ -943,8 +943,21 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     }
   }
 
+  void _playSongOnly(SongModel song) {
+    final currentId = widget.audioHandler.mediaItem.value?.id;
+    if (currentId == song.id) {
+      final isPlaying = widget.audioHandler.playbackState.value.playing;
+      isPlaying ? widget.audioHandler.pause() : widget.audioHandler.play();
+    } else {
+      widget.audioHandler.playSong(song, queue: _songs);
+    }
+  }
+
   void _playSong(SongModel song) {
-    widget.audioHandler.playSong(song, queue: _songs);
+    final currentId = widget.audioHandler.mediaItem.value?.id;
+    if (currentId != song.id) {
+      widget.audioHandler.playSong(song, queue: _songs);
+    }
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
@@ -1129,69 +1142,98 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 delegate: SliverChildBuilderDelegate(
                   (context, index) {
                     final song = _songs[index];
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                      leading: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          SizedBox(
-                            width: 24,
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                color: subtextColor.withOpacity(0.6),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                    return StreamBuilder<MediaItem?>(
+                      stream: widget.audioHandler.mediaItem,
+                      builder: (context, mediaSnap) {
+                        final isCurrentTrack = mediaSnap.data?.id == song.id;
+                        final isPlaying = isCurrentTrack && widget.audioHandler.playbackState.value.playing;
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          leading: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                child: Text(
+                                  '${index + 1}',
+                                  style: TextStyle(
+                                    color: isCurrentTrack ? primaryColor : subtextColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 13,
+                                  ),
+                                ),
                               ),
-                              textAlign: TextAlign.center,
+                              const SizedBox(width: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    Image.network(
+                                      song.thumbnailUrl,
+                                      width: 48,
+                                      height: 48,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, __, ___) => Container(
+                                        width: 48,
+                                        height: 48,
+                                        color: Colors.grey.shade900,
+                                        child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                                      ),
+                                    ),
+                                    if (isCurrentTrack)
+                                      Container(
+                                        width: 48,
+                                        height: 48,
+                                        color: Colors.black.withOpacity(0.4),
+                                        child: Icon(Icons.equalizer_rounded, color: primaryColor, size: 24),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          title: Text(
+                            song.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: isCurrentTrack ? primaryColor : textColor,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              song.thumbnailUrl,
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                width: 48,
-                                height: 48,
-                                color: Colors.grey.shade900,
-                                child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                          subtitle: Text(
+                            song.artist,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: subtextColor, fontSize: 12),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.download_rounded, size: 22),
+                                color: subtextColor,
+                                tooltip: _lang.t('download'),
+                                onPressed: () => _downloadSong(song),
                               ),
-                            ),
+                              IconButton(
+                                icon: Icon(
+                                  isPlaying
+                                      ? Icons.pause_circle_filled_rounded
+                                      : Icons.play_circle_fill_rounded,
+                                  color: isCurrentTrack ? primaryColor : primaryColor,
+                                  size: 32,
+                                ),
+                                onPressed: () => _playSongOnly(song),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      title: Text(
-                        song.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14),
-                      ),
-                      subtitle: Text(
-                        song.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: subtextColor, fontSize: 12),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.download_rounded, size: 22),
-                            color: subtextColor,
-                            tooltip: _lang.t('download'),
-                            onPressed: () => _downloadSong(song),
-                          ),
-                          IconButton(
-                            icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor, size: 32),
-                            onPressed: () => _playSong(song),
-                          ),
-                        ],
-                      ),
-                      onTap: () => _playSong(song),
+                          onTap: () => _playSong(song),
+                        );
+                      },
                     );
                   },
                   childCount: _songs.length,

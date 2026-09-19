@@ -6,6 +6,7 @@ class SongModel {
   final Duration duration;
   final String thumbnailUrl;
   String? streamUrl;
+  String? permaUrl;
   String? localFilePath;
   bool isDownloaded;
   bool isFavorite;
@@ -18,6 +19,7 @@ class SongModel {
     required this.duration,
     required this.thumbnailUrl,
     this.streamUrl,
+    this.permaUrl,
     this.localFilePath,
     this.isDownloaded = false,
     this.isFavorite = false,
@@ -32,6 +34,7 @@ class SongModel {
       'durationMs': duration.inMilliseconds,
       'thumbnailUrl': thumbnailUrl,
       'streamUrl': streamUrl,
+      'permaUrl': permaUrl,
       'localFilePath': localFilePath,
       'isDownloaded': isDownloaded,
       'isFavorite': isFavorite,
@@ -47,6 +50,7 @@ class SongModel {
       duration: Duration(milliseconds: json['durationMs'] as int? ?? 0),
       thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
       streamUrl: json['streamUrl'] as String?,
+      permaUrl: json['permaUrl'] as String?,
       localFilePath: json['localFilePath'] as String?,
       isDownloaded: json['isDownloaded'] as bool? ?? false,
       isFavorite: json['isFavorite'] as bool? ?? false,
@@ -61,6 +65,7 @@ class SongModel {
     Duration? duration,
     String? thumbnailUrl,
     String? streamUrl,
+    String? permaUrl,
     String? localFilePath,
     bool? isDownloaded,
     bool? isFavorite,
@@ -73,6 +78,7 @@ class SongModel {
       duration: duration ?? this.duration,
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       streamUrl: streamUrl ?? this.streamUrl,
+      permaUrl: permaUrl ?? this.permaUrl,
       localFilePath: localFilePath ?? this.localFilePath,
       isDownloaded: isDownloaded ?? this.isDownloaded,
       isFavorite: isFavorite ?? this.isFavorite,
