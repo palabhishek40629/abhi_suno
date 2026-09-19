@@ -38,6 +38,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   bool get isRepeat => _isRepeat;
   bool get crossfadeEnabled => _crossfadeEnabled;
   bool get loudnessNormalizer => _loudnessNormalizer;
+  bool get isPlaying => playbackState.value.playing;
 
   final StreamController<SongModel?> _currentSongSubject = StreamController<SongModel?>.broadcast();
   Stream<SongModel?> get currentSongStream => _currentSongSubject.stream;

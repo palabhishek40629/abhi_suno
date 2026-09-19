@@ -886,8 +886,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                       borderRadius: BorderRadius.circular(12),
                                       color: Colors.black.withOpacity(0.35),
                                     ),
-                                    child: const Center(
-                                      child: Icon(Icons.equalizer_rounded, color: primaryCyan, size: 28),
+                                    child: Center(
+                                      child: Icon(Icons.equalizer_rounded, color: primaryColor, size: 28),
                                     ),
                                   ),
                                 ),
@@ -929,7 +929,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              color: isCurrentTrack ? primaryCyan : textColor,
+                              color: isCurrentTrack ? primaryColor : textColor,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
