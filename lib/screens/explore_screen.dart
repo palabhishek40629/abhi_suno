@@ -1,3 +1,4 @@
+import 'now_playing_screen.dart';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../models/song_model.dart';
@@ -892,11 +893,21 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
 
   void _playSong(SongModel song) {
     widget.audioHandler.playSong(song, queue: _songs);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
+      ),
+    );
   }
 
   void _playAll() {
     if (_songs.isNotEmpty) {
       widget.audioHandler.playSong(_songs.first, queue: _songs);
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
+        ),
+      );
     }
   }
 
@@ -904,6 +915,11 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     if (_songs.isNotEmpty) {
       final copy = List<SongModel>.from(_songs)..shuffle();
       widget.audioHandler.playSong(copy.first, queue: copy);
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
+        ),
+      );
     }
   }
 

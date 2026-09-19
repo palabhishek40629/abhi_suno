@@ -11,6 +11,8 @@ jobs:
   build:
     name: Build Android Release APK
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout Code
@@ -37,58 +39,48 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.4.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.5.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v3.4.0-release
-          path: AbhiSuno-v3.4.0-release.apk
+          name: AbhiSuno-v3.5.0-release
+          path: AbhiSuno-v3.5.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.4.0-${{ github.run_number }}
-          name: "Abhi Suno v3.4.0 (Build ${{ github.run_number }})"
+          tag_name: v3.5.0-${{ github.run_number }}
+          name: "Abhi Suno v3.5.0 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎵 Abhi Suno v3.4.0 - Master Technical Release & Anti-Hang Performance Guard
+            ### 🎧 Abhi Suno v3.5.0 Master Edition - Next-Gen Audio & DJ Engine
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 🛡️ **Anti-Hang Performance Guard & Memory Watchdog:**
-              - Strict 40 MB max memory cache and 100 image capacity throttling to eliminate memory leaks and scroll stutter.
-              - App lifecycle observer that flushes volatile bitmap memory when paused or backgrounded.
-              - `PerformanceGuard.safeAsync` wrapping all remote socket calls with 7-second timeouts to eliminate UI freezes.
-            - 🎧 **Preserved External Visual Assets:**
-              - In-App Neon Headphone Logo: `https://chatgpt.com/sm_6aae1576163c8191aa57a1716d8dd07b`
-              - Startup Promo Poster: `https://chatgpt.com/s/m_6aae18b1a7c881919bccb713a494d32b`
-            - 👤 **Customizable Profile Screen:**
-              - Native image picker for custom avatar with fallback to creator photo.
-              - Audio streaming quality selection (320 kbps & 160 kbps).
-              - Real-time device storage info via Android `StatFs` and cache clearing.
-              - Developer portfolio, LinkedIn, and GitHub links.
-            - 🌐 **21 Indian Constitutional & Regional Languages:**
-              - Hindi, English, Bhojpuri, Punjabi, Bengali, Marathi, Gujarati, Tamil, Telugu, Kannada, Malayalam, Odia, Assamese, Rajasthani, Haryanvi, Maithili, Urdu, Sanskrit, Sindhi, Nepali, Konkani with auto-locale detection.
-            - 🗂️ **Comprehensive 62 Categories & Bhojpuri Subcategories:**
-              - 12 Bhojpuri subcategories: Birha, Lokgeet, Chhath Geet, Devi Geet, DJ Remix, Vivah Geet, Bol Bam, Sohar, Nirgun, Ropani Geet, and more.
-              - 3D frosted glass cards with glowing gradients and Old/New filter pills.
-            - 🔍 **Smart Search with Circular History:**
-              - One-click instant search from history chips and long-press deletion modal.
-              - Live debounced search suggestions while typing.
-            - 📁 **Offline Downloads First Library:**
-              - Moved Downloads to first tab (zero clicks).
-              - Sorting bar: A-Z, Z-A, Newest, Oldest.
-              - One-click continuous mix playback.
-            - 🌌 **Midnight Blue Glass Lyrics Modal:**
-              - ~15% frosted glass blur with high-contrast typography.
-            - 🔗 **Android Native Share Receiver:**
-              - Seamlessly accepts shared links from external apps to discover and play songs.
-            - 🚀 **Zero-Buffering JioSaavn Akamai CDN Playback:**
-              - High-fidelity 320 kbps & 160 kbps direct unencrypted audio streaming.
+            - 🎧 **Next-Gen Audio & DJ Engine:**
+              - **Seamless DJ Crossfade (0ms Silence):** Smooth 2-8s crossfade blending tracks with zero delay.
+              - **Dynamic Volume Normalization (ReplayGain):** Intelligently balances volume differences between 70s-90s retro tracks and punchy modern beats.
+              - **10-Band Studio Equalizer & 3D Spatial Surround:** 10 sliders (32Hz to 16kHz), bass boost dial, 3D surround sound toggle, and tailored acoustic presets (Car Audio Ultra-Bass, Vocal Booster, Rock Stage, Acoustic Live, Dolby Atmos 360°).
+            - ⚡ **Instant Play & Auto Fullscreen Player:**
+              - Tapping any track anywhere instantly halts prior audio and launches the immersive fullscreen NowPlaying player.
+            - 🌟 **Edge-to-Edge Fullscreen HD Startup Poster:**
+              - Startup splash uses high-res edge-to-edge rendering with full screen coverage.
+            - ♾️ **Continuous Infinite Discovery Feed:**
+              - Fast, non-blocking endless feed scrolling on Home Screen powered by an in-memory 10-minute cache and 23-genre query pool.
+            - 🌅 **Time-of-Day AI Curated Mix:**
+              - Dynamically shifts across Morning Energy, Afternoon Focus, Sunset Golden Classics, and Midnight Lo-Fi based on user time.
+            - 💖 **Radiant Glowing Buttons & Fullscreen Bubble Celebration:**
+              - Glowing neon gradients on Like and Play buttons; liking any track unleashes 36 floating radiant neon spheres and hearts across the device screen.
+            - 👤 **Customizable User Profile:**
+              - Edit name modal dialog and native photo gallery picker directly from Profile Screen.
+            - 🗂️ **Collapsible Accordion Settings:**
+              - Organized into clean expandable accordion cards inside Profile Screen.
+            - 🎤 **Synchronized Karaoke Lyrics Engine:**
+              - Multi-engine search with synchronized glowing line-by-line karaoke tracking.
 
-            **Direct APK Download:** `AbhiSuno-v3.4.0-release.apk`
-          files: AbhiSuno-v3.4.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v3.5.0-release.apk`
+          files: AbhiSuno-v3.5.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

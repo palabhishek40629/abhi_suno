@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
 import '../screens/profile_screen.dart';
-import '../screens/settings_screen.dart';
 
 class AppHeader extends StatefulWidget {
   final VoidCallback? onSearchTap;
@@ -22,19 +21,28 @@ class _AppHeaderState extends State<AppHeader> {
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
   String? _customProfilePath;
+  String _userName = 'Abhishek Pal';
 
   @override
   void initState() {
     super.initState();
-    _loadProfileAvatar();
+    _loadProfileData();
   }
 
-  Future<void> _loadProfileAvatar() async {
+  Future<void> _loadProfileData() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final path = prefs.getString('user_custom_profile_image');
-      if (mounted && path != null && File(path).existsSync()) {
-        setState(() => _customProfilePath = path);
+      final name = prefs.getString('user_custom_profile_name');
+      if (mounted) {
+        setState(() {
+          if (path != null && File(path).existsSync()) {
+            _customProfilePath = path;
+          }
+          if (name != null && name.trim().isNotEmpty) {
+            _userName = name.trim();
+          }
+        });
       }
     } catch (_) {}
   }
@@ -46,7 +54,7 @@ class _AppHeaderState extends State<AppHeader> {
       builder: (context, _) {
         final textColor = _theme.textColor;
         final subtextColor = _theme.subtextColor;
-        final primaryColor = _theme.primaryColor;
+        const primaryCyan = Color(0xFF00E5FF);
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -58,14 +66,14 @@ class _AppHeaderState extends State<AppHeader> {
               Row(
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: primaryColor.withOpacity(0.35),
-                          blurRadius: 10,
+                          color: primaryCyan.withOpacity(0.4),
+                          blurRadius: 12,
                           offset: const Offset(0, 2),
                         ),
                       ],
@@ -100,12 +108,12 @@ class _AppHeaderState extends State<AppHeader> {
                         ),
                       ),
                       Text(
-                        _lang.t('app_subtitle'),
+                        'by $_userName',
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.w600,
                           letterSpacing: 0.8,
-                          color: subtextColor,
+                          color: primaryCyan,
                         ),
                       ),
                     ],
@@ -113,42 +121,68 @@ class _AppHeaderState extends State<AppHeader> {
                 ],
               ),
 
-              // Header Actions: Search Button + Profile Button + Settings Gear
+              // Header Actions: Search Button + Radiant Profile Button ONLY (Outer settings removed per user request)
               Row(
                 children: [
                   if (widget.onSearchTap != null)
-                    IconButton(
-                      icon: Icon(Icons.search_rounded, color: textColor, size: 24),
-                      tooltip: _lang.t('search'),
-                      onPressed: widget.onSearchTap,
+                    Container(
+                      margin: const EdgeInsets.only(right: 8),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [
+                            primaryCyan.withOpacity(0.2),
+                            const Color(0xFF0077FE).withOpacity(0.1),
+                          ],
+                        ),
+                        border: Border.all(color: primaryCyan.withOpacity(0.3)),
+                      ),
+                      child: IconButton(
+                        icon: Icon(Icons.search_rounded, color: primaryCyan, size: 22),
+                        tooltip: _lang.t('search'),
+                        onPressed: widget.onSearchTap,
+                      ),
                     ),
-                  IconButton(
-                    icon: _customProfilePath != null
-                        ? ClipOval(
-                            child: Image.file(
-                              File(_customProfilePath!),
-                              width: 26,
-                              height: 26,
-                              fit: BoxFit.cover,
-                            ),
-                          )
-                        : Icon(Icons.account_circle_outlined, color: textColor, size: 26),
-                    tooltip: _lang.isHindi ? 'प्रोफ़ाइल' : 'Profile',
-                    onPressed: () async {
+                  // Radiant Profile Button with Avatar or Glowing Icon
+                  InkWell(
+                    onTap: () async {
                       await Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const ProfileScreen()),
                       );
-                      _loadProfileAvatar();
+                      _loadProfileData();
                     },
-                  ),
-                  IconButton(
-                    icon: Icon(Icons.settings_rounded, color: textColor, size: 24),
-                    tooltip: _lang.t('settings'),
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                      );
-                    },
+                    borderRadius: BorderRadius.circular(22),
+                    child: Container(
+                      padding: const EdgeInsets.all(2.5),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryCyan.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: _customProfilePath != null
+                            ? Image.file(
+                                File(_customProfilePath!),
+                                width: 34,
+                                height: 34,
+                                fit: BoxFit.cover,
+                              )
+                            : Container(
+                                width: 34,
+                                height: 34,
+                                color: const Color(0xFF141414),
+                                child: Icon(Icons.person_rounded, color: primaryCyan, size: 22),
+                              ),
+                      ),
+                    ),
                   ),
                 ],
               ),

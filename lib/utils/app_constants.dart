@@ -10,13 +10,13 @@ class AppConstants {
 
   // App Metadata
   static const String appName = 'Abhi Suno';
-  static const String appVersion = '3.4.0';
-  static const int appBuildNumber = 5;
+  static const String appVersion = '3.5.0';
+  static const int appBuildNumber = 6;
   static const String developerName = 'Abhishek Pal';
   static const String developerRole = 'Computer Science & Engineering Student';
 
   // GitHub Release Repository
   static const String repoOwner = 'palabhishek40629';
   static const String repoName = 'abhi_suno';
-  static const String releaseApkUrl = 'https://github.com/palabhishek40629/abhi_suno/releases/latest/download/AbhiSuno-v3.4.0-release.apk';
+  static const String releaseApkUrl = 'https://github.com/palabhishek40629/abhi_suno/releases/latest/download/AbhiSuno-v3.5.0-release.apk';
 }

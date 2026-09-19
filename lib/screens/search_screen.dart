@@ -1,3 +1,4 @@
+import 'now_playing_screen.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -187,6 +188,11 @@ class _SearchScreenState extends State<SearchScreen> {
 
   void _playSong(SongModel song) {
     widget.audioHandler.playSong(song, queue: _results);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
+      ),
+    );
   }
 
   void _downloadSong(SongModel song) async {

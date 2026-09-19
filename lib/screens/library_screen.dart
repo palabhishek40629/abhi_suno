@@ -1,3 +1,4 @@
+import 'now_playing_screen.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/song_model.dart';
@@ -67,6 +68,11 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
 
   void _playSong(SongModel song, List<SongModel> queue) {
     widget.audioHandler.playSong(song, queue: queue);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
+      ),
+    );
   }
 
   List<SongModel> _getSortedDownloads(List<SongModel> raw) {

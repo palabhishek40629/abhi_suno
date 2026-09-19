@@ -46,7 +46,7 @@ class UpdateService {
         return version;
       }
     } catch (_) {}
-    return '3.4.0';
+    return '3.5.0';
   }
 
   /// Check GitHub Releases asynchronously for updates

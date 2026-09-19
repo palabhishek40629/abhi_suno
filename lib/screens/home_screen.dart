@@ -7,6 +7,8 @@ import '../services/music_service.dart';
 import '../services/performance_guard.dart';
 import '../services/playback_history_service.dart';
 import '../services/theme_service.dart';
+import '../services/favorites_service.dart';
+import '../widgets/screen_bubble_celebration.dart';
 import 'now_playing_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -23,6 +25,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
   final PlaybackHistoryService _historyService = PlaybackHistoryService();
+  final FavoritesService _favoritesService = FavoritesService();
   final ScrollController _scrollController = ScrollController();
 
   List<SongModel> _trendingHindi = [];
@@ -31,14 +34,44 @@ class _HomeScreenState extends State<HomeScreen> {
   List<SongModel> _punjabiHits = [];
   List<SongModel> _hindiLofi = [];
   List<SongModel> _artistSongs = [];
-  List<SongModel> _dynamicFeedSongs = [];
-  String _cachedArtistQuery = '';
-
-  String _activeChip = 'all';
-  bool _isContinueDismissed = false;
+  
+  // Infinite Feed Pool
+  final List<SongModel> _infiniteFeedSongs = [];
+  final Set<String> _seenSongIds = {};
+  int _feedQueryIndex = 0;
   bool _isLoadingMore = false;
   bool _isOfflineDetected = false;
   String _userName = 'Abhishek Pal';
+  String _activeChip = 'all';
+  bool _isContinueDismissed = false;
+  String _cachedArtistQuery = '';
+
+  // Rich Discovery Queries for Endless Fast Scroll
+  static const List<String> _infiniteQueryPool = [
+    'Bollywood Top 50 Chartbusters',
+    'Arijit Singh Melodies',
+    'Atif Aslam Romance',
+    'Trending Punjabi Club Party',
+    '90s Golden Era Bollywood',
+    'Shreya Ghoshal Pure Vocals',
+    'Hindi Indie Acoustic Vibes',
+    'Coke Studio Hits',
+    'Sidhu Moose Wala Bangers',
+    'Pritam Mega Hits',
+    'A.R. Rahman Soulful',
+    'Bhakti Devotional Essentials',
+    'EDM Bollywood Remix',
+    'Unplugged Hindi Covers',
+    'Kishore Kumar Evergreen Classics',
+    'Lata Mangeshkar Masterpieces',
+    'Mohammad Rafi Ghazals & Hits',
+    'Sonu Nigam Heartfelt Melodies',
+    'Anuv Jain Soul Acoustic',
+    'Darshan Raval Love Ballads',
+    'Jubin Nautiyal Peaceful Beats',
+    'King Desi Hip Hop',
+    'Yo Yo Honey Singh Party Retro',
+  ];
 
   @override
   void initState() {
@@ -49,9 +82,12 @@ class _HomeScreenState extends State<HomeScreen> {
     _historyService.addListener(_onHistoryUpdated);
     _loadMoreByArtist();
 
+    // Preload first batch of infinite dynamic feed
+    _loadNextInfiniteFeedBatch();
+
     _scrollController.addListener(() {
-      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 300) {
-        _loadDynamicFeedPage();
+      if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 400) {
+        _loadNextInfiniteFeedBatch();
       }
     });
   }
@@ -101,19 +137,31 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (_) {}
   }
 
-  Future<void> _loadDynamicFeedPage() async {
+  // Infinite Seamless Continuous Feed Loader
+  Future<void> _loadNextInfiniteFeedBatch() async {
     if (_isLoadingMore) return;
     setState(() => _isLoadingMore = true);
 
     try {
-      final additional = await PerformanceGuard.safeAsync<List<SongModel>>(
-        _musicService.searchSongs('Hindi acoustic romantic chartbusters'),
-        timeout: const Duration(seconds: 6),
+      final query = _infiniteQueryPool[_feedQueryIndex % _infiniteQueryPool.length];
+      _feedQueryIndex++;
+
+      final songs = await PerformanceGuard.safeAsync<List<SongModel>>(
+        _musicService.searchSongs(query),
+        timeout: const Duration(seconds: 5),
         fallback: <SongModel>[],
       );
+
       if (mounted) {
+        final newTracks = <SongModel>[];
+        for (final s in songs) {
+          if (!_seenSongIds.contains(s.id)) {
+            _seenSongIds.add(s.id);
+            newTracks.add(s);
+          }
+        }
         setState(() {
-          _dynamicFeedSongs.addAll(additional.take(8));
+          _infiniteFeedSongs.addAll(newTracks);
           _isLoadingMore = false;
         });
       }
@@ -161,6 +209,10 @@ class _HomeScreenState extends State<HomeScreen> {
           thumbnailUrl: 'https://i.ytimg.com/vi/8vt2W_F13eI/hqdefault.jpg',
         ),
       ];
+
+      for (final s in _trendingHindi) {
+        _seenSongIds.add(s.id);
+      }
 
       _bollywoodRomantic = [
         SongModel(
@@ -280,6 +332,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Instant Play & Automatic Fullscreen Player Open
   void _playTrack(SongModel song, List<SongModel> queue) {
     widget.audioHandler.playSong(song, queue: queue);
     Navigator.of(context).push(
@@ -287,6 +340,46 @@ class _HomeScreenState extends State<HomeScreen> {
         builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
       ),
     );
+  }
+
+  // Time-of-Day AI Smart Playlist Metadata
+  Map<String, String> _getTimeOfDayMixInfo() {
+    final hour = DateTime.now().hour;
+    final isHindi = _lang.isHindi;
+
+    if (hour >= 5 && hour < 12) {
+      return {
+        'greeting': isHindi ? 'सुप्रभात, $_userName!' : 'Good Morning, $_userName!',
+        'title': isHindi ? 'मॉर्निंग एनर्जी एवं फ्रेश वाइब्स' : 'Morning Energy & Fresh Vibes',
+        'subtitle': isHindi ? 'दिन की शानदार शुरुआत के लिए ऊर्जावान गीत' : 'Upbeat melodies to kickstart your day',
+        'icon': '🌅',
+        'badge': 'MORNING AI MIX',
+      };
+    } else if (hour >= 12 && hour < 17) {
+      return {
+        'greeting': isHindi ? 'शुभ दोपहर, $_userName!' : 'Good Afternoon, $_userName!',
+        'title': isHindi ? 'आफ्टरनून फोकस एवं एकॉस्टिक चिल' : 'Afternoon Focus & Acoustic Chill',
+        'subtitle': isHindi ? 'काम और पढ़ाई के बीच सुकून भरे सुरीले गीत' : 'Peaceful acoustic tunes to keep you focused',
+        'icon': '☀️',
+        'badge': 'FOCUS AI MIX',
+      };
+    } else if (hour >= 17 && hour < 21) {
+      return {
+        'greeting': isHindi ? 'शुभ संध्या, $_userName!' : 'Good Evening, $_userName!',
+        'title': isHindi ? 'सनसेट अनप्लग्ड एवं गोल्डन क्लासिक्स' : 'Sunset Unplugged & Golden Classics',
+        'subtitle': isHindi ? 'शाम की चाय और यादों के संग सदाबहार धुनें' : 'Golden melodies to unwind and reflect',
+        'icon': '🌆',
+        'badge': 'SUNSET AI MIX',
+      };
+    } else {
+      return {
+        'greeting': isHindi ? 'शुभ रात्रि, $_userName!' : 'Night Vibes, $_userName!',
+        'title': isHindi ? 'मिडनाइट लो-फाई एवं सुकून भरी रात' : 'Midnight Lo-Fi & Soulful Dreams',
+        'subtitle': isHindi ? 'गहरी नींद और सुकून के लिए धीमा संगीत' : 'Slowed & reverbed lo-fi for sweet dreams',
+        'icon': '🌙',
+        'badge': 'MIDNIGHT AI MIX',
+      };
+    }
   }
 
   @override
@@ -297,7 +390,8 @@ class _HomeScreenState extends State<HomeScreen> {
         final textColor = _theme.textColor;
         final subtextColor = _theme.subtextColor;
         final cardColor = _theme.cardBg;
-        final primaryColor = _theme.primaryColor;
+        const primaryCyan = Color(0xFF00E5FF);
+        const primaryPink = Color(0xFFFF2A6D);
         final isHindi = _lang.isHindi;
 
         final chips = [
@@ -309,9 +403,11 @@ class _HomeScreenState extends State<HomeScreen> {
           {'key': 'lofi', 'label': _lang.t('lofi')},
         ];
 
+        final timeMix = _getTimeOfDayMixInfo();
+
         return RefreshIndicator(
           onRefresh: _refreshLiveTrending,
-          color: primaryColor,
+          color: primaryCyan,
           backgroundColor: cardColor,
           child: ListView(
             controller: _scrollController,
@@ -357,16 +453,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     return FilterChip(
                       label: Text(chip['label']!),
                       selected: isSelected,
-                      selectedColor: primaryColor,
+                      selectedColor: primaryCyan,
                       backgroundColor: cardColor,
                       labelStyle: TextStyle(
                         color: isSelected ? Colors.black : textColor,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(20),
-                        side: BorderSide(color: isSelected ? primaryColor : Colors.white12),
+                        side: BorderSide(color: isSelected ? primaryCyan : Colors.white12),
                       ),
                       onSelected: (val) {
                         setState(() => _activeChip = chip['key']!);
@@ -378,14 +474,114 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 8),
 
-              // Continue Listening Hero Card (with close dismiss button)
+              // TIME-OF-DAY AI SMART PLAYLIST HERO CARD
+              if (_activeChip == 'all')
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF1F1128),
+                          Color(0xFF0F172A),
+                        ],
+                      ),
+                      border: Border.all(color: primaryCyan.withOpacity(0.4), width: 1.2),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primaryCyan.withOpacity(0.15),
+                          blurRadius: 20,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            gradient: const LinearGradient(colors: [primaryCyan, primaryPink]),
+                          ),
+                          child: Center(
+                            child: Text(timeMix['icon']!, style: const TextStyle(fontSize: 28)),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: primaryCyan.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  timeMix['badge']!,
+                                  style: const TextStyle(color: primaryCyan, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                timeMix['title']!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                timeMix['subtitle']!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white60, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Radiant Play Mix Button
+                        GestureDetector(
+                          onTap: () {
+                            if (_trendingHindi.isNotEmpty) {
+                              _playTrack(_trendingHindi.first, _trendingHindi);
+                            }
+                          },
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(colors: [primaryCyan, primaryPink]),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryCyan.withOpacity(0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 26),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+              // Continue Listening Hero Card
               if (_activeChip == 'all' && !_isContinueDismissed && _historyService.lastPlayedSong != null)
                 _buildContinueListeningCard(
                   _historyService.lastPlayedSong!,
                   _historyService.lastPosition,
                   textColor,
                   subtextColor,
-                  primaryColor,
+                  primaryCyan,
                   cardColor,
                   isHindi,
                 ),
@@ -397,7 +593,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _historyService.recentHistory,
                   textColor,
                   subtextColor,
-                  primaryColor,
+                  primaryCyan,
                 ),
 
               // More by Artist Section
@@ -407,45 +603,160 @@ class _HomeScreenState extends State<HomeScreen> {
                   _artistSongs,
                   textColor,
                   subtextColor,
-                  primaryColor,
+                  primaryCyan,
                 ),
 
               // Trending Hindi Section
               if (_activeChip == 'all' || _activeChip == 'trending')
-                _buildSongSection(_lang.t('trending'), _trendingHindi, textColor, subtextColor, primaryColor),
+                _buildSongSection(_lang.t('trending'), _trendingHindi, textColor, subtextColor, primaryCyan),
 
               // Romantic Section
               if (_activeChip == 'all' || _activeChip == 'romantic')
-                _buildSongSection(_lang.t('romantic'), _bollywoodRomantic, textColor, subtextColor, primaryColor),
+                _buildSongSection(_lang.t('romantic'), _bollywoodRomantic, textColor, subtextColor, primaryCyan),
 
               // Retro Classics Section
               if (_activeChip == 'all' || _activeChip == 'retro')
-                _buildSongSection(_lang.t('retro_classics'), _retroClassics, textColor, subtextColor, primaryColor),
+                _buildSongSection(_lang.t('retro_classics'), _retroClassics, textColor, subtextColor, primaryCyan),
 
               // Punjabi Section
               if (_activeChip == 'all' || _activeChip == 'punjabi')
-                _buildSongSection(_lang.t('punjabi'), _punjabiHits, textColor, subtextColor, primaryColor),
+                _buildSongSection(_lang.t('punjabi'), _punjabiHits, textColor, subtextColor, primaryCyan),
 
               // Lo-Fi Section
               if (_activeChip == 'all' || _activeChip == 'lofi')
-                _buildSongSection(_lang.t('lofi'), _hindiLofi, textColor, subtextColor, primaryColor),
+                _buildSongSection(_lang.t('lofi'), _hindiLofi, textColor, subtextColor, primaryCyan),
 
-              // Dynamic Pagination Feed
-              if (_dynamicFeedSongs.isNotEmpty)
-                _buildSongSection(
-                  isHindi ? 'आपके लिए विशेष सुझाव' : 'Recommended for You',
-                  _dynamicFeedSongs,
-                  textColor,
-                  subtextColor,
-                  primaryColor,
+              // ====================================================================
+              // CONTINUOUS INFINITE DISCOVERY FEED (Loads endlessly as user scrolls!)
+              // ====================================================================
+              if (_activeChip == 'all' && _infiniteFeedSongs.isNotEmpty) ...[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 18, 16, 10),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: const LinearGradient(colors: [primaryCyan, primaryPink]),
+                        ),
+                        child: const Icon(Icons.all_inclusive_rounded, color: Colors.white, size: 16),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        isHindi ? 'असीमित संगीत स्ट्रीम (Never-Ending Feed)' : 'Infinite Music Stream',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
+                ListView.separated(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _infiniteFeedSongs.length,
+                  separatorBuilder: (_, __) => const Divider(color: Colors.white10, height: 12),
+                  itemBuilder: (context, index) {
+                    final song = _infiniteFeedSongs[index];
+                    return InkWell(
+                      onTap: () => _playTrack(song, _infiniteFeedSongs),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.network(
+                                song.thumbnailUrl,
+                                width: 52,
+                                height: 52,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 52,
+                                  height: 52,
+                                  color: Colors.white10,
+                                  child: const Icon(Icons.music_note, color: Colors.white54),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    song.title,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    song.artist,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(color: subtextColor, fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            // Quick Like Button
+                            AnimatedBuilder(
+                              animation: _favoritesService,
+                              builder: (context, _) {
+                                final isFav = _favoritesService.isFavorite(song.id);
+                                return IconButton(
+                                  icon: Icon(
+                                    isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                    color: isFav ? const Color(0xFFFF2A6D) : Colors.white38,
+                                    size: 20,
+                                  ),
+                                  onPressed: () async {
+                                    final added = await _favoritesService.toggleFavorite(song);
+                                    if (added) {
+                                      ScreenBubbleCelebration.show(context);
+                                    }
+                                  },
+                                );
+                              },
+                            ),
+                            // Radiant Play Button
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(colors: [primaryCyan, primaryPink]),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryCyan.withOpacity(0.35),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
 
               if (_isLoadingMore)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 20),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 20),
                   child: Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+                      valueColor: AlwaysStoppedAnimation<Color>(primaryCyan),
                       strokeWidth: 2,
                     ),
                   ),
@@ -485,8 +796,8 @@ class _HomeScreenState extends State<HomeScreen> {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              Color(0xFF221A0C), // Warm golden dark
-              Color(0xFF141414), // Dark obsidian
+              Color(0xFF221A0C),
+              Color(0xFF141414),
             ],
           ),
           border: Border.all(color: const Color(0xFFFFD700).withOpacity(0.35)),
@@ -520,7 +831,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ],
                 ),
-                // Close / Dismiss Button
                 InkWell(
                   onTap: () => setState(() => _isContinueDismissed = true),
                   borderRadius: BorderRadius.circular(12),
@@ -579,11 +889,24 @@ class _HomeScreenState extends State<HomeScreen> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    iconSize: 42,
-                    padding: EdgeInsets.zero,
-                    icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor),
-                    onPressed: () => _playTrack(song, [song]),
+                  // Radiant Play Button
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF00E5FF).withOpacity(0.4),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 28),
                   ),
                 ],
               ),
@@ -687,7 +1010,15 @@ class _HomeScreenState extends State<HomeScreen> {
                               padding: const EdgeInsets.all(6),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: Colors.black.withOpacity(0.7),
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF00E5FF).withOpacity(0.4),
+                                    blurRadius: 8,
+                                  ),
+                                ],
                               ),
                               child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
                             ),

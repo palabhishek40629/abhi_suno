@@ -10,9 +10,13 @@ import '../services/playlist_service.dart';
 import '../services/theme_service.dart';
 import '../services/update_service.dart';
 import '../utils/app_constants.dart';
+import '../widgets/equalizer_sheet.dart';
+import '../services/audio_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  final AbhiAudioHandler? audioHandler;
+
+  const ProfileScreen({Key? key, this.audioHandler}) : super(key: key);
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -29,8 +33,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   static const MethodChannel _nativeChannel = MethodChannel('com.abhishekpal.abhisuno/native');
 
   String? _profileImagePath;
+  String _userName = 'Abhishek Pal';
   String _installedVersion = AppConstants.appVersion;
   String _audioQuality = '320kbps';
+  bool _djCrossfade = true;
+  int _crossfadeSeconds = 4;
+  bool _replayGain = true;
   double _tempCacheMB = 0.0;
   double _permStorageMB = 0.0;
   double _deviceTotalGB = 0.0;
@@ -52,12 +60,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     final savedPath = prefs.getString('user_custom_profile_image');
+    final savedName = prefs.getString('user_custom_profile_name') ?? 'Abhishek Pal';
     final quality = prefs.getString('audio_quality_pref') ?? '320kbps';
+    final crossfade = prefs.getBool('audio_crossfade_enabled') ?? true;
+    final crossSecs = prefs.getInt('audio_crossfade_seconds') ?? 4;
+    final rg = prefs.getBool('audio_loudness_normalizer') ?? true;
+
     final tempSize = await _downloadService.getTemporaryCacheSizeInMB();
     final permSize = await _downloadService.getPermanentStorageSizeInMB();
     final version = await _updateService.getInstalledVersion();
 
-    // Load device storage from native StatFs
     try {
       final Map<dynamic, dynamic>? storageMap =
           await _nativeChannel.invokeMethod<Map<dynamic, dynamic>>('getStorageInfo');
@@ -72,7 +84,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) {
       setState(() {
         _profileImagePath = savedPath;
+        _userName = savedName;
         _audioQuality = quality;
+        _djCrossfade = crossfade;
+        _crossfadeSeconds = crossSecs;
+        _replayGain = rg;
         _tempCacheMB = tempSize;
         _permStorageMB = permSize;
         _installedVersion = version;
@@ -91,10 +107,95 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } catch (_) {}
   }
 
+  Future<void> _showEditNameDialog() async {
+    final controller = TextEditingController(text: _userName);
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF181818),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: const BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+        ),
+        title: Row(
+          children: [
+            const Icon(Icons.edit_rounded, color: Color(0xFF00E5FF), size: 22),
+            const SizedBox(width: 8),
+            Text(
+              _lang.isHindi ? 'अपना नाम बदलें' : 'Edit Your Name',
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+          decoration: InputDecoration(
+            hintText: _lang.isHindi ? 'नाम दर्ज करें' : 'Enter name',
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: Colors.white10,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF00E5FF), width: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(_lang.t('cancel'), style: const TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF00E5FF),
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: Text(
+              _lang.isHindi ? 'सहेजें' : 'Save',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (newName != null && newName.isNotEmpty) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_custom_profile_name', newName);
+      if (mounted) setState(() => _userName = newName);
+    }
+  }
+
   Future<void> _saveAudioQuality(String quality) async {
     setState(() => _audioQuality = quality);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('audio_quality_pref', quality);
+  }
+
+  Future<void> _toggleCrossfade(bool val) async {
+    setState(() => _djCrossfade = val);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('audio_crossfade_enabled', val);
+    widget.audioHandler?.setCrossfade(val, _crossfadeSeconds);
+  }
+
+  Future<void> _setCrossfadeSeconds(int secs) async {
+    setState(() => _crossfadeSeconds = secs);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('audio_crossfade_seconds', secs);
+    widget.audioHandler?.setCrossfade(_djCrossfade, secs);
+  }
+
+  Future<void> _toggleReplayGain(bool val) async {
+    setState(() => _replayGain = val);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('audio_loudness_normalizer', val);
+    widget.audioHandler?.setLoudnessNormalizer(val);
   }
 
   Future<void> _checkForUpdates() async {
@@ -347,63 +448,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Future<void> _handleMediaUrlAction(bool isAudio) async {
-    final url = _urlController.text.trim();
-    if (url.isEmpty) return;
-
-    setState(() => _isProcessingUrl = true);
-    try {
-      final songs = await _musicService.importYouTubePlaylist(url);
-      if (songs.isNotEmpty) {
-        if (isAudio) {
-          final pName = songs.first.album.isNotEmpty ? songs.first.album : 'Imported URL Audio';
-          await _playlistService.createPlaylist(pName);
-          for (final s in songs) {
-            await _playlistService.addSongToPlaylist(pName, s);
-          }
-          if (mounted) {
-            _urlController.clear();
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('${songs.length} ' + (_lang.isHindi ? 'गाने सफलतापूर्वक जोड़े गए!' : 'songs imported successfully!')),
-                backgroundColor: const Color(0xFF00E676),
-              ),
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(_lang.isHindi ? 'वीडियो डाउनलोड शुरू किया गया' : 'Video download initiated'),
-                backgroundColor: const Color(0xFF00E676),
-              ),
-            );
-          }
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(_lang.isHindi ? 'URL से गाने नहीं मिले' : 'No media found for URL'),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_lang.isHindi ? 'URL प्रोसेस करने में त्रुटि' : 'Error processing URL'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isProcessingUrl = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -434,24 +478,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
               children: [
-                // SECTION 1: Profile Avatar & Name
+                // SECTION 1: Profile Avatar & Editable Name
                 Center(
                   child: Stack(
                     children: [
                       Container(
-                        width: 104,
-                        height: 104,
+                        width: 108,
+                        height: 108,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          border: Border.all(color: primaryColor, width: 2.5),
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                           boxShadow: [
                             BoxShadow(
-                              color: primaryColor.withOpacity(0.35),
-                              blurRadius: 18,
+                              color: const Color(0xFF00E5FF).withOpacity(0.35),
+                              blurRadius: 20,
                               spreadRadius: 2,
                             ),
                           ],
                         ),
+                        padding: const EdgeInsets.all(3.5),
                         child: ClipOval(
                           child: _profileImagePath != null && File(_profileImagePath!).existsSync()
                               ? Image.file(File(_profileImagePath!), fit: BoxFit.cover)
@@ -467,7 +516,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: primaryColor,
+                              color: const Color(0xFF00E5FF),
                               border: Border.all(color: Colors.black, width: 2),
                             ),
                             child: const Icon(Icons.camera_alt_rounded, size: 16, color: Colors.black),
@@ -477,347 +526,431 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-                Center(
-                  child: Text(
-                    AppConstants.developerName,
-                    style: TextStyle(color: textColor, fontSize: 19, fontWeight: FontWeight.bold),
-                  ),
+                const SizedBox(height: 14),
+                // Editable Name Row with Pencil Icon
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      _userName,
+                      style: TextStyle(color: textColor, fontSize: 21, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: _showEditNameDialog,
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF00E5FF).withOpacity(0.2),
+                          border: Border.all(color: const Color(0xFF00E5FF).withOpacity(0.5)),
+                        ),
+                        child: const Icon(Icons.edit_rounded, size: 16, color: Color(0xFF00E5FF)),
+                      ),
+                    ),
+                  ],
                 ),
+                const SizedBox(height: 4),
                 Center(
                   child: Text(
                     AppConstants.developerRole,
-                    style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
+                    style: const TextStyle(color: Color(0xFF00E5FF), fontSize: 12, fontWeight: FontWeight.w600),
                   ),
                 ),
 
                 const SizedBox(height: 24),
 
-                // SECTION 2: About Application (with Neon Headphone Logo)
-                _buildSectionHeader(_lang.t('about_developer'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: Row(
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: Image.asset(
-                          AppConstants.logoAsset,
-                          width: 60,
-                          height: 60,
-                          fit: BoxFit.cover,
+                // ================================================================
+                // EXPANDABLE ACCORDION SECTION 1: 🎧 Audio & DJ Engine
+                // ================================================================
+                _buildAccordionCard(
+                  title: _lang.isHindi ? 'ऑडियो एवं डीजे इंजन' : 'Audio & DJ Engine',
+                  subtitle: _lang.isHindi ? 'क्रॉसफ़ेड, वॉल्यूम नॉर्मलाइज़र और इक्वलाइज़र' : 'Crossfade, volume normalizer & EQ',
+                  icon: Icons.graphic_eq_rounded,
+                  accentColor: const Color(0xFF00E5FF),
+                  children: [
+                    // DJ Crossfade Toggle
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.shuffle_rounded, color: Color(0xFF00E5FF)),
+                      title: Text(
+                        _lang.isHindi ? 'स्मार्ट डीजे क्रॉसफ़ेड' : 'Smart DJ Crossfade',
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        _lang.isHindi ? 'गानों के बीच बिना सन्नाटा स्मूथ मिक्सिंग' : 'Seamless 0ms silence mixing between songs',
+                        style: TextStyle(color: subtextColor, fontSize: 12),
+                      ),
+                      value: _djCrossfade,
+                      activeColor: const Color(0xFF00E5FF),
+                      onChanged: _toggleCrossfade,
+                    ),
+                    if (_djCrossfade) ...[
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              _lang.isHindi ? 'क्रॉसफ़ेड अवधि:' : 'Duration:',
+                              style: TextStyle(color: subtextColor, fontSize: 12),
+                            ),
+                            const Spacer(),
+                            Text(
+                              '$_crossfadeSeconds s',
+                              style: const TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
+                      Slider(
+                        value: _crossfadeSeconds.toDouble(),
+                        min: 2,
+                        max: 8,
+                        divisions: 6,
+                        activeColor: const Color(0xFF00E5FF),
+                        inactiveColor: Colors.white12,
+                        onChanged: (val) => _setCrossfadeSeconds(val.toInt()),
+                      ),
+                    ],
+                    const Divider(color: Colors.white10),
+                    // Volume Normalization Toggle
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.volume_up_rounded, color: Color(0xFFFF2A6D)),
+                      title: Text(
+                        _lang.isHindi ? 'वॉल्यूम नॉर्मलाइज़ेशन (ReplayGain)' : 'Volume Normalization (ReplayGain)',
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        _lang.isHindi ? 'पुराने 70s-90s और नए गानों की एक समान आवाज़' : 'Balances loudness between retro and modern tracks',
+                        style: TextStyle(color: subtextColor, fontSize: 12),
+                      ),
+                      value: _replayGain,
+                      activeColor: const Color(0xFFFF2A6D),
+                      onChanged: _toggleReplayGain,
+                    ),
+                    const Divider(color: Colors.white10),
+                    // Streaming Quality Selector
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.high_quality_rounded, color: Colors.amber),
+                      title: Text(
+                        _lang.isHindi ? 'स्ट्रीमिंग एवं ऑडियो गुणवत्ता' : 'Audio Streaming Quality',
+                        style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        '$_audioQuality (FLAC/AAC)',
+                        style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      trailing: PopupMenuButton<String>(
+                        icon: const Icon(Icons.tune_rounded, color: Colors.amber),
+                        color: const Color(0xFF1F1F1F),
+                        onSelected: _saveAudioQuality,
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(value: '320kbps', child: Text('320 kbps (Ultra Studio HD)', style: TextStyle(color: Colors.white))),
+                          const PopupMenuItem(value: '160kbps', child: Text('160 kbps (High Balanced)', style: TextStyle(color: Colors.white))),
+                          const PopupMenuItem(value: '96kbps', child: Text('96 kbps (Data Saver)', style: TextStyle(color: Colors.white))),
+                        ],
+                      ),
+                    ),
+                    if (widget.audioHandler != null) ...[
+                      const Divider(color: Colors.white10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFF00E5FF)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Icon(Icons.equalizer_rounded, color: Color(0xFF00E5FF)),
+                          label: Text(
+                            _lang.isHindi ? '10-बैंड इक्वलाइज़र और 3D सराउंड खोलें' : 'Open 10-Band Equalizer & 3D Surround',
+                            style: const TextStyle(color: Color(0xFF00E5FF), fontWeight: FontWeight.bold),
+                          ),
+                          onPressed: () {
+                            showModalBottomSheet(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              builder: (_) => EqualizerSheet(audioHandler: widget.audioHandler!),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // ================================================================
+                // EXPANDABLE ACCORDION SECTION 2: 🌐 Language & Region
+                // ================================================================
+                _buildAccordionCard(
+                  title: _lang.t('language_title'),
+                  subtitle: '${LanguageService.supportedLanguages.firstWhere((l) => l.code == _lang.currentCode, orElse: () => LanguageService.supportedLanguages.first).nativeName} (${LanguageService.supportedLanguages.length} Languages)',
+                  icon: Icons.translate_rounded,
+                  accentColor: const Color(0xFF00E676),
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.language_rounded, color: Color(0xFF00E676)),
+                      title: Text(_lang.isHindi ? 'भाषा बदलें' : 'Change App Language', style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                      subtitle: Text(_lang.isHindi ? '21+ भारतीय एवं अंतर्राष्ट्रीय भाषाएं' : '21+ Indian and Global languages', style: TextStyle(color: subtextColor, fontSize: 12)),
+                      trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00E676), size: 16),
+                      onTap: _showLanguagePicker,
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // ================================================================
+                // EXPANDABLE ACCORDION SECTION 3: 💾 Storage, Cache & Vault
+                // ================================================================
+                _buildAccordionCard(
+                  title: _lang.t('storage_vault'),
+                  subtitle: '${(_tempCacheMB + _permStorageMB).toStringAsFixed(1)} MB total app data',
+                  icon: Icons.sd_storage_rounded,
+                  accentColor: const Color(0xFFFF9100),
+                  children: [
+                    if (_deviceTotalGB > 0) ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(_lang.t('device_storage'), style: TextStyle(color: subtextColor, fontSize: 12)),
+                          Text(
+                            '${_deviceFreeGB.toStringAsFixed(1)} GB free / ${_deviceTotalGB.toStringAsFixed(1)} GB',
+                            style: const TextStyle(color: Color(0xFFFF9100), fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: ((_deviceTotalGB - _deviceFreeGB) / _deviceTotalGB).clamp(0.0, 1.0),
+                          backgroundColor: Colors.white10,
+                          valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFF9100)),
+                          minHeight: 6,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_lang.t('cache_size'), style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14)),
+                            Text('${_tempCacheMB.toStringAsFixed(1)} MB', style: TextStyle(color: subtextColor, fontSize: 12)),
+                          ],
+                        ),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.white10,
+                            foregroundColor: const Color(0xFF00E5FF),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.cleaning_services_rounded, size: 16),
+                          label: Text(_lang.t('clear_cache'), style: const TextStyle(fontSize: 12)),
+                          onPressed: _clearTemporaryCache,
+                        ),
+                      ],
+                    ),
+                    const Divider(color: Colors.white10),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_lang.isHindi ? 'डाउनलोड किया गया डेटा' : 'Downloaded Songs', style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14)),
+                            Text('${_permStorageMB.toStringAsFixed(1)} MB (${_downloadService.downloadedSongs.length} songs)', style: TextStyle(color: subtextColor, fontSize: 12)),
+                          ],
+                        ),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            backgroundColor: Colors.redAccent.withOpacity(0.15),
+                            foregroundColor: Colors.redAccent,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                          label: Text(_lang.t('delete_all'), style: const TextStyle(fontSize: 12)),
+                          onPressed: _confirmDeleteAllDownloads,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // ================================================================
+                // EXPANDABLE ACCORDION SECTION 4: 🔄 App Updates & Version
+                // ================================================================
+                _buildAccordionCard(
+                  title: _lang.t('updates'),
+                  subtitle: 'v$_installedVersion (${_updateInfo?.hasUpdate == true ? "New Update Available!" : "Up to date"})',
+                  icon: Icons.system_update_rounded,
+                  accentColor: const Color(0xFF00E676),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Installed: v$_installedVersion',
+                                style: TextStyle(color: textColor, fontWeight: FontWeight.w600, fontSize: 14),
+                              ),
+                              if (_updateStatusMessage.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    _updateStatusMessage,
+                                    style: TextStyle(
+                                      color: _updateInfo?.hasUpdate == true ? const Color(0xFF00E676) : subtextColor,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        if (_isCheckingUpdate)
+                          const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00E676)),
+                          )
+                        else
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF00E676),
+                              foregroundColor: Colors.black,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            icon: const Icon(Icons.sync_rounded, size: 16),
+                            label: Text(_lang.t('check_now'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                            onPressed: _checkForUpdates,
+                          ),
+                      ],
+                    ),
+                    if (_updateInfo != null && _updateInfo!.hasUpdate) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF00E676).withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: const Color(0xFF00E676).withOpacity(0.4)),
+                        ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              AppConstants.appName,
-                              style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Version $_installedVersion',
-                              style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
+                              'Version v${_updateInfo!.latestVersion} Available!',
+                              style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 14),
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              _lang.t('developer_bio'),
-                              style: TextStyle(color: subtextColor, fontSize: 11),
+                              _updateInfo!.releaseNotes,
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: subtextColor, fontSize: 12),
+                            ),
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFF00E676),
+                                  foregroundColor: Colors.black,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                                icon: const Icon(Icons.download_rounded, size: 18),
+                                label: Text(
+                                  _lang.isHindi ? 'अभी अपडेट और इंस्टॉल करें' : 'Update & Install Now',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: _downloadAndInstallApk,
+                              ),
                             ),
                           ],
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
 
-                // SECTION 3: Language Selection (21+ Languages)
-                _buildSectionHeader(_lang.t('language_title'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.translate_rounded, color: Color(0xFF00E676)),
-                    title: Text(_lang.isHindi ? 'भाषा चुनें' : 'Select Language', style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                      LanguageService.supportedLanguages.firstWhere((l) => l.code == _lang.currentCode, orElse: () => LanguageService.supportedLanguages.first).nativeName,
-                      style: TextStyle(color: primaryColor, fontSize: 12),
-                    ),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 16),
-                    onTap: _showLanguagePicker,
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // SECTION 4: GitHub In-App Updates
-                _buildSectionHeader(_lang.t('github_updates_title'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
+                // ================================================================
+                // EXPANDABLE ACCORDION SECTION 5: ℹ️ About & Developer
+                // ================================================================
+                _buildAccordionCard(
+                  title: _lang.t('about_developer'),
+                  subtitle: '${AppConstants.appName} by ${AppConstants.developerName}',
+                  icon: Icons.info_outline_rounded,
+                  accentColor: const Color(0xFFFF007F),
+                  children: [
+                    Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.asset(
+                            AppConstants.logoAsset,
+                            width: 54,
+                            height: 54,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(_lang.t('current_version'), style: TextStyle(color: subtextColor, fontSize: 11)),
-                              Text('v$_installedVersion', style: TextStyle(color: textColor, fontSize: 15, fontWeight: FontWeight.bold)),
+                              Text(
+                                AppConstants.appName,
+                                style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                'Version $_installedVersion Master Edition',
+                                style: const TextStyle(color: Color(0xFFFF007F), fontSize: 12, fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                _lang.t('developer_bio'),
+                                style: TextStyle(color: subtextColor, fontSize: 11),
+                              ),
                             ],
                           ),
-                          if (_updateInfo != null)
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(_lang.t('latest_version'), style: TextStyle(color: subtextColor, fontSize: 11)),
-                                Text('v${_updateInfo!.latestVersion}', style: TextStyle(color: _updateInfo!.hasUpdate ? const Color(0xFF00E676) : primaryColor, fontSize: 15, fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                        ],
-                      ),
-                      if (_updateStatusMessage.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(_updateStatusMessage, style: TextStyle(color: _updateInfo?.hasUpdate == true ? const Color(0xFF00E676) : subtextColor, fontSize: 12)),
+                        ),
                       ],
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 40,
-                        child: ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _updateInfo?.hasUpdate == true ? const Color(0xFF00E676) : primaryColor,
-                            foregroundColor: Colors.black,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          icon: _isCheckingUpdate
-                              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black))
-                              : Icon(_updateInfo?.hasUpdate == true ? Icons.system_update_rounded : Icons.sync_rounded, size: 18),
-                          label: Text(
-                            _isCheckingUpdate ? _lang.t('checking_updates') : (_updateInfo?.hasUpdate == true ? _lang.t('update_now') : _lang.t('check_updates')),
-                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                          ),
-                          onPressed: _isCheckingUpdate
-                              ? null
-                              : (_updateInfo?.hasUpdate == true ? _downloadAndInstallApk : _checkForUpdates),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFFF007F)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // SECTION 5: Theme Selection (Default, Dark, Light, Transparent)
-                _buildSectionHeader(_lang.t('theme_title'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: Column(
-                    children: [
-                      RadioListTile<AppThemeMode>(
-                        value: AppThemeMode.dark,
-                        groupValue: _theme.currentMode,
-                        activeColor: primaryColor,
-                        title: Text(_lang.t('theme_dark'), style: TextStyle(color: textColor, fontSize: 13)),
-                        onChanged: (val) => _theme.setTheme(val!),
-                      ),
-                      const Divider(color: Colors.white10, height: 1),
-                      RadioListTile<AppThemeMode>(
-                        value: AppThemeMode.light,
-                        groupValue: _theme.currentMode,
-                        activeColor: primaryColor,
-                        title: Text(_lang.t('theme_light'), style: TextStyle(color: textColor, fontSize: 13)),
-                        onChanged: (val) => _theme.setTheme(val!),
-                      ),
-                      const Divider(color: Colors.white10, height: 1),
-                      RadioListTile<AppThemeMode>(
-                        value: AppThemeMode.transparent,
-                        groupValue: _theme.currentMode,
-                        activeColor: primaryColor,
-                        title: Text(_lang.t('theme_transparent'), style: TextStyle(color: textColor, fontSize: 13)),
-                        onChanged: (val) => _theme.setTheme(val!),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // SECTION 6: Download Quality Settings
-                _buildSectionHeader(_lang.t('audio_quality_title'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: Column(
-                    children: [
-                      RadioListTile<String>(
-                        value: '320kbps',
-                        groupValue: _audioQuality,
-                        activeColor: primaryColor,
-                        title: Text(_lang.t('quality_high'), style: TextStyle(color: textColor, fontSize: 13)),
-                        onChanged: (val) => _saveAudioQuality(val!),
-                      ),
-                      const Divider(color: Colors.white10, height: 1),
-                      RadioListTile<String>(
-                        value: '160kbps',
-                        groupValue: _audioQuality,
-                        activeColor: primaryColor,
-                        title: Text(_lang.t('quality_medium'), style: TextStyle(color: textColor, fontSize: 13)),
-                        onChanged: (val) => _saveAudioQuality(val!),
-                      ),
-                      const Divider(color: Colors.white10, height: 1),
-                      RadioListTile<String>(
-                        value: '96kbps',
-                        groupValue: _audioQuality,
-                        activeColor: primaryColor,
-                        title: Text(_lang.t('quality_low'), style: TextStyle(color: textColor, fontSize: 13)),
-                        onChanged: (val) => _saveAudioQuality(val!),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // SECTION 7: Playlist URL Import / Download (Audio & Video)
-                _buildSectionHeader(_lang.t('youtube_sync_title'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_lang.t('youtube_sync_desc'), style: TextStyle(color: subtextColor, fontSize: 11)),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: _urlController,
-                        style: TextStyle(color: textColor, fontSize: 13),
-                        decoration: InputDecoration(
-                          hintText: _lang.t('yt_link_hint'),
-                          hintStyle: TextStyle(color: subtextColor.withOpacity(0.5), fontSize: 12),
-                          filled: true,
-                          fillColor: Colors.black26,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Colors.white12)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        icon: const Icon(Icons.share_rounded, color: Color(0xFFFF007F), size: 18),
+                        label: Text(
+                          _lang.t('share_app'),
+                          style: const TextStyle(color: Color(0xFFFF007F), fontWeight: FontWeight.bold),
                         ),
+                        onPressed: _shareApp,
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.black),
-                              onPressed: _isProcessingUrl ? null : () => _handleMediaUrlAction(true),
-                              child: Text(_lang.t('download_audio'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(side: BorderSide(color: primaryColor), foregroundColor: primaryColor),
-                              onPressed: _isProcessingUrl ? null : () => _handleMediaUrlAction(false),
-                              child: Text(_lang.t('download_video'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(height: 20),
-
-                // SECTION 8: Storage Management
-                _buildSectionHeader(_lang.t('cache_clear_title'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: Column(
-                    children: [
-                      if (_deviceTotalGB > 0) ...[
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_lang.t('total_storage'), style: TextStyle(color: subtextColor, fontSize: 12)),
-                            Text('${_deviceTotalGB.toStringAsFixed(1)} GB', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13)),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(_lang.t('available_storage'), style: TextStyle(color: subtextColor, fontSize: 12)),
-                            Text('${_deviceFreeGB.toStringAsFixed(1)} GB', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 13)),
-                          ],
-                        ),
-                        const Divider(color: Colors.white12, height: 16),
-                      ],
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_lang.t('temporary_cache'), style: TextStyle(color: subtextColor, fontSize: 12)),
-                          Text('${_tempCacheMB.toStringAsFixed(1)} MB', style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(_lang.t('permanent_downloads'), style: TextStyle(color: subtextColor, fontSize: 12)),
-                          Text('${_permStorageMB.toStringAsFixed(1)} MB', style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 13)),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              style: OutlinedButton.styleFrom(side: const BorderSide(color: Colors.white24)),
-                              onPressed: _clearTemporaryCache,
-                              child: Text(_lang.t('clear_cache_btn'), style: TextStyle(color: textColor, fontSize: 11)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-                              onPressed: _confirmDeleteAllDownloads,
-                              child: Text(_lang.t('delete_all_downloads'), style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
-                // SECTION 9: Share Application
-                _buildSectionHeader(_lang.t('share_app'), textColor),
-                const SizedBox(height: 8),
-                _buildCard(
-                  cardColor: cardColor,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.share_rounded, color: Color(0xFF05D9E8)),
-                    title: Text(_lang.t('share_app'), style: TextStyle(color: textColor, fontWeight: FontWeight.bold)),
-                    subtitle: Text(_lang.t('share_app_desc'), style: TextStyle(color: subtextColor, fontSize: 12)),
-                    trailing: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white38, size: 16),
-                    onTap: _shareApp,
-                  ),
-                ),
-                const SizedBox(height: 30),
               ],
             ),
           ),
@@ -826,29 +959,54 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, Color textColor) {
-    return Text(
-      title,
-      style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.3),
-    );
-  }
-
-  Widget _buildCard({required Color cardColor, required Widget child}) {
+  Widget _buildAccordionCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color accentColor,
+    required List<Widget> children,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: cardColor,
+        color: const Color(0xFF141414),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: accentColor.withOpacity(0.2), width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: accentColor.withOpacity(0.04),
             blurRadius: 10,
-            offset: const Offset(0, 3),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: child,
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: accentColor.withOpacity(0.15),
+            ),
+            child: Icon(icon, color: accentColor, size: 22),
+          ),
+          title: Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+          ),
+          subtitle: Text(
+            subtitle,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(color: Colors.white54, fontSize: 12),
+          ),
+          iconColor: accentColor,
+          collapsedIconColor: Colors.white54,
+          childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          children: children,
+        ),
+      ),
     );
   }
 }

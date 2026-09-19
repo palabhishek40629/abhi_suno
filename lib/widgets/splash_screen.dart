@@ -20,12 +20,9 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   void initState() {
     super.initState();
 
-    // Fast, clean startup presentation per Section 1:
-    // Remove old startup animation page and separately rendered text completely.
-    // Display supplied STARTUP / OPENING IMAGE with zero extra assistant text.
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 600),
     );
 
     _fadeAnimation = CurvedAnimation(
@@ -35,8 +32,8 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
 
     _controller.forward();
 
-    // Fast transition (~0.7s total) to Home screen
-    Timer(const Duration(milliseconds: 700), () {
+    // Fast transition (~0.9s total) to Home screen
+    Timer(const Duration(milliseconds: 950), () {
       if (mounted) {
         widget.onFinish();
       }
@@ -52,16 +49,24 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF070707),
-      body: Center(
+      backgroundColor: Colors.black,
+      body: SizedBox.expand(
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: Image.asset(
-            AppConstants.startupSquareAsset,
-            fit: BoxFit.contain,
+            'assets/images/startup_wide.png',
+            width: double.infinity,
+            height: double.infinity,
+            fit: BoxFit.cover, // 100% Full-Screen Edge-to-Edge Fill! Zero Letterboxing!
             errorBuilder: (_, __, ___) => Image.asset(
-              AppConstants.logoAsset,
-              fit: BoxFit.contain,
+              AppConstants.startupAsset,
+              width: double.infinity,
+              height: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Image.asset(
+                AppConstants.logoAsset,
+                fit: BoxFit.contain,
+              ),
             ),
           ),
         ),

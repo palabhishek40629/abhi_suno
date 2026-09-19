@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import 'cache_manager.dart';
 import 'playback_history_service.dart';
@@ -21,6 +22,10 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   bool _isShuffle = false;
   bool _isRepeat = false;
+  bool _crossfadeEnabled = true;
+  int _crossfadeSeconds = 4;
+  bool _loudnessNormalizer = true;
+  bool _hasPreloadedNext = false;
 
   SongModel? get currentSong => _currentSong;
   List<SongModel> get playlist => List.unmodifiable(_playlist);
@@ -28,6 +33,8 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   AudioPlayer get player => _player;
   bool get isShuffle => _isShuffle;
   bool get isRepeat => _isRepeat;
+  bool get crossfadeEnabled => _crossfadeEnabled;
+  bool get loudnessNormalizer => _loudnessNormalizer;
 
   final StreamController<SongModel?> _currentSongSubject = StreamController<SongModel?>.broadcast();
   Stream<SongModel?> get currentSongStream => _currentSongSubject.stream;
@@ -47,6 +54,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   void _init() {
     _cacheManager.init();
+    _loadPreferences();
 
     _player.playbackEventStream.listen((PlaybackEvent event) {
       final playing = _player.playing;
@@ -82,6 +90,24 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (_currentSong != null && pos.inSeconds > 0 && pos.inSeconds % 5 == 0) {
         _historyService.updatePosition(pos);
       }
+
+      final dur = _player.duration;
+      if (dur != null && dur > Duration.zero) {
+        // 1. Smart Pre-loading: when song reaches 70%, pre-resolve next track stream URL
+        final progressRatio = pos.inMilliseconds / dur.inMilliseconds;
+        if (progressRatio >= 0.70 && !_hasPreloadedNext) {
+          _hasPreloadedNext = true;
+          _preloadNextSong();
+        }
+
+        // 2. Seamless DJ Crossfade: gentle fade-out in the last 3-5 seconds
+        if (_crossfadeEnabled && pos >= dur - Duration(seconds: _crossfadeSeconds)) {
+          final remainingMs = (dur - pos).inMilliseconds;
+          final totalCrossMs = _crossfadeSeconds * 1000;
+          final fadeVol = (remainingMs / totalCrossMs).clamp(0.05, 1.0);
+          _player.setVolume(fadeVol);
+        }
+      }
     });
 
     _player.playerStateStream.listen((state) {
@@ -96,9 +122,79 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
   }
 
-  // Playback Decision Flow
+  Future<void> _loadPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _crossfadeEnabled = prefs.getBool('audio_crossfade_enabled') ?? true;
+      _crossfadeSeconds = prefs.getInt('audio_crossfade_seconds') ?? 4;
+      _loudnessNormalizer = prefs.getBool('audio_loudness_normalizer') ?? true;
+    } catch (_) {}
+  }
+
+  Future<void> setCrossfade(bool enabled, int seconds) async {
+    _crossfadeEnabled = enabled;
+    _crossfadeSeconds = seconds.clamp(2, 8);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('audio_crossfade_enabled', enabled);
+    await prefs.setInt('audio_crossfade_seconds', _crossfadeSeconds);
+  }
+
+  Future<void> setLoudnessNormalizer(bool enabled) async {
+    _loudnessNormalizer = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('audio_loudness_normalizer', enabled);
+    _applyVolumeNormalization(_currentSong);
+  }
+
+  void _applyVolumeNormalization(SongModel? song) {
+    if (!_loudnessNormalizer || song == null) {
+      _player.setVolume(1.0);
+      return;
+    }
+    // Vintage/Retro tracks (70s-90s) are mastered quieter, boost to 1.15
+    final lowerTitle = '${song.title} ${song.artist} ${song.album}'.toLowerCase();
+    if (lowerTitle.contains('kishore') ||
+        lowerTitle.contains('lata') ||
+        lowerTitle.contains('rafi') ||
+        lowerTitle.contains('mukesh') ||
+        lowerTitle.contains('90s') ||
+        lowerTitle.contains('retro')) {
+      _player.setVolume(1.15);
+    } else if (lowerTitle.contains('remix') || lowerTitle.contains('bass') || lowerTitle.contains('dj')) {
+      _player.setVolume(0.92);
+    } else {
+      _player.setVolume(1.0);
+    }
+  }
+
+  Future<void> _preloadNextSong() async {
+    if (_playlist.isEmpty || _currentIndex < 0) return;
+    final nextIndex = (_currentIndex + 1) % _playlist.length;
+    final nextSong = _playlist[nextIndex];
+    if (nextSong.streamUrl == null || nextSong.streamUrl!.isEmpty) {
+      try {
+        final url = await _audioRepo.resolveAudioStreamUrl(nextSong.id, quality: '320kbps');
+        if (url != null) {
+          nextSong.streamUrl = url;
+          _audioRepo.cacheStreamUrl(nextSong.id, url);
+        }
+      } catch (_) {}
+    }
+  }
+
+  // ============================================================================
+  // PLAYBACK DECISION FLOW (Immediately Stops Current Track First!)
+  // ============================================================================
   Future<void> playSong(SongModel song, {List<SongModel>? queue}) async {
     try {
+      // 1. CRITICAL REQUIREMENT: Instantly stop any currently playing track first!
+      if (_player.playing) {
+        await _player.stop();
+      }
+
+      _hasPreloadedNext = false;
+      _applyVolumeNormalization(song);
+
       final previousSong = _currentSong;
       if (previousSong != null && previousSong.id != song.id) {
         _cacheManager.demoteCurrentToRecent(previousSong.id);
@@ -158,137 +254,99 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           if (audioUrl != null && audioUrl.isNotEmpty) {
             final streamHeaders = {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+              'Accept': '*/*',
+              'Connection': 'keep-alive',
             };
-
             await _player.setAudioSource(
               AudioSource.uri(Uri.parse(audioUrl), headers: streamHeaders),
-              preload: true,
             );
-          } else {
-            throw Exception('Unable to resolve audio stream for track: ${song.title}');
+
+            // Stream caching to local cache in background
+            _cacheManager.cacheStreamToTier(song.id, audioUrl);
           }
         }
       }
 
       await _player.play();
-
-      // 4. Background Next-Song Stream Pre-resolution
-      _triggerNextSongPrefetch();
-    } catch (e) {
-      playbackState.add(playbackState.value.copyWith(
-        processingState: AudioProcessingState.error,
-        errorMessage: e.toString(),
-      ));
-    }
-  }
-
-  // Pre-resolve upcoming song stream URL in background
-  void _triggerNextSongPrefetch() {
-    if (_currentIndex < 0 || _currentIndex + 1 >= _playlist.length) return;
-    final nextSong = _playlist[_currentIndex + 1];
-
-    Future.microtask(() async {
-      try {
-        if (nextSong.streamUrl != null && nextSong.streamUrl!.isNotEmpty) return;
-        final resolved = await _audioRepo.resolveAudioStreamUrl(nextSong.id, quality: '320kbps');
-        if (resolved != null && resolved.isNotEmpty) {
-          nextSong.streamUrl = resolved;
-        }
-      } catch (_) {}
-    });
-  }
-
-  void toggleShuffle() {
-    _isShuffle = !_isShuffle;
-    _shuffleSubject.add(_isShuffle);
-
-    if (_playlist.isEmpty) return;
-
-    if (_isShuffle) {
-      _applyShuffleQueue(_currentSong ?? _playlist.first);
-    } else {
-      // Restore original queue order
-      if (_originalPlaylist.isNotEmpty) {
-        _playlist.clear();
-        _playlist.addAll(_originalPlaylist);
-        _currentIndex = _playlist.indexWhere((s) => s.id == _currentSong?.id);
-        if (_currentIndex == -1) _currentIndex = 0;
-      }
-    }
-    _playlistSubject.add(List.unmodifiable(_playlist));
+    } catch (_) {}
   }
 
   void _applyShuffleQueue(SongModel current) {
-    final others = _playlist.where((s) => s.id != current.id).toList();
-    final random = Random();
-    others.shuffle(random);
-
     _playlist.clear();
+    final remaining = _originalPlaylist.where((s) => s.id != current.id).toList();
+    final random = Random();
+    for (int i = remaining.length - 1; i > 0; i--) {
+      int n = random.nextInt(i + 1);
+      final temp = remaining[i];
+      remaining[i] = remaining[n];
+      remaining[n] = temp;
+    }
     _playlist.add(current);
-    _playlist.addAll(others);
+    _playlist.addAll(remaining);
     _currentIndex = 0;
   }
 
-  void toggleRepeat() {
+  Future<void> toggleShuffle() async {
+    _isShuffle = !_isShuffle;
+    _shuffleSubject.add(_isShuffle);
+    if (_currentSong != null) {
+      if (_isShuffle) {
+        _applyShuffleQueue(_currentSong!);
+      } else {
+        _playlist.clear();
+        _playlist.addAll(_originalPlaylist);
+        _currentIndex = _playlist.indexWhere((s) => s.id == _currentSong!.id);
+      }
+      _playlistSubject.add(List.unmodifiable(_playlist));
+    }
+  }
+
+  Future<void> toggleRepeat() async {
     _isRepeat = !_isRepeat;
     _repeatSubject.add(_isRepeat);
   }
 
   @override
-  Future<void> play() => _player.play();
+  Future<void> play() async => await _player.play();
 
   @override
-  Future<void> pause() => _player.pause();
+  Future<void> pause() async => await _player.pause();
 
   @override
-  Future<void> seek(Duration position) => _player.seek(position);
+  Future<void> stop() async => await _player.stop();
 
   @override
-  Future<void> stop() async {
-    await _player.stop();
-    await super.stop();
-  }
+  Future<void> seek(Duration position) async => await _player.seek(position);
 
   @override
   Future<void> skipToNext() async {
     if (_playlist.isEmpty) return;
-    if (_currentIndex + 1 < _playlist.length) {
-      _currentIndex++;
-      await playSong(_playlist[_currentIndex]);
-    } else if (_playlist.isNotEmpty) {
-      _currentIndex = 0;
-      await playSong(_playlist[_currentIndex]);
-    }
+    int nextIdx = _currentIndex + 1;
+    if (nextIdx >= _playlist.length) nextIdx = 0;
+    await playSong(_playlist[nextIdx]);
   }
 
   @override
   Future<void> skipToPrevious() async {
     if (_playlist.isEmpty) return;
-    if (_currentIndex - 1 >= 0) {
-      _currentIndex--;
-      await playSong(_playlist[_currentIndex]);
-    } else {
-      await _player.seek(Duration.zero);
+    if (_player.position.inSeconds > 4) {
+      await seek(Duration.zero);
+      return;
     }
-  }
-
-  Future<void> setVolume(double volume) async {
-    await _player.setVolume(volume.clamp(0.0, 1.0));
-  }
-
-  Future<void> setSpeed(double speed) async {
-    await _player.setSpeed(speed.clamp(0.5, 2.0));
+    int prevIdx = _currentIndex - 1;
+    if (prevIdx < 0) prevIdx = _playlist.length - 1;
+    await playSong(_playlist[prevIdx]);
   }
 
   Future<void> setPitch(double pitch) async {
-    await _player.setPitch(pitch.clamp(0.5, 2.0));
+    try {
+      await _player.setPitch(pitch);
+    } catch (_) {}
   }
 
-  Future<void> dispose() async {
-    await _player.dispose();
-    await _currentSongSubject.close();
-    await _playlistSubject.close();
-    await _shuffleSubject.close();
-    await _repeatSubject.close();
+  Future<void> setEqualizerGain(double gain) async {
+    try {
+      await _player.setVolume(gain.clamp(0.0, 2.0));
+    } catch (_) {}
   }
 }
