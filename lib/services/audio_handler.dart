@@ -262,7 +262,6 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
             );
 
             // Stream caching to local cache in background
-            _cacheManager.cacheStreamToTier(song.id, audioUrl);
           }
         }
       }
@@ -336,6 +335,10 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     int prevIdx = _currentIndex - 1;
     if (prevIdx < 0) prevIdx = _playlist.length - 1;
     await playSong(_playlist[prevIdx]);
+  }
+
+  Future<void> setVolume(double vol) async {
+    await _player.setVolume(vol.clamp(0.0, 1.0));
   }
 
   Future<void> setPitch(double pitch) async {

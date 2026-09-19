@@ -17,7 +17,7 @@ class ScreenBubbleCelebration extends StatefulWidget {
         },
       ),
     );
-    Overlay.of(context).insert(entry);
+    Overlay.of(context).insert(entry!);
   }
 
   @override

@@ -63,7 +63,7 @@ class PlaylistService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  Future<void> createPlaylist(String name) async {
+  Future<UserPlaylist> createPlaylist(String name) async {
     final cleanName = name.trim().isEmpty ? 'New Playlist' : name.trim();
     final newP = UserPlaylist(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -72,6 +72,7 @@ class PlaylistService extends ChangeNotifier {
     );
     _playlists.insert(0, newP);
     await _savePlaylists();
+    return newP;
   }
 
   Future<void> renamePlaylist(String playlistId, String newName) async {

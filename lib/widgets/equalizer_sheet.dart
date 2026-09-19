@@ -359,7 +359,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
                       inactiveColor: Colors.white10,
                       onChanged: (val) {
                         setState(() => _volume = val);
-                        widget.audioHandler.setVolume(val);
+                        widget.audioHandler.player.setVolume(val);
                       },
                     ),
                   ),
