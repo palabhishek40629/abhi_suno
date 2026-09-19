@@ -30,6 +30,10 @@ const APP_CONFIG = {
   // Live Website URL
   liveWebsiteUrl: "https://palabhishek40629.github.io/abhi_suno/",
   
+  // Super Short Shareable Links
+  shortUrl: "https://tinyurl.com/abhisuno-apk",
+  shortUrlAlias2: "https://tinyurl.com/abhisunoji",
+  
   // Tagline
   description: "बिना किसी विज्ञापन (Ad-Free) के लाखों गाने सुनें, ऑफलाइन डाउनलोड करें, और दोस्तों के साथ पार्टी रूम में एक साथ संगीत का आनंद लें!",
   
@@ -129,11 +133,29 @@ function setupFeedbackForm() {
   const copyBtn = document.getElementById("copy-web-url-btn");
   const copyToast = document.getElementById("copy-toast");
 
-  // Setup Copy URL Button
+  // Setup Copy URL Buttons
+  const copyShortBtn = document.getElementById("copy-short-url-btn");
+  if (copyShortBtn) {
+    copyShortBtn.addEventListener("click", () => {
+      navigator.clipboard.writeText(APP_CONFIG.shortUrl).then(() => {
+        if (copyToast) {
+          copyToast.textContent = "✓ शॉर्ट लिंक कॉपी हो गया (tinyurl.com/abhisuno-apk)!";
+          copyToast.classList.remove("hidden");
+          setTimeout(() => {
+            copyToast.classList.add("hidden");
+          }, 2500);
+        }
+      }).catch(() => {
+        prompt("शॉर्ट लिंक कॉपी करें:", APP_CONFIG.shortUrl);
+      });
+    });
+  }
+
   if (copyBtn) {
     copyBtn.addEventListener("click", () => {
       navigator.clipboard.writeText(APP_CONFIG.liveWebsiteUrl).then(() => {
         if (copyToast) {
+          copyToast.textContent = "✓ पूरा लिंक कॉपी हो गया!";
           copyToast.classList.remove("hidden");
           setTimeout(() => {
             copyToast.classList.add("hidden");
