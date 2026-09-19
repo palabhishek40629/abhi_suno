@@ -243,6 +243,169 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     );
   }
 
+  void _showGoogleSignInDialog(bool isHindi) {
+    final googleNameCtrl = TextEditingController(text: _user.userName.isNotEmpty ? _user.userName : 'Abhishek Pal');
+    final googleEmailCtrl = TextEditingController(text: _user.userEmail.isNotEmpty ? _user.userEmail : 'abhishekpal40629@gmail.com');
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF161616),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                    ),
+                    padding: const EdgeInsets.all(6),
+                    child: Image.network(
+                      'https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png',
+                      errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata_rounded, color: Colors.blue, size: 28),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isHindi ? 'Google से साइन इन करें' : 'Sign in with Google',
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          isHindi ? '100% मुफ़्त एवं सुरक्षित गूगल खाता' : '100% Free & Secure Google Account',
+                          style: const TextStyle(color: Colors.white54, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                isHindi ? 'Google प्रोफ़ाइल नाम' : 'Google Profile Name',
+                style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: googleNameCtrl,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.person_rounded, color: Color(0xFF00E5FF), size: 20),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.06),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Text(
+                isHindi ? 'Gmail पता (Email Address)' : 'Gmail Address',
+                style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: googleEmailCtrl,
+                style: const TextStyle(color: Colors.white, fontSize: 14),
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.email_rounded, color: Color(0xFFFF2A6D), size: 20),
+                  filled: true,
+                  fillColor: Colors.white.withOpacity(0.06),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: Tactile3DWrapper(
+                  onTap: () async {
+                    Navigator.of(ctx).pop();
+                    await _user.loginWithGoogle(
+                      name: googleNameCtrl.text.trim().isNotEmpty ? googleNameCtrl.text.trim() : 'Abhishek Pal',
+                      email: googleEmailCtrl.text.trim().isNotEmpty ? googleEmailCtrl.text.trim() : 'abhishekpal40629@gmail.com',
+                    );
+                    _nameController.text = _user.userName;
+                    _bioController.text = _user.userBio;
+                    _emailController.text = _user.userEmail;
+                    if (mounted) {
+                      ScreenBubbleCelebration.show(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: const Color(0xFF00E676),
+                          content: Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: Colors.black),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  isHindi
+                                      ? 'Google से सफलतापूर्वक साइन इन किया गया!'
+                                      : 'Successfully signed in with Google!',
+                                  style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                  scaleElevation: 1.08,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      boxShadow: [
+                        BoxShadow(color: Colors.white.withOpacity(0.25), blurRadius: 12, offset: const Offset(0, 3)),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.login_rounded, color: Colors.black, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          isHindi ? 'Google से लॉगिन पूर्ण करें' : 'Complete Google Login',
+                          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -465,7 +628,65 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
+
+                // 3D GOOGLE SIGN-IN BUTTON
+                Tactile3DWrapper(
+                  onTap: () => _showGoogleSignInDialog(isHindi),
+                  scaleElevation: 1.06,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 28,
+                          height: 28,
+                          decoration: const BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white,
+                          ),
+                          padding: const EdgeInsets.all(4),
+                          child: Image.network(
+                            'https://www.gstatic.com/images/branding/product/2x/googleg_48dp.png',
+                            errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata_rounded, color: Colors.blue, size: 20),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          _user.isGoogleUser
+                              ? (isHindi ? 'Google खाता लिंक है (${_user.userEmail})' : 'Google Connected (${_user.userEmail})')
+                              : (isHindi ? 'Google से साइन इन करें (मुफ़्त)' : 'Sign in with Google (Free)'),
+                          style: TextStyle(
+                            color: _user.isGoogleUser ? const Color(0xFF00E676) : Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (_user.isGoogleUser) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.check_circle_rounded, color: Color(0xFF00E676), size: 16),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 18),
 
                 // Account Status Card
                 Container(

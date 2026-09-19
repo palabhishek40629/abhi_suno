@@ -8,6 +8,7 @@ class SongModel {
   String? streamUrl;
   String? permaUrl;
   String? localFilePath;
+  String? localThumbnailPath;
   bool isDownloaded;
   bool isFavorite;
 
@@ -21,6 +22,7 @@ class SongModel {
     this.streamUrl,
     this.permaUrl,
     this.localFilePath,
+    this.localThumbnailPath,
     this.isDownloaded = false,
     this.isFavorite = false,
   });
@@ -36,6 +38,7 @@ class SongModel {
       'streamUrl': streamUrl,
       'permaUrl': permaUrl,
       'localFilePath': localFilePath,
+      'localThumbnailPath': localThumbnailPath,
       'isDownloaded': isDownloaded,
       'isFavorite': isFavorite,
     };
@@ -52,6 +55,7 @@ class SongModel {
       streamUrl: json['streamUrl'] as String?,
       permaUrl: json['permaUrl'] as String?,
       localFilePath: json['localFilePath'] as String?,
+      localThumbnailPath: json['localThumbnailPath'] as String?,
       isDownloaded: json['isDownloaded'] as bool? ?? false,
       isFavorite: json['isFavorite'] as bool? ?? false,
     );
@@ -67,6 +71,7 @@ class SongModel {
     String? streamUrl,
     String? permaUrl,
     String? localFilePath,
+    String? localThumbnailPath,
     bool? isDownloaded,
     bool? isFavorite,
   }) {
@@ -80,6 +85,7 @@ class SongModel {
       streamUrl: streamUrl ?? this.streamUrl,
       permaUrl: permaUrl ?? this.permaUrl,
       localFilePath: localFilePath ?? this.localFilePath,
+      localThumbnailPath: localThumbnailPath ?? this.localThumbnailPath,
       isDownloaded: isDownloaded ?? this.isDownloaded,
       isFavorite: isFavorite ?? this.isFavorite,
     );

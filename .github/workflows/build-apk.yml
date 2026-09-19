@@ -39,46 +39,44 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.9.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.0.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v3.9.0-release
-          path: AbhiSuno-v3.9.0-release.apk
+          name: AbhiSuno-v4.0.0-release
+          path: AbhiSuno-v4.0.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.9.0-${{ github.run_number }}
-          name: "Abhi Suno v3.9.0 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v4.0.0-${{ github.run_number }}
+          name: "Abhi Suno v4.0.0 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v3.9.0 Master Edition - Real-Time Party Sync & Interactive Profile
+            ### 🎧 Abhi Suno v4.0.0 Master Edition - Settings Consolidation, Free Google Auth & Offline Artwork
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 👥 **पार्टी रूम ("सुनो साथ में" / Listen Together) Real-Time Sync:**
-              - Real-time global network synchronization across unlimited devices via ultra-fast pub/sub channel.
-              - Live play/pause/resume sync, song queue tracking, and real-time active listener counts.
-              - Share party room code directly to WhatsApp with 1-tap invitation link.
-            - 👤 **Customizable Profile & Login System:**
-              - Edit user name, avatar (custom photo or 6 musical avatars), and status/bio (editable "Computer Science & Engineering Student").
-              - Beautiful 3D Dynamic **"प्रोफ़ाइल अपडेट करें (Update Profile)"** elevation button with instant local persistence.
-            - 🔗 **Direct Playable Song Link in Sharing:**
-              - Song share now sends direct playable JioSaavn web links (`perma_url`) and app download link.
-            - 🎯 **Split Tap UX & Active Song Highlighting:**
-              - Tapping the Play button on any song tile directly plays/pauses without opening the full player.
-              - Tapping anywhere else on the row opens the full Now Playing screen.
-              - Active song indicator (live equalizer animation + cyan glow + dynamic play/pause state) in playlists and search.
-            - 📄 **Dedicated Next-Page Navigation:**
-              - "About Application" opens as a dedicated full screen with rich dev info, version details, and social links.
-              - "Language & Region" opens as an expansive full-screen selector with search filter and native language scripts.
-            - 🧹 **Clean Home Feed:**
-              - Removed "Continue Listening" section for a cleaner, faster home browsing experience.
+            - ⚙️ **Unified "Settings (सेटिंग्स)" Section in Profile:**
+              - Consolidated App Theme, Language & Region, Download Quality (Song + Thumbnail), Storage Management, App Updates, Share App, and About into a single dedicated "सेटिंग्स (Settings)" section in ProfileScreen.
+              - Audio Engine and Party Room remain prominently on top.
+            - 👤 **Clean Profile Header & Compact Top-Left Edit Profile:**
+              - Removed cluttering pencil icons from user avatar, name, and bio for a clean cyberpunk look.
+              - Added compact 3D "एडिट प्रोफ़ाइल" button at top-left.
+            - 🔐 **Free Google Sign-In & Login System:**
+              - 100% free Google Sign-In with 3D button ("Google से साइन इन करें"), syncing Gmail, name, and avatar directly into UserService.
+            - 🖼️ **Offline Thumbnail Downloading & Quality Preferences:**
+              - Automatically downloads lightweight artwork (~8-12 KB) alongside song files for offline playback in Library.
+              - Added Song Bitrate (320k/160k/96k) and Thumbnail (Low/Medium/High) quality settings.
+            - ▶️ **Home Feed Bottom Song Play Button Icon Fix:**
+              - Rebuilt bottom track play button with dual reactive stream (playbackState + mediaItem).
+              - Play icon (`Icons.play_arrow_rounded`) accurately represents state with vibrant active playback glow.
+            - 🔗 **Universal Playable Song Share Links:**
+              - Share song with instant web playback (`music.youtube.com`), official JioSaavn link, and deep link (`abhisuno://play`).
 
-            **Direct APK Download:** `AbhiSuno-v3.9.0-release.apk`
-          files: AbhiSuno-v3.9.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.0.0-release.apk`
+          files: AbhiSuno-v4.0.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

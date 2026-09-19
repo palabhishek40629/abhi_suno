@@ -667,122 +667,134 @@ class _HomeScreenState extends State<HomeScreen> {
                   separatorBuilder: (_, __) => const Divider(color: Colors.white10, height: 12),
                   itemBuilder: (context, index) {
                     final song = _infiniteFeedSongs[index];
-                    return StreamBuilder<MediaItem?>(
-                      stream: widget.audioHandler.mediaItem,
-                      builder: (context, mediaSnap) {
-                        final isCurrentTrack = mediaSnap.data?.id == song.id;
-                        final isPlaying = isCurrentTrack && widget.audioHandler.playbackState.value.playing;
+                    return StreamBuilder<PlaybackState>(
+                      stream: widget.audioHandler.playbackState,
+                      builder: (context, playStateSnap) {
+                        return StreamBuilder<MediaItem?>(
+                          stream: widget.audioHandler.mediaItem,
+                          builder: (context, mediaSnap) {
+                            final isCurrentTrack = mediaSnap.data?.id == song.id;
+                            final isPlaying = isCurrentTrack && (playStateSnap.data?.playing ?? widget.audioHandler.isPlaying);
 
-                        return InkWell(
-                          onTap: () => _playTrack(song, _infiniteFeedSongs),
-                          borderRadius: BorderRadius.circular(12),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              children: [
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Image.network(
-                                        song.thumbnailUrl,
-                                        width: 52,
-                                        height: 52,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          width: 52,
-                                          height: 52,
-                                          color: Colors.white10,
-                                          child: const Icon(Icons.music_note, color: Colors.white54),
-                                        ),
+                            return InkWell(
+                              onTap: () => _playTrack(song, _infiniteFeedSongs),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 4),
+                                child: Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          Image.network(
+                                            song.thumbnailUrl,
+                                            width: 52,
+                                            height: 52,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              width: 52,
+                                              height: 52,
+                                              color: Colors.white10,
+                                              child: const Icon(Icons.music_note, color: Colors.white54),
+                                            ),
+                                          ),
+                                          if (isCurrentTrack)
+                                            Container(
+                                              width: 52,
+                                              height: 52,
+                                              color: Colors.black.withOpacity(0.35),
+                                              child: const Icon(Icons.equalizer_rounded, color: primaryCyan, size: 24),
+                                            ),
+                                        ],
                                       ),
-                                      if (isCurrentTrack)
-                                        Container(
-                                          width: 52,
-                                          height: 52,
-                                          color: Colors.black.withOpacity(0.35),
-                                          child: const Icon(Icons.equalizer_rounded, color: primaryCyan, size: 24),
-                                        ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        song.title,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: isCurrentTrack ? primaryCyan : textColor,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 14,
-                                        ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            song.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: isCurrentTrack ? primaryCyan : textColor,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            song.artist,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(color: subtextColor, fontSize: 12),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                        song.artist,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(color: subtextColor, fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                // Quick Like Button
-                                AnimatedBuilder(
-                                  animation: _favoritesService,
-                                  builder: (context, _) {
-                                    final isFav = _favoritesService.isFavorite(song.id);
-                                    return IconButton(
-                                      icon: Icon(
-                                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                        color: isFav ? const Color(0xFFFF2A6D) : Colors.white38,
-                                        size: 20,
-                                      ),
-                                      onPressed: () async {
-                                        final added = await _favoritesService.toggleFavorite(song);
-                                        if (added) {
-                                          ScreenBubbleCelebration.show(context);
-                                        }
+                                    ),
+                                    // Quick Like Button
+                                    AnimatedBuilder(
+                                      animation: _favoritesService,
+                                      builder: (context, _) {
+                                        final isFav = _favoritesService.isFavorite(song.id);
+                                        return IconButton(
+                                          icon: Icon(
+                                            isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                            color: isFav ? const Color(0xFFFF2A6D) : Colors.white38,
+                                            size: 20,
+                                          ),
+                                          onPressed: () async {
+                                            final added = await _favoritesService.toggleFavorite(song);
+                                            if (added) {
+                                              ScreenBubbleCelebration.show(context);
+                                            }
+                                          },
+                                        );
                                       },
-                                    );
-                                  },
-                                ),
-                                // Radiant Play Button (Play Only - does NOT navigate to full player)
-                                GestureDetector(
-                                  onTap: () => _playSongOnly(song, _infiniteFeedSongs),
-                                  child: Container(
-                                    width: 36,
-                                    height: 36,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: isCurrentTrack
-                                            ? [const Color(0xFF00E5FF), const Color(0xFF00E676)]
-                                            : [primaryCyan, primaryPink],
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (isCurrentTrack ? const Color(0xFF00E5FF) : primaryCyan).withOpacity(0.4),
-                                          blurRadius: isCurrentTrack ? 12 : 8,
-                                          offset: const Offset(0, 2),
+                                    ),
+                                    // Radiant Play Button (Always shows Play Logo with active playing aura)
+                                    GestureDetector(
+                                      onTap: () => _playSongOnly(song, _infiniteFeedSongs),
+                                      child: Container(
+                                        width: 38,
+                                        height: 38,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: LinearGradient(
+                                            colors: isPlaying
+                                                ? [const Color(0xFF00E5FF), const Color(0xFF00E676)]
+                                                : isCurrentTrack
+                                                    ? [const Color(0xFF00E5FF), const Color(0xFFFF2A6D)]
+                                                    : [primaryCyan, primaryPink],
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: (isPlaying
+                                                      ? const Color(0xFF00E676)
+                                                      : (isCurrentTrack ? const Color(0xFF00E5FF) : primaryCyan))
+                                                  .withOpacity(0.45),
+                                              blurRadius: isPlaying ? 14 : 8,
+                                              offset: const Offset(0, 2),
+                                            ),
+                                          ],
                                         ),
-                                      ],
+                                        child: Center(
+                                          child: Icon(
+                                            Icons.play_arrow_rounded,
+                                            color: Colors.white,
+                                            size: 24,
+                                          ),
+                                        ),
+                                      ),
                                     ),
-                                    child: Icon(
-                                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                      color: Colors.white,
-                                      size: 22,
-                                    ),
-                                  ),
+                                  ],
                                 ),
-                              ],
-                            ),
-                          ),
+                              ),
+                            );
+                          },
                         );
                       },
                     );
@@ -848,81 +860,89 @@ class _HomeScreenState extends State<HomeScreen> {
             separatorBuilder: (_, __) => const SizedBox(width: 14),
             itemBuilder: (context, i) {
               final song = songs[i];
-              return StreamBuilder<MediaItem?>(
-                stream: widget.audioHandler.mediaItem,
-                builder: (context, mediaSnap) {
-                  final isCurrentTrack = mediaSnap.data?.id == song.id;
-                  final isPlaying = isCurrentTrack && widget.audioHandler.playbackState.value.playing;
+              return StreamBuilder<PlaybackState>(
+                stream: widget.audioHandler.playbackState,
+                builder: (context, playStateSnap) {
+                  return StreamBuilder<MediaItem?>(
+                    stream: widget.audioHandler.mediaItem,
+                    builder: (context, mediaSnap) {
+                      final isCurrentTrack = mediaSnap.data?.id == song.id;
+                      final isPlaying = isCurrentTrack && (playStateSnap.data?.playing ?? widget.audioHandler.isPlaying);
 
-                  return Tactile3DWrapper(
-                    onTap: () => _playTrack(song, songs),
-                    scaleElevation: 1.06,
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                      width: 135,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Stack(
+                      return Tactile3DWrapper(
+                        onTap: () => _playTrack(song, songs),
+                        scaleElevation: 1.06,
+                        borderRadius: BorderRadius.circular(12),
+                        child: SizedBox(
+                          width: 135,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: AspectRatio(
-                                  aspectRatio: 1.0,
-                                  child: Image.network(
-                                    song.thumbnailUrl,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      color: Colors.grey.shade900,
-                                      child: const Icon(Icons.music_note, color: Colors.white54),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (isCurrentTrack)
-                                Positioned.fill(
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      color: Colors.black.withOpacity(0.35),
-                                    ),
-                                    child: Center(
-                                      child: Icon(Icons.equalizer_rounded, color: primaryColor, size: 28),
-                                    ),
-                                  ),
-                                ),
-                              // Corner Play Button (Play Only - does not open full screen)
-                              Positioned(
-                                bottom: 6,
-                                right: 6,
-                                child: GestureDetector(
-                                  onTap: () => _playSongOnly(song, songs),
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: LinearGradient(
-                                        colors: isCurrentTrack
-                                            ? [const Color(0xFF00E5FF), const Color(0xFF00E676)]
-                                            : [const Color(0xFF00E5FF), const Color(0xFFFF2A6D)],
-                                      ),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: (isCurrentTrack ? const Color(0xFF00E5FF) : const Color(0xFF00E5FF)).withOpacity(0.4),
-                                          blurRadius: isCurrentTrack ? 12 : 8,
+                              Stack(
+                                children: [
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: AspectRatio(
+                                      aspectRatio: 1.0,
+                                      child: Image.network(
+                                        song.thumbnailUrl,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          color: Colors.grey.shade900,
+                                          child: const Icon(Icons.music_note, color: Colors.white54),
                                         ),
-                                      ],
-                                    ),
-                                    child: Icon(
-                                      isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                      color: Colors.white,
-                                      size: 18,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                  if (isCurrentTrack)
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(12),
+                                          color: Colors.black.withOpacity(0.35),
+                                        ),
+                                        child: Center(
+                                          child: Icon(Icons.equalizer_rounded, color: primaryColor, size: 28),
+                                        ),
+                                      ),
+                                    ),
+                                  // Corner Play Button (Shows Play Logo with active aura)
+                                  Positioned(
+                                    bottom: 6,
+                                    right: 6,
+                                    child: GestureDetector(
+                                      onTap: () => _playSongOnly(song, songs),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          gradient: LinearGradient(
+                                            colors: isPlaying
+                                                ? [const Color(0xFF00E5FF), const Color(0xFF00E676)]
+                                                : isCurrentTrack
+                                                    ? [const Color(0xFF00E5FF), const Color(0xFFFF2A6D)]
+                                                    : [const Color(0xFF00E5FF), const Color(0xFFFF2A6D)],
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: (isPlaying
+                                                      ? const Color(0xFF00E676)
+                                                      : (isCurrentTrack ? const Color(0xFF00E5FF) : const Color(0xFF00E5FF)))
+                                                  .withOpacity(0.45),
+                                              blurRadius: isPlaying ? 12 : 8,
+                                            ),
+                                          ],
+                                        ),
+                                        child: const Icon(
+                                          Icons.play_arrow_rounded,
+                                          color: Colors.white,
+                                          size: 20,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
                           const SizedBox(height: 8),
                           Text(
                             song.title,

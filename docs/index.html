@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="hi" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Abhi Suno (अभी सुनो) - Download Official Android APK | v3.9.0 Master Edition</title>
+  <meta name="description" content="Abhi Suno official Android music streaming app by Abhishek Pal. 100% Ad-Free, real-time Party Room, offline downloads, 21+ languages, and lossless audio. Download APK now!">
+  <link rel="icon" type="image/png" href="assets/images/logo.png">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Rozha+One&family=Yatra+One&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              400: '#00E5FF',
+              500: '#00B0FF',
+              600: '#0091EA',
+            },
+            accent: {
+              500: '#7C4DFF',
+              600: '#651FFF',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-[#070b14] text-slate-100 font-sans antialiased selection:bg-cyan-500 selection:text-black">
+
+  <!-- Ambient Glowing Background Orbs -->
+  <div class="fixed inset-0 overflow-hidden pointer-events-none -z-10">
+    <div class="absolute -top-40 left-1/2 -translate-x-1/2 w-[650px] h-[500px] bg-cyan-500/15 rounded-full blur-[130px]"></div>
+    <div class="absolute top-1/3 -left-40 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px]"></div>
+    <div class="absolute bottom-10 right-0 w-[550px] h-[550px] bg-purple-600/15 rounded-full blur-[140px]"></div>
+  </div>
+
+  <!-- Navbar -->
+  <header class="sticky top-0 z-50 backdrop-blur-xl bg-[#070b14]/80 border-b border-slate-800/80">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Brand Logo & Name -->
+      <a href="#" class="flex items-center gap-3 group">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-400 via-indigo-500 to-purple-600 p-0.5 shadow-lg shadow-cyan-500/25 group-hover:scale-105 transition-transform">
+          <img src="assets/images/logo.png" alt="Abhi Suno Logo" class="w-full h-full object-cover rounded-[10px] bg-slate-950">
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-extrabold text-lg text-white tracking-tight">Abhi Suno</span>
+            <span class="text-[11px] bg-cyan-500/20 text-cyan-300 font-semibold px-1.5 py-0.2 rounded border border-cyan-500/30">v3.9.0</span>
+          </div>
+          <span class="text-[11px] block text-slate-400 font-normal">अभी सुनो • Master Edition</span>
+        </div>
+      </a>
+
+      <!-- Navigation Links -->
+      <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+        <a href="#features" class="hover:text-cyan-400 transition-colors">खासियतें (Features)</a>
+        <a href="#party-room" class="hover:text-cyan-400 transition-colors">पार्टी रूम</a>
+        <a href="#how-to-install" class="hover:text-cyan-400 transition-colors">इंस्टॉल कैसे करें</a>
+        <a href="#developer" class="hover:text-cyan-400 transition-colors">डेवलपर</a>
+        <a href="#faqs" class="hover:text-cyan-400 transition-colors">FAQs</a>
+      </nav>
+
+      <!-- Action Button -->
+      <div class="flex items-center gap-3">
+        <a href="https://github.com/palabhishek40629/abhi_suno" target="_blank" class="hidden sm:inline-flex items-center gap-1.5 text-xs text-slate-300 hover:text-white bg-slate-900 border border-slate-800 px-3 py-2 rounded-xl transition-all">
+          <i class="fa-brands fa-github text-sm"></i>
+          <span>GitHub</span>
+        </a>
+        <a href="#download" class="inline-flex items-center gap-2 bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 font-bold text-sm px-4 py-2 rounded-xl shadow-md shadow-cyan-500/25 transition-all hover:shadow-cyan-500/40 hover:-translate-y-0.5">
+          <i class="fa-solid fa-download text-xs"></i>
+          <span>Download APK</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section id="download" class="relative pt-12 pb-20 md:pt-20 md:pb-28 overflow-hidden">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        
+        <!-- Hero Content Left -->
+        <div class="lg:col-span-7 text-center lg:text-left space-y-6">
+          
+          <!-- Pill Badge -->
+          <div class="inline-flex items-center gap-2 bg-slate-900/90 border border-cyan-500/30 px-3.5 py-1.5 rounded-full text-xs font-medium text-slate-300 shadow-inner">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+            <span class="text-cyan-400 font-bold">New Release:</span>
+            <span class="text-slate-200 font-semibold">v3.9.0 Master Edition (Build 30)</span>
+            <span class="text-slate-600">•</span>
+            <span class="text-emerald-400 font-medium"><i class="fa-solid fa-shield-check"></i> 100% Virus-Free</span>
+          </div>
+
+          <!-- Main Heading -->
+          <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.15]">
+            संगीत का असली मज़ा,<br>
+            <span class="bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-300 bg-clip-text text-transparent">Abhi Suno</span> के साथ!
+          </h1>
+
+          <!-- Description -->
+          <p class="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+            बिना किसी विज्ञापन (Ad-Free) के लाखों गाने सुनें, ऑफलाइन डाउनलोड करें, और दोस्तों के साथ <strong>पार्टी रूम ("सुनो साथ में")</strong> में एक साथ गाने का आनंद लें!
+          </p>
+
+          <!-- Primary Download Button Card -->
+          <div class="pt-2">
+            <div class="p-6 rounded-2xl bg-gradient-to-b from-slate-900/95 to-slate-900/60 border border-slate-800 shadow-2xl backdrop-blur-md max-w-xl mx-auto lg:mx-0">
+              
+              <!-- Direct Download Button -->
+              <a id="main-download-btn" href="https://github.com/palabhishek40629/abhi_suno/releases/download/v3.9.0-30/AbhiSuno-v3.9.0-release.apk" class="w-full flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-600 hover:from-cyan-400 hover:to-indigo-500 text-slate-950 shadow-xl shadow-cyan-500/30 hover:shadow-cyan-500/50 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 group">
+                <div class="flex items-center gap-4 text-left">
+                  <div class="w-12 h-12 rounded-lg bg-slate-950/20 flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
+                    <i class="fa-solid fa-download text-slate-950"></i>
+                  </div>
+                  <div>
+                    <div class="font-extrabold text-lg leading-tight text-slate-950">Download Abhi Suno APK</div>
+                    <div class="text-xs font-semibold text-slate-900 flex items-center gap-2 mt-0.5">
+                      <span>Size: <strong>66 MB</strong></span>
+                      <span>•</span>
+                      <span>Version: <strong>v3.9.0</strong></span>
+                      <span>•</span>
+                      <span>Free Direct Link</span>
+                    </div>
+                  </div>
+                </div>
+                <i class="fa-solid fa-arrow-right text-xl pr-2 group-hover:translate-x-1 transition-transform text-slate-950"></i>
+              </a>
+
+              <!-- Secondary Mirror Links -->
+              <div class="mt-4 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+                <span class="flex items-center gap-1.5">
+                  <i class="fa-brands fa-android text-cyan-400"></i>
+                  <span>Requires: <strong class="text-slate-200">Android 7.0+</strong></span>
+                </span>
+                
+                <div class="flex items-center gap-3">
+                  <span class="text-slate-500">Links:</span>
+                  <a href="https://github.com/palabhishek40629/abhi_suno/releases/latest" target="_blank" class="text-cyan-400 hover:underline flex items-center gap-1 font-medium">
+                    <i class="fa-brands fa-github"></i> GitHub Releases
+                  </a>
+                  <span class="text-slate-700">|</span>
+                  <a href="https://github.com/palabhishek40629/abhi_suno" target="_blank" class="text-cyan-400 hover:underline flex items-center gap-1 font-medium">
+                    <i class="fa-solid fa-code"></i> Source Code
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Trust Badges -->
+          <div class="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2 text-xs text-slate-300">
+            <div class="flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-3.5 py-1.5 rounded-lg">
+              <i class="fa-solid fa-ban text-rose-400"></i>
+              <span>100% Ad-Free (बिना विज्ञापन)</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-3.5 py-1.5 rounded-lg">
+              <i class="fa-solid fa-shield-check text-emerald-400"></i>
+              <span>Play Protect Safe</span>
+            </div>
+            <div class="flex items-center gap-2 bg-slate-900/80 border border-slate-800 px-3.5 py-1.5 rounded-lg">
+              <i class="fa-solid fa-bolt text-amber-400"></i>
+              <span>High Speed CDN</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Hero App Showcase & QR Code Right -->
+        <div class="lg:col-span-5 flex flex-col items-center">
+          <div class="relative w-full max-w-sm">
+            
+            <!-- Glow Behind Card -->
+            <div class="absolute -inset-1.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-indigo-600 rounded-3xl blur-xl opacity-35"></div>
+            
+            <!-- Card Container -->
+            <div class="relative bg-slate-900/95 border border-slate-800 rounded-3xl p-6 shadow-2xl backdrop-blur-xl text-center">
+              
+              <!-- App Big Icon -->
+              <div class="relative mx-auto w-24 h-24 mb-4">
+                <div class="w-24 h-24 rounded-2xl bg-gradient-to-tr from-cyan-400 to-indigo-500 p-1 shadow-2xl shadow-cyan-500/30">
+                  <img src="assets/images/logo.png" alt="Abhi Suno" class="w-full h-full object-cover rounded-[14px] bg-slate-950">
+                </div>
+                <span class="absolute -bottom-1 -right-1 bg-cyan-400 text-slate-950 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center border-2 border-slate-900 shadow" title="Verified Safe">
+                  ✓
+                </span>
+              </div>
+
+              <h2 class="text-2xl font-black text-white tracking-tight">Abhi Suno</h2>
+              <p class="text-xs text-cyan-400 font-medium mt-0.5">com.abhishekpal.abhisuno</p>
+              
+              <div class="inline-flex items-center gap-1.5 mt-3 bg-slate-950/80 px-3 py-1 rounded-full border border-slate-800 text-xs text-slate-300">
+                <i class="fa-solid fa-graduation-cap text-indigo-400"></i>
+                <span>By <strong>Abhishek Pal</strong> (CSE Student)</span>
+              </div>
+
+              <!-- Rating Stars -->
+              <div class="flex items-center justify-center gap-1 mt-3 text-amber-400 text-sm">
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <span class="text-white font-bold ml-1 text-xs">4.9</span>
+                <span class="text-slate-400 text-xs">(Master Edition)</span>
+              </div>
+
+              <!-- QR Code Card to scan from mobile -->
+              <div class="mt-6 pt-5 border-t border-slate-800">
+                <p class="text-xs font-bold text-slate-200 mb-2">
+                  <i class="fa-solid fa-qrcode text-cyan-400 mr-1"></i> Scan with Phone to Download APK
+                </p>
+                <div class="bg-white p-2.5 rounded-xl inline-block shadow-lg">
+                  <img id="qr-code-img" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://github.com/palabhishek40629/abhi_suno/releases/download/v3.9.0-30/AbhiSuno-v3.9.0-release.apk&margin=4" alt="Scan to download Abhi Suno APK" class="w-36 h-36 mx-auto rounded-lg">
+                </div>
+                <p class="text-[11px] text-slate-400 mt-2">सीधे मोबाइल कैमरे से स्कैन करके डाउनलोड करें</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Key Metrics / Stats Bar -->
+  <section class="border-y border-slate-800/80 bg-slate-900/40 py-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-3xl font-extrabold text-cyan-400">100%</div>
+          <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Ad-Free (Zero Ads)</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-3xl font-extrabold text-indigo-400">21+</div>
+          <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Languages Supported</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-3xl font-extrabold text-teal-400">Real-Time</div>
+          <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Party Room Sync</div>
+        </div>
+        <div class="p-4 rounded-xl bg-slate-900/60 border border-slate-800">
+          <div class="text-3xl font-extrabold text-rose-400">v3.9.0</div>
+          <div class="text-xs text-slate-400 mt-1 uppercase tracking-wider">Master Edition</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Showcase Section -->
+  <section id="features" class="py-20">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <span class="text-cyan-400 text-xs font-bold uppercase tracking-widest bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full">ऐप की प्रमुख खासियतें</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">Abhi Suno क्यों है सबसे अलग?</h2>
+        <p class="text-slate-400 text-sm sm:text-base mt-2">हाई-क्वालिटी साउंड, इन-ऐप डाउनलोड्स और असीमित संगीत का अनुभव।</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <!-- Feature 1 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/50 transition-all group hover:-translate-y-1">
+          <div class="w-12 h-12 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400 text-xl mb-4 group-hover:bg-cyan-500 group-hover:text-slate-950 transition-colors">
+            <i class="fa-solid fa-users-rays"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">पार्टी रूम ("सुनो साथ में")</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">दोस्तों के साथ 1 कोड से जुड़ें और सभी के फोन पर एक ही समय पर एक साथ गाना बजाएं। रियल-टाइम पल्स सिंक!</p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-indigo-500/50 transition-all group hover:-translate-y-1">
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 text-xl mb-4 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+            <i class="fa-solid fa-cloud-arrow-down"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">सैंडबॉक्स्ड ऑफलाइन डाउनलोड्स</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">बिना इंटरनेट के कभी भी सुनें। गाने ऐप के अंदर सुरक्षित सेव होते हैं और कभी डिलीट नहीं होते।</p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-teal-500/50 transition-all group hover:-translate-y-1">
+          <div class="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 text-xl mb-4 group-hover:bg-teal-500 group-hover:text-slate-950 transition-colors">
+            <i class="fa-solid fa-ban"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">100% Ad-Free (बिना विज्ञापन)</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">गाने के बीच में कोई रुकावट नहीं, न ही कोई वीडियो ओवरहेड। शुद्ध हाई-डेफिनिशन 320kbps ऑडियो।</p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-purple-500/50 transition-all group hover:-translate-y-1">
+          <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 text-xl mb-4 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+            <i class="fa-solid fa-language"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">21+ भारतीय व विदेशी भाषाएँ</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">हिंदी, भोजपुरी, पंजाबी, हरियाणवी, तेलुगु, तमिल, इंग्लिश सहित 21+ भाषाओं का समर्पित चयन केंद्र।</p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-amber-500/50 transition-all group hover:-translate-y-1">
+          <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 text-xl mb-4 group-hover:bg-amber-500 group-hover:text-slate-950 transition-colors">
+            <i class="fa-solid fa-cube"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">3D डायनामिक टेक्टाइल UI</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">नियॉन ग्लो, 3D एलिवेशन बटन्स, लाइव इक्वलाइज़र बार्स और स्प्लिट-टैप फास्ट कंट्रोल।</p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div class="p-6 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-rose-500/50 transition-all group hover:-translate-y-1">
+          <div class="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 text-xl mb-4 group-hover:bg-rose-500 group-hover:text-white transition-colors">
+            <i class="fa-solid fa-share-nodes"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">डायरेक्ट प्लेएबल शेयर लिंक</h3>
+          <p class="text-slate-400 text-sm leading-relaxed">व्हाट्सएप पर शेयर करने पर सामने वाले को सीधे 1-क्लिक में बजने वाला लिंक मिलता है।</p>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Party Room Spotlight Section -->
+  <section id="party-room" class="py-16 bg-gradient-to-b from-slate-900/50 via-slate-950 to-slate-900/50 border-y border-slate-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="bg-gradient-to-r from-indigo-950/60 via-slate-900 to-cyan-950/60 rounded-3xl p-8 sm:p-12 border border-indigo-500/30 relative overflow-hidden">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+          <div class="lg:col-span-8 space-y-4">
+            <span class="inline-flex items-center gap-1.5 text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 rounded-full">
+              <i class="fa-solid fa-sparkles"></i> एक्सक्लूसिव फीचर
+            </span>
+            <h2 class="text-3xl sm:text-4xl font-extrabold text-white">
+              पार्टी रूम: "सुनो साथ में" (Listen Together)
+            </h2>
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+              अब चाहे आप और आपके दोस्त अलग-अलग कमरे में हों या अलग शहरों में, <strong>Abhi Suno</strong> के पार्टी रूम कोड से सभी फोन एक साथ जुड़ जाते हैं। जैसे ही आप गाना बदलते हैं, सभी दोस्तों के मोबाइल पर वही गाना उसी सेकंड बजने लगता है!
+            </p>
+            <div class="flex flex-wrap gap-4 pt-2 text-xs font-medium text-slate-300">
+              <span class="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-code text-cyan-400"></i> 6-अंकीय पार्टी कोड
+              </span>
+              <span class="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                <i class="fa-brands fa-whatsapp text-emerald-400"></i> 1-टैप व्हाट्सएप इनवाइट
+              </span>
+              <span class="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                <i class="fa-solid fa-infinity text-indigo-400"></i> अनलिमिटेड कनेक्टेड डिवाइस
+              </span>
+            </div>
+          </div>
+
+          <div class="lg:col-span-4 text-center">
+            <div class="p-5 rounded-2xl bg-slate-950/80 border border-indigo-500/30 inline-block shadow-2xl">
+              <div class="text-xs text-slate-400 uppercase font-semibold tracking-wider mb-2">पार्टी कोड उदाहरण</div>
+              <div class="text-2xl font-black text-cyan-400 tracking-widest bg-slate-900 px-4 py-2 rounded-xl border border-cyan-500/30 font-mono">
+                ABHI-7842
+              </div>
+              <div class="text-[11px] text-slate-500 mt-2">
+                <i class="fa-solid fa-circle text-emerald-400 text-[8px] animate-ping mr-1"></i> लाइव डिवाइस सिंक सक्रिय
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- How to Install Guide Section -->
+  <section id="how-to-install" class="py-20">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center max-w-2xl mx-auto mb-14">
+        <span class="text-cyan-400 text-xs font-bold uppercase tracking-widest bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full">इंस्टॉलेशन गाइड</span>
+        <h2 class="text-3xl sm:text-4xl font-extrabold text-white mt-3">मोबाइल में APK कैसे इंस्टॉल करें?</h2>
+        <p class="text-slate-400 text-sm sm:text-base mt-2">सिर्फ 3 आसान स्टेप्स में अपने एंड्रॉइड फोन में ऐप चलाएं:</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        
+        <!-- Step 1 -->
+        <div class="relative p-6 rounded-2xl bg-slate-900/80 border border-slate-800">
+          <div class="w-10 h-10 rounded-full bg-cyan-400 text-slate-950 font-extrabold flex items-center justify-center text-lg mb-4 shadow-lg shadow-cyan-500/30">
+            1
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Step 1: APK डाउनलोड करें</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-3">
+            ऊपर दिए गए <strong class="text-cyan-400">"Download APK"</strong> बटन पर टैप करें। डाउनलोड शुरू हो जाएगा।
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-xs text-slate-400 border border-slate-800">
+            <i class="fa-solid fa-circle-info text-cyan-400 mr-1"></i> यदि क्रोम <em>"File might be harmful"</em> कहे, तो <strong>"Download anyway"</strong> पर क्लिक करें।
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div class="relative p-6 rounded-2xl bg-slate-900/80 border border-slate-800">
+          <div class="w-10 h-10 rounded-full bg-cyan-400 text-slate-950 font-extrabold flex items-center justify-center text-lg mb-4 shadow-lg shadow-cyan-500/30">
+            2
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Step 2: Unknown Apps को अनुमति दें</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-3">
+            डाउनलोड पूरा होने पर फाइल खोलें। सेटिंग्स में <strong>"Install Unknown Apps"</strong> का विकल्प आएगा।
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-xs text-slate-400 border border-slate-800">
+            <i class="fa-solid fa-gear text-cyan-400 mr-1"></i> <strong>Settings</strong> में जाकर <em>"Allow from this source"</em> को चालू (ON) कर दें।
+          </div>
+        </div>
+
+        <!-- Step 3 -->
+        <div class="relative p-6 rounded-2xl bg-slate-900/80 border border-slate-800">
+          <div class="w-10 h-10 rounded-full bg-cyan-400 text-slate-950 font-extrabold flex items-center justify-center text-lg mb-4 shadow-lg shadow-cyan-500/30">
+            3
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">Step 3: इंस्टॉल करें और सुनें</h3>
+          <p class="text-slate-300 text-sm leading-relaxed mb-3">
+            स्क्रीन पर <strong class="text-emerald-400">"Install"</strong> बटन दबाएं। कुछ सेकंड में ऐप इंस्टॉल हो जाएगा।
+          </p>
+          <div class="p-3 bg-slate-950 rounded-lg text-xs text-slate-400 border border-slate-800">
+            <i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> अब <strong>"Open"</strong> दबाएं और बेरोकटोक संगीत का आनंद लें!
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Developer Profile Spotlight -->
+  <section id="developer" class="py-16 bg-slate-900/40 border-t border-slate-800">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="p-8 rounded-3xl bg-slate-900/80 border border-slate-800 backdrop-blur-md">
+        <div class="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+          
+          <div class="w-24 h-24 rounded-2xl bg-gradient-to-tr from-cyan-400 to-indigo-600 p-1 shadow-xl shadow-cyan-500/20 shrink-0">
+            <img src="assets/images/logo.png" alt="Abhishek Pal" class="w-full h-full object-cover rounded-[14px]">
+          </div>
+
+          <div class="space-y-2">
+            <div class="inline-flex items-center gap-2 bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-3 py-0.5 rounded-full text-xs font-semibold">
+              <i class="fa-solid fa-code"></i> मुख्य निर्माता एवं डेवलपर
+            </div>
+            <h3 class="text-2xl font-black text-white">अभिषेक पाल (Abhishek Pal)</h3>
+            <p class="text-sm text-cyan-400 font-medium">Computer Science & Engineering Student</p>
+            <p class="text-xs text-slate-300 leading-relaxed max-w-xl">
+              "Abhi Suno" को शुद्ध संगीत प्रेमियों के लिए ओपन-सोर्स और 100% फ्री बनाया गया है। बिना किसी कमर्शियल ऐड या सब्सक्रिप्शन के, हर किसी को बेहतरीन साउंड क्वालिटी और पार्टी सिंक की सुविधा प्रदान करना इसका मुख्य उद्देश्य है।
+            </p>
+            <div class="pt-2 flex items-center justify-center sm:justify-start gap-4 text-xs">
+              <a href="https://github.com/palabhishek40629/abhi_suno" target="_blank" class="text-cyan-400 hover:underline flex items-center gap-1 font-semibold">
+                <i class="fa-brands fa-github"></i> github.com/palabhishek40629
+              </a>
+              <span class="text-slate-700">|</span>
+              <span class="text-slate-400">palabhishek40629@gmail.com</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQs Section -->
+  <section id="faqs" class="py-16 bg-slate-950 border-t border-slate-800/80">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      
+      <div class="text-center mb-12">
+        <span class="text-cyan-400 text-xs font-bold uppercase tracking-widest bg-cyan-500/10 border border-cyan-500/20 px-3 py-1 rounded-full">सहायता एवं उत्तर</span>
+        <h2 class="text-3xl font-extrabold text-white mt-3">अक्सर पूछे जाने वाले सवाल (FAQs)</h2>
+        <p class="text-slate-400 text-sm mt-1">आपके प्रश्नों के स्पष्ट उत्तर</p>
+      </div>
+
+      <div class="space-y-4">
+        
+        <!-- FAQ 1 -->
+        <div class="faq-item border border-slate-800 rounded-xl bg-slate-900/60 overflow-hidden">
+          <button class="faq-btn w-full p-5 text-left flex items-center justify-between font-semibold text-slate-200 hover:text-cyan-400 transition-colors">
+            <span>क्या Abhi Suno ऐप सच में 100% फ्री और ऐड-फ्री है?</span>
+            <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+          </button>
+          <div class="faq-content hidden px-5 pb-5 text-sm text-slate-400 leading-relaxed border-t border-slate-800/60 pt-3">
+            हाँ, बिल्कुल! Abhi Suno पूरी तरह से ओपन-सोर्स और नॉन-कमर्शियल ऐप है। इसमें न तो कोई ऑडियो ऐड आता है और न ही कोई बैनर ऐड।
+          </div>
+        </div>
+
+        <!-- FAQ 2 -->
+        <div class="faq-item border border-slate-800 rounded-xl bg-slate-900/60 overflow-hidden">
+          <button class="faq-btn w-full p-5 text-left flex items-center justify-between font-semibold text-slate-200 hover:text-cyan-400 transition-colors">
+            <span>डाउनलोड करने पर क्रोम "File might be harmful" क्यों दिखाता है?</span>
+            <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+          </button>
+          <div class="faq-content hidden px-5 pb-5 text-sm text-slate-400 leading-relaxed border-t border-slate-800/60 pt-3">
+            Google Chrome किसी भी ऐसी APK फाइल को जो सीधे प्ले स्टोर के बाहर से डाउनलोड होती है, चेतावनी दिखाता है। यह सामान्य सुरक्षा नियम है। हमारी APK 100% साफ और वायरस-मुक्त है, आप निडर होकर "Download anyway" चुन सकते हैं।
+          </div>
+        </div>
+
+        <!-- FAQ 3 -->
+        <div class="faq-item border border-slate-800 rounded-xl bg-slate-900/60 overflow-hidden">
+          <button class="faq-btn w-full p-5 text-left flex items-center justify-between font-semibold text-slate-200 hover:text-cyan-400 transition-colors">
+            <span>पार्टी रूम ("सुनो साथ में") कैसे काम करता है?</span>
+            <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+          </button>
+          <div class="faq-content hidden px-5 pb-5 text-sm text-slate-400 leading-relaxed border-t border-slate-800/60 pt-3">
+            प्रोफाइल स्क्रीन में "पार्टी रूम बनाएं" दबाने पर 6-अंकों का कोड मिलता है। अपने दोस्तों को वह कोड दें या व्हाट्सएप पर इनवाइट भेजें। वे "रूम से जुड़ें" में वह कोड डालेंगे और सभी के फोन में एक साथ वही गाना बजने लगेगा!
+          </div>
+        </div>
+
+        <!-- FAQ 4 -->
+        <div class="faq-item border border-slate-800 rounded-xl bg-slate-900/60 overflow-hidden">
+          <button class="faq-btn w-full p-5 text-left flex items-center justify-between font-semibold text-slate-200 hover:text-cyan-400 transition-colors">
+            <span>नया वर्जन आने पर ऐप कैसे अपडेट करें?</span>
+            <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200"></i>
+          </button>
+          <div class="faq-content hidden px-5 pb-5 text-sm text-slate-400 leading-relaxed border-t border-slate-800/60 pt-3">
+            ऐप के अंदर सेटिंग्स में "Check for Updates" विकल्प मौजूद है, या आप कभी भी इसी वेबसाइट पर आकर नया APK डाउनलोड करके इंस्टॉल कर सकते हैं। आपका पुराना डेटा और डाउनलोड्स सुरक्षित रहेंगे।
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Download Popup Modal -->
+  <div id="download-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 text-center shadow-2xl relative animate-fade-in">
+      
+      <button id="close-modal-btn" class="absolute top-4 right-4 text-slate-400 hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="w-16 h-16 rounded-full bg-cyan-500/20 text-cyan-400 flex items-center justify-center text-2xl mx-auto mb-4">
+        <i class="fa-solid fa-arrow-down-to-bracket animate-bounce"></i>
+      </div>
+
+      <h3 class="text-xl font-bold text-white mb-1">डाउनलोड शुरू हो रहा है...</h3>
+      <p class="text-xs text-slate-400 mb-5">यदि डाउनलोड अपने आप शुरू न हो, तो नीचे दिए गए बटन पर टैप करें।</p>
+
+      <div class="p-3 bg-slate-950 rounded-xl border border-slate-800 mb-5 text-left text-xs space-y-2">
+        <div class="flex justify-between text-slate-400">
+          <span>फाइल:</span> <span class="text-slate-200 font-medium">AbhiSuno-v3.9.0-release.apk</span>
+        </div>
+        <div class="flex justify-between text-slate-400">
+          <span>वर्जन:</span> <span class="text-cyan-400 font-medium">v3.9.0 Master Edition</span>
+        </div>
+        <div class="flex justify-between text-slate-400">
+          <span>साइज:</span> <span class="text-slate-200 font-medium">66 MB</span>
+        </div>
+      </div>
+
+      <a id="modal-direct-link" href="https://github.com/palabhishek40629/abhi_suno/releases/download/v3.9.0-30/AbhiSuno-v3.9.0-release.apk" target="_blank" class="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-400 to-indigo-500 text-slate-950 font-extrabold py-3 px-4 rounded-xl transition-all shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40">
+        <i class="fa-solid fa-download"></i> यदि डाउनलोड न हो तो यहाँ क्लिक करें
+      </a>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800/80 bg-[#070b14] py-12 text-slate-400 text-xs">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+            <img src="assets/images/logo.png" alt="Abhi Suno" class="w-6 h-6 object-contain">
+          </div>
+          <div>
+            <div class="font-bold text-slate-200">Abhi Suno (अभी सुनो)</div>
+            <div class="text-[11px] text-slate-500">विकसित द्वारा: <strong>अभिषेक पाल</strong> (CSE Student) • © <span id="current-year">2026</span></div>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center justify-center gap-6 text-slate-400">
+          <a href="#features" class="hover:text-cyan-400 transition-colors">Features</a>
+          <a href="#party-room" class="hover:text-cyan-400 transition-colors">Party Room</a>
+          <a href="#how-to-install" class="hover:text-cyan-400 transition-colors">Install Guide</a>
+          <a href="#faqs" class="hover:text-cyan-400 transition-colors">FAQs</a>
+          <a href="https://github.com/palabhishek40629/abhi_suno" target="_blank" class="hover:text-cyan-400 transition-colors">GitHub</a>
+        </div>
+
+        <div class="text-[11px] text-slate-500 text-center md:text-right">
+          Open-Source Project under MIT License.<br>
+          GitHub Pages URL: <a href="https://palabhishek40629.github.io/abhi_suno/" class="text-cyan-400 hover:underline">palabhishek40629.github.io/abhi_suno/</a>
+        </div>
+
+      </div>
+    </div>
+  </footer>
+
+  <!-- App Script -->
+  <script src="app.js"></script>
+</body>
+</html>

@@ -873,9 +873,9 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
-                                    song.thumbnailUrl.isNotEmpty
-                                        ? Image.network(
-                                            song.thumbnailUrl,
+                                    song.localThumbnailPath != null && File(song.localThumbnailPath!).existsSync()
+                                        ? Image.file(
+                                            File(song.localThumbnailPath!),
                                             width: 48,
                                             height: 48,
                                             fit: BoxFit.cover,
@@ -886,12 +886,25 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                                               child: const Icon(Icons.music_note, color: Colors.white54),
                                             ),
                                           )
-                                        : Container(
-                                            width: 48,
-                                            height: 48,
-                                            color: Colors.white10,
-                                            child: const Icon(Icons.music_note, color: Colors.white54),
-                                          ),
+                                        : song.thumbnailUrl.isNotEmpty
+                                            ? Image.network(
+                                                song.thumbnailUrl,
+                                                width: 48,
+                                                height: 48,
+                                                fit: BoxFit.cover,
+                                                errorBuilder: (_, __, ___) => Container(
+                                                  width: 48,
+                                                  height: 48,
+                                                  color: Colors.white10,
+                                                  child: const Icon(Icons.music_note, color: Colors.white54),
+                                                ),
+                                              )
+                                            : Container(
+                                                width: 48,
+                                                height: 48,
+                                                color: Colors.white10,
+                                                child: const Icon(Icons.music_note, color: Colors.white54),
+                                              ),
                                     if (isCurrentTrack)
                                       Container(
                                         width: 48,

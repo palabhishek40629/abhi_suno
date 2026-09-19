@@ -73,6 +73,10 @@ class DownloadService extends ChangeNotifier {
         return true;
       }
 
+      final prefs = await SharedPreferences.getInstance();
+      final audioQuality = prefs.getString('audio_download_quality_pref') ?? '320kbps';
+      final thumbQuality = prefs.getString('thumbnail_download_quality_pref') ?? 'low';
+
       // Check temporary cache tiers to avoid redundant download
       final cachedFile = await _cacheManager.getCachedSongFile(song.id);
       if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 50000) {
@@ -86,10 +90,10 @@ class DownloadService extends ChangeNotifier {
         } catch (_) {}
       }
 
-      // Resolve stream URL
+      // Resolve stream URL with selected quality
       String? streamUrl = song.streamUrl;
       if (streamUrl == null || streamUrl.isEmpty) {
-        streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: '320kbps');
+        streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: audioQuality);
       }
 
       if (streamUrl == null || streamUrl.isEmpty) {
@@ -124,6 +128,27 @@ class DownloadService extends ChangeNotifier {
 
       song.localFilePath = filePath;
       song.isDownloaded = true;
+
+      // Download thumbnail in user-chosen quality (default low/optimized to save space)
+      final thumbPath = '${permDir.path}/$safeName.jpg';
+      try {
+        if (song.thumbnailUrl.isNotEmpty) {
+          String thumbDownloadUrl = song.thumbnailUrl;
+          if (thumbQuality == 'low') {
+            thumbDownloadUrl = thumbDownloadUrl
+                .replaceAll('500x500', '50x50')
+                .replaceAll('150x150', '50x50');
+          } else if (thumbQuality == 'medium') {
+            thumbDownloadUrl = thumbDownloadUrl.replaceAll('500x500', '150x150');
+          } else {
+            thumbDownloadUrl = thumbDownloadUrl.replaceAll('150x150', '500x500');
+          }
+          await _dio.download(thumbDownloadUrl, thumbPath);
+          if (File(thumbPath).existsSync() && File(thumbPath).lengthSync() > 100) {
+            song.localThumbnailPath = thumbPath;
+          }
+        }
+      } catch (_) {}
 
       await _saveOfflineTrack(song);
       return true;
@@ -169,6 +194,12 @@ class DownloadService extends ChangeNotifier {
           final file = File(song.localFilePath!);
           if (await file.exists()) {
             await file.delete();
+          }
+        }
+        if (song.localThumbnailPath != null) {
+          final thumb = File(song.localThumbnailPath!);
+          if (await thumb.exists()) {
+            await thumb.delete();
           }
         }
       }

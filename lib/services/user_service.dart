@@ -11,12 +11,14 @@ class UserService extends ChangeNotifier {
   static const String _kImageKey = 'user_custom_profile_image';
   static const String _kEmailKey = 'user_custom_profile_email';
   static const String _kLoggedInKey = 'user_is_logged_in';
+  static const String _kGoogleUserKey = 'user_is_google_account';
 
   String _userName = 'Abhishek Pal';
   String _userBio = 'Computer Science & Engineering Student';
   String? _profileImagePath;
   String _userEmail = 'abhishekpal40629@gmail.com';
   bool _isLoggedIn = true;
+  bool _isGoogleUser = false;
   bool _isLoaded = false;
 
   String get userName => _userName;
@@ -24,6 +26,7 @@ class UserService extends ChangeNotifier {
   String? get profileImagePath => _profileImagePath;
   String get userEmail => _userEmail;
   bool get isLoggedIn => _isLoggedIn;
+  bool get isGoogleUser => _isGoogleUser;
   bool get isLoaded => _isLoaded;
 
   Future<void> init() async {
@@ -35,6 +38,7 @@ class UserService extends ChangeNotifier {
       _profileImagePath = prefs.getString(_kImageKey);
       _userEmail = prefs.getString(_kEmailKey) ?? 'abhishekpal40629@gmail.com';
       _isLoggedIn = prefs.getBool(_kLoggedInKey) ?? true;
+      _isGoogleUser = prefs.getBool(_kGoogleUserKey) ?? false;
       _isLoaded = true;
       notifyListeners();
     } catch (_) {
@@ -90,15 +94,44 @@ class UserService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> loginWithGoogle({
+    required String name,
+    required String email,
+    String? photoUrl,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    _userName = name.trim();
+    _userEmail = email.trim();
+    _userBio = 'Music Lover • Google Verified';
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      _profileImagePath = photoUrl;
+    }
+    _isLoggedIn = true;
+    _isGoogleUser = true;
+
+    await prefs.setString(_kNameKey, _userName);
+    await prefs.setString(_kEmailKey, _userEmail);
+    await prefs.setString(_kBioKey, _userBio);
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      await prefs.setString(_kImageKey, photoUrl);
+    }
+    await prefs.setBool(_kLoggedInKey, true);
+    await prefs.setBool(_kGoogleUserKey, true);
+
+    notifyListeners();
+  }
+
   Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     _isLoggedIn = false;
+    _isGoogleUser = false;
     _userName = 'Guest User';
     _userBio = 'Music Enthusiast';
     _userEmail = '';
     _profileImagePath = null;
 
     await prefs.setBool(_kLoggedInKey, false);
+    await prefs.setBool(_kGoogleUserKey, false);
     await prefs.setString(_kNameKey, _userName);
     await prefs.setString(_kBioKey, _userBio);
     await prefs.setString(_kEmailKey, _userEmail);

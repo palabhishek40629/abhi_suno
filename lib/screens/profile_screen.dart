@@ -43,6 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _userName = 'Abhishek Pal';
   String _installedVersion = AppConstants.appVersion;
   String _audioQuality = '320kbps';
+  String _thumbQuality = 'low';
   bool _djCrossfade = true;
   int _crossfadeSeconds = 4;
   bool _replayGain = true;
@@ -69,7 +70,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final prefs = await SharedPreferences.getInstance();
     final savedPath = prefs.getString('user_custom_profile_image');
     final savedName = prefs.getString('user_custom_profile_name') ?? 'Abhishek Pal';
-    final quality = prefs.getString('audio_quality_pref') ?? '320kbps';
+    final quality = prefs.getString('audio_download_quality_pref') ?? prefs.getString('audio_quality_pref') ?? '320kbps';
+    final thumbQ = prefs.getString('thumbnail_download_quality_pref') ?? 'low';
     final crossfade = prefs.getBool('audio_crossfade_enabled') ?? true;
     final crossSecs = prefs.getInt('audio_crossfade_seconds') ?? 4;
     final rg = prefs.getBool('audio_loudness_normalizer') ?? true;
@@ -94,6 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _profileImagePath = savedPath;
         _userName = savedName;
         _audioQuality = quality;
+        _thumbQuality = thumbQ;
         _djCrossfade = crossfade;
         _crossfadeSeconds = crossSecs;
         _replayGain = rg;
@@ -183,6 +186,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _audioQuality = quality);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('audio_quality_pref', quality);
+    await prefs.setString('audio_download_quality_pref', quality);
+  }
+
+  Future<void> _saveThumbnailQuality(String quality) async {
+    setState(() => _thumbQuality = quality);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('thumbnail_download_quality_pref', quality);
   }
 
   Future<void> _toggleCrossfade(bool val) async {
@@ -506,151 +516,102 @@ class _ProfileScreenState extends State<ProfileScreen> {
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 40),
               children: [
-                // SECTION 1: Profile Avatar, Editable Name & Bio
-                Center(
-                  child: Stack(
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                          );
-                        },
-                        child: Container(
-                          width: 108,
-                          height: 108,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF00E5FF).withOpacity(0.35),
-                                blurRadius: 20,
-                                spreadRadius: 2,
-                              ),
-                            ],
-                          ),
-                          padding: const EdgeInsets.all(3.5),
-                          child: ClipOval(
-                            child: _user.profileImagePath != null && File(_user.profileImagePath!).existsSync()
-                                ? Image.file(File(_user.profileImagePath!), fit: BoxFit.cover)
-                                : Image.asset(AppConstants.logoAsset, fit: BoxFit.cover),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFF00E5FF),
-                              border: Border.all(color: Colors.black, width: 2),
-                            ),
-                            child: const Icon(Icons.edit_rounded, size: 16, color: Colors.black),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 14),
-                // User Name
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _user.userName,
-                      style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(width: 8),
-                    InkWell(
-                      onTap: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-                        );
-                      },
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color(0xFF00E5FF).withOpacity(0.2),
-                          border: Border.all(color: const Color(0xFF00E5FF).withOpacity(0.5)),
-                        ),
-                        child: const Icon(Icons.edit_rounded, size: 16, color: Color(0xFF00E5FF)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                // User Bio / Tagline (e.g. Computer Science & Engineering Student)
-                Center(
-                  child: Text(
-                    _user.userBio,
-                    style: const TextStyle(color: Color(0xFF00E5FF), fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(height: 14),
-                // 3D DYNAMIC 'UPDATE PROFILE' BUTTON
-                Center(
+                // TOP-LEFT COMPACT 'UPDATE PROFILE' BUTTON
+                Align(
+                  alignment: Alignment.centerLeft,
                   child: Tactile3DWrapper(
                     onTap: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(builder: (_) => const EditProfileScreen()),
                       );
                     },
-                    scaleElevation: 1.12,
-                    borderRadius: BorderRadius.circular(20),
+                    scaleElevation: 1.10,
+                    borderRadius: BorderRadius.circular(14),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
                           begin: Alignment.centerLeft,
                           end: Alignment.centerRight,
                         ),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00E5FF).withOpacity(0.4),
-                            blurRadius: 14,
-                            offset: const Offset(0, 4),
+                            color: const Color(0xFF00E5FF).withOpacity(0.35),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.manage_accounts_rounded, color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
+                          const Icon(Icons.manage_accounts_rounded, color: Colors.white, size: 14),
+                          const SizedBox(width: 5),
                           Text(
-                            _lang.isHindi ? 'प्रोफ़ाइल अपडेट करें' : 'Update Profile',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 13,
-                              letterSpacing: 0.3,
-                            ),
+                            _lang.isHindi ? 'एडिट प्रोफ़ाइल' : 'Edit Profile',
+                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
                           ),
                         ],
                       ),
                     ),
                   ),
                 ),
+                const SizedBox(height: 6),
 
-                const SizedBox(height: 24),
+                // SECTION 1: Profile Avatar (clean without pencil icon)
+                Center(
+                  child: GestureDetector(
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const EditProfileScreen()),
+                      );
+                    },
+                    child: Container(
+                      width: 108,
+                      height: 108,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF00E5FF).withOpacity(0.35),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      padding: const EdgeInsets.all(3.5),
+                      child: ClipOval(
+                        child: _user.profileImagePath != null && File(_user.profileImagePath!).existsSync()
+                            ? Image.file(File(_user.profileImagePath!), fit: BoxFit.cover)
+                            : Image.asset(AppConstants.logoAsset, fit: BoxFit.cover),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                // User Name (clean without pencil icon)
+                Center(
+                  child: Text(
+                    _user.userName,
+                    style: TextStyle(color: textColor, fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                // User Bio / Tagline (clean without pencil icon)
+                Center(
+                  child: Text(
+                    _user.userBio,
+                    style: const TextStyle(color: Color(0xFF00E5FF), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
                 // ================================================================
                 // EXPANDABLE ACCORDION SECTION 1: 🎧 Audio & DJ Engine
@@ -780,11 +741,85 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 // ================================================================
                 PartyRoomCard(audioHandler: widget.audioHandler),
 
-                const SizedBox(height: 12),
+                const SizedBox(height: 18),
 
                 // ================================================================
-                // DEDICATED FULL-PAGE NAVIGATION: 🌐 Language & Region
+                // MASTER SECTION: ⚙️ ऐप सेटिंग्स (App Settings Master Section)
                 // ================================================================
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF00E5FF).withOpacity(0.15),
+                        ),
+                        child: const Icon(Icons.settings_suggest_rounded, color: Color(0xFF00E5FF), size: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _lang.isHindi ? 'ऐप सेटिंग्स (Settings)' : 'App Settings',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // 1. 🎨 App Theme
+                _buildAccordionCard(
+                  title: _lang.isHindi ? 'ऐप थीम (App Theme)' : 'App Theme',
+                  subtitle: _getThemeName(_theme.currentMode),
+                  icon: Icons.palette_rounded,
+                  accentColor: const Color(0xFF00E5FF),
+                  children: [
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: [
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.light,
+                          title: _lang.isHindi ? 'लाइट' : 'Light',
+                          subtitle: 'Clean Bright',
+                          icon: Icons.light_mode_rounded,
+                          color: const Color(0xFFFFB300),
+                        ),
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.dark,
+                          title: _lang.isHindi ? 'डार्क' : 'Dark',
+                          subtitle: 'AMOLED Black',
+                          icon: Icons.dark_mode_rounded,
+                          color: const Color(0xFF9E9E9E),
+                        ),
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.transparent,
+                          title: _lang.isHindi ? 'ट्रांसपेरेंट' : 'Transparent',
+                          subtitle: 'Glassmorphism',
+                          icon: Icons.blur_on_rounded,
+                          color: const Color(0xFF00E5FF),
+                        ),
+                        _buildThemeOptionChip(
+                          mode: AppThemeMode.defaultMode,
+                          title: _lang.isHindi ? 'डिफ़ॉल्ट' : 'Default',
+                          subtitle: 'Cyberpunk Neon',
+                          icon: Icons.flash_on_rounded,
+                          color: const Color(0xFFFF2A6D),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // 2. 🌐 Language & Region (Full page navigation)
                 Tactile3DWrapper(
                   onTap: () {
                     Navigator.of(context).push(
@@ -836,47 +871,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 12),
 
-                // ================================================================
-                // EXPANDABLE ACCORDION SECTION: 🎨 App Theme
-                // ================================================================
+                // 3. ⬇️ Download Quality Settings (Song & Thumbnail Quality)
                 _buildAccordionCard(
-                  title: _lang.isHindi ? 'ऐप थीम (App Theme)' : 'App Theme',
-                  subtitle: _getThemeName(_theme.currentMode),
-                  icon: Icons.palette_rounded,
+                  title: _lang.isHindi ? 'डाउनलोड क्वालिटी सेटिंग्स' : 'Download Quality Settings',
+                  subtitle: _lang.isHindi
+                      ? 'गाना: $_audioQuality • थंबनेल: ${_thumbQuality == "low" ? "लो (Saver)" : _thumbQuality == "medium" ? "मीडियम" : "हाई HD"}'
+                      : 'Song: $_audioQuality • Artwork: $_thumbQuality',
+                  icon: Icons.high_quality_rounded,
                   accentColor: const Color(0xFF00E5FF),
                   children: [
-                    Wrap(
-                      spacing: 10,
-                      runSpacing: 10,
+                    Text(
+                      _lang.isHindi ? 'गाना डाउनलोड क्वालिटी (Audio Bitrate):' : 'Song Download Quality:',
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
                       children: [
-                        _buildThemeOptionChip(
-                          mode: AppThemeMode.light,
-                          title: _lang.isHindi ? 'लाइट' : 'Light',
-                          subtitle: 'Clean Bright',
-                          icon: Icons.light_mode_rounded,
-                          color: const Color(0xFFFFB300),
-                        ),
-                        _buildThemeOptionChip(
-                          mode: AppThemeMode.dark,
-                          title: _lang.isHindi ? 'डार्क' : 'Dark',
-                          subtitle: 'AMOLED Black',
-                          icon: Icons.dark_mode_rounded,
-                          color: const Color(0xFF9E9E9E),
-                        ),
-                        _buildThemeOptionChip(
-                          mode: AppThemeMode.transparent,
-                          title: _lang.isHindi ? 'ट्रांसपेरेंट' : 'Transparent',
-                          subtitle: 'Glassmorphism',
-                          icon: Icons.blur_on_rounded,
-                          color: const Color(0xFF00E5FF),
-                        ),
-                        _buildThemeOptionChip(
-                          mode: AppThemeMode.defaultMode,
-                          title: _lang.isHindi ? 'डिफ़ॉल्ट' : 'Default',
-                          subtitle: 'Cyberpunk Neon',
-                          icon: Icons.flash_on_rounded,
-                          color: const Color(0xFFFF2A6D),
-                        ),
+                        _buildQualityChip('320kbps', '320k (अल्ट्रा HD)'),
+                        const SizedBox(width: 8),
+                        _buildQualityChip('160kbps', '160k (उच्च)'),
+                        const SizedBox(width: 8),
+                        _buildQualityChip('96kbps', '96k (सेवर)'),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    const Divider(color: Colors.white10),
+                    const SizedBox(height: 8),
+                    Text(
+                      _lang.isHindi ? 'थंबनेल डाउनलोड क्वालिटी (Artwork Space):' : 'Thumbnail Artwork Quality:',
+                      style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        _buildThumbQualityChip('low', _lang.isHindi ? 'लो (50x50)' : 'Low'),
+                        const SizedBox(width: 8),
+                        _buildThumbQualityChip('medium', _lang.isHindi ? 'मीडियम (150px)' : 'Medium'),
+                        const SizedBox(width: 8),
+                        _buildThumbQualityChip('high', _lang.isHindi ? 'हाई (500px)' : 'High HD'),
                       ],
                     ),
                   ],
@@ -884,9 +916,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 12),
 
-                // ================================================================
-                // EXPANDABLE ACCORDION SECTION 3: 💾 Storage, Cache & Vault
-                // ================================================================
+                // 4. 💾 Storage, Cache & Vault
                 _buildAccordionCard(
                   title: _lang.t('storage_vault'),
                   subtitle: '${(_tempCacheMB + _permStorageMB).toStringAsFixed(1)} MB total app data',
@@ -964,105 +994,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ],
                 ),
 
-                // ================================================================
-                // DEDICATED APP SHARE SECTION: 📲 दोस्तों के साथ शेयर करें
-                // ================================================================
-                _buildAccordionCard(
-                  title: _lang.isHindi ? 'दोस्तों के साथ ऐप शेयर करें' : 'Share App with Friends',
-                  subtitle: _lang.isHindi ? 'WhatsApp, Telegram या Bluetooth से भेजें' : 'Share via WhatsApp, Telegram & more',
-                  icon: Icons.share_rounded,
-                  accentColor: const Color(0xFFFF007F),
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            const Color(0xFFFF007F).withOpacity(0.12),
-                            const Color(0xFF00E5FF).withOpacity(0.08),
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFFF007F).withOpacity(0.3)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: const Color(0xFFFF007F).withOpacity(0.2),
-                                ),
-                                child: const Icon(Icons.favorite_rounded, color: Color(0xFFFF007F), size: 20),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _lang.isHindi ? 'अभी सुनो - 100% फ्री एवं एड-फ्री म्यूजिक' : 'Abhi Suno - 100% Free & Ad-Free',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
-                                    ),
-                                    Text(
-                                      _lang.isHindi ? 'अपने दोस्तों और परिवार को भी बेहतरीन संगीत से जोड़ें' : 'Invite your friends to enjoy pure lossless audio',
-                                      style: const TextStyle(color: Colors.white60, fontSize: 11),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          SizedBox(
-                            width: double.infinity,
-                            child: Tactile3DWrapper(
-                              onTap: _shareApp,
-                              scaleElevation: 1.03,
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF25D366), Color(0xFF128C7E)],
-                                  ),
-                                  borderRadius: BorderRadius.circular(12),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF25D366).withOpacity(0.4),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.share_rounded, color: Colors.white, size: 20),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _lang.isHindi ? '1-क्लिक में WhatsApp पर शेयर करें' : 'Share on WhatsApp & Apps',
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-
                 const SizedBox(height: 12),
 
-                // ================================================================
-                // EXPANDABLE ACCORDION SECTION 4: 🔄 App Updates & Version
-                // ================================================================
+                // 5. 🔄 App Updates & Version
                 _buildAccordionCard(
                   title: _lang.t('updates'),
                   subtitle: 'v$_installedVersion (${_updateInfo?.hasUpdate == true ? "New Update Available!" : "Up to date"})',
@@ -1161,9 +1095,101 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 12),
 
-                // ================================================================
-                // DEDICATED FULL-PAGE NAVIGATION: ℹ️ About & Developer
-                // ================================================================
+                // 6. 📲 दोस्तों के साथ शेयर करें (Share App)
+                _buildAccordionCard(
+                  title: _lang.isHindi ? 'दोस्तों के साथ ऐप शेयर करें' : 'Share App with Friends',
+                  subtitle: _lang.isHindi ? 'WhatsApp, Telegram या Bluetooth से भेजें' : 'Share via WhatsApp, Telegram & more',
+                  icon: Icons.share_rounded,
+                  accentColor: const Color(0xFFFF007F),
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFFF007F).withOpacity(0.12),
+                            const Color(0xFF00E5FF).withOpacity(0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFFF007F).withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: const Color(0xFFFF007F).withOpacity(0.2),
+                                ),
+                                child: const Icon(Icons.favorite_rounded, color: Color(0xFFFF007F), size: 20),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _lang.isHindi ? 'अभी सुनो - 100% फ्री एवं एड-फ्री म्यूजिक' : 'Abhi Suno - 100% Free & Ad-Free',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    Text(
+                                      _lang.isHindi ? 'अपने दोस्तों और परिवार को भी बेहतरीन संगीत से जोड़ें' : 'Invite your friends to enjoy pure lossless audio',
+                                      style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          SizedBox(
+                            width: double.infinity,
+                            child: Tactile3DWrapper(
+                              onTap: _shareApp,
+                              scaleElevation: 1.03,
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF25D366), Color(0xFF128C7E)],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF25D366).withOpacity(0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 4),
+                                    ),
+                                  ],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(Icons.share_rounded, color: Colors.white, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      _lang.isHindi ? '1-क्लिक में WhatsApp पर शेयर करें' : 'Share on WhatsApp & Apps',
+                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // 7. ℹ️ About & Developer
                 Tactile3DWrapper(
                   onTap: () {
                     Navigator.of(context).push(
@@ -1297,6 +1323,104 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (isSelected)
               Icon(Icons.check_circle_rounded, color: color, size: 16),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQualityChip(String bitrate, String label) {
+    final isSelected = _audioQuality == bitrate;
+    return Expanded(
+      child: Tactile3DWrapper(
+        onTap: () => _saveAudioQuality(bitrate),
+        scaleElevation: 1.05,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF00E5FF).withOpacity(0.18) : Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF00E5FF) : Colors.white12,
+              width: isSelected ? 1.6 : 1.0,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF00E5FF).withOpacity(0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFF00E5FF) : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 11,
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(height: 3),
+                const Icon(Icons.check_circle_rounded, color: Color(0xFF00E5FF), size: 12),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbQualityChip(String quality, String label) {
+    final isSelected = _thumbQuality == quality;
+    return Expanded(
+      child: Tactile3DWrapper(
+        onTap: () => _saveThumbnailQuality(quality),
+        scaleElevation: 1.05,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFFFF9100).withOpacity(0.18) : Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected ? const Color(0xFFFF9100) : Colors.white12,
+              width: isSelected ? 1.6 : 1.0,
+            ),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFFFF9100).withOpacity(0.25),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? const Color(0xFFFF9100) : Colors.white70,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 11,
+                ),
+              ),
+              if (isSelected) ...[
+                const SizedBox(height: 3),
+                const Icon(Icons.check_circle_rounded, color: Color(0xFFFF9100), size: 12),
+              ],
+            ],
+          ),
         ),
       ),
     );
