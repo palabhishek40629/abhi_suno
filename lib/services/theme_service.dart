@@ -8,6 +8,28 @@ enum AppThemeMode {
 }
 
 class ThemeService extends ChangeNotifier {
+  String get currentTheme {
+    switch (_currentMode) {
+      case AppThemeMode.light:
+        return 'light';
+      case AppThemeMode.transparent:
+        return 'transparent';
+      case AppThemeMode.dark:
+      default:
+        return 'dark';
+    }
+  }
+
+  void updateTheme(String theme) {
+    if (theme == 'light') {
+      setTheme(AppThemeMode.light);
+    } else if (theme == 'transparent') {
+      setTheme(AppThemeMode.transparent);
+    } else {
+      setTheme(AppThemeMode.dark);
+    }
+  }
+
   static final ThemeService _instance = ThemeService._internal();
   factory ThemeService() => _instance;
   ThemeService._internal() {

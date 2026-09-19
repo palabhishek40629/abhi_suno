@@ -256,11 +256,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _refreshLiveTrending() async {
     try {
       final results = await Future.wait([
-        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getTrendingHindi(), timeout: const Duration(seconds: 5), fallback: []),
-        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getBollywoodRomantic(), timeout: const Duration(seconds: 5), fallback: []),
-        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getRetroClassics(), timeout: const Duration(seconds: 5), fallback: []),
-        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getPunjabiHits(), timeout: const Duration(seconds: 5), fallback: []),
-        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getHindiLofi(), timeout: const Duration(seconds: 5), fallback: []),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getTrendingHindi(), timeout: const Duration(seconds: 5), fallback: <SongModel>[]),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getBollywoodRomantic(), timeout: const Duration(seconds: 5), fallback: <SongModel>[]),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getRetroClassics(), timeout: const Duration(seconds: 5), fallback: <SongModel>[]),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getPunjabiHits(), timeout: const Duration(seconds: 5), fallback: <SongModel>[]),
+        PerformanceGuard.safeAsync<List<SongModel>>(_musicService.getHindiLofi(), timeout: const Duration(seconds: 5), fallback: <SongModel>[]),
       ]);
 
       if (mounted) {

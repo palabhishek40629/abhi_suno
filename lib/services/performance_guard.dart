@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 
 class PerformanceGuard with WidgetsBindingObserver {
@@ -7,10 +6,10 @@ class PerformanceGuard with WidgetsBindingObserver {
   factory PerformanceGuard() => _instance;
   PerformanceGuard._internal();
 
-  bool _initialized = false;
-  Timer? _watchdogTimer;
+  static bool _initialized = false;
+  static Timer? _watchdogTimer;
 
-  void initialize() {
+  static void initialize() {
     if (_initialized) return;
     _initialized = true;
 
@@ -19,7 +18,7 @@ class PerformanceGuard with WidgetsBindingObserver {
     PaintingBinding.instance.imageCache.maximumSize = 100; // max 100 thumbnail items in memory
 
     // 2. Register lifecycle observer to release memory on backgrounding
-    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addObserver(_instance);
 
     // 3. Periodic memory and task watchdog every 30 seconds
     _watchdogTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
@@ -27,7 +26,7 @@ class PerformanceGuard with WidgetsBindingObserver {
     });
   }
 
-  void _runRoutineMaintenance() {
+  static void _runRoutineMaintenance() {
     try {
       final currentSize = PaintingBinding.instance.imageCache.currentSizeBytes;
       if (currentSize > 35 * 1024 * 1024) {
@@ -47,20 +46,15 @@ class PerformanceGuard with WidgetsBindingObserver {
   }
 
   /// Helper to execute network calls with strict timeout protection to prevent UI freezes
-  static Future<T?> safeAsync<T>(
-    Future<T> Function() action, {
+  static Future<T> safeAsync<T>(
+    Future<T> future, {
     Duration timeout = const Duration(seconds: 7),
-    T? fallback,
+    required T fallback,
   }) async {
     try {
-      return await action().timeout(timeout, onTimeout: () => fallback as T);
+      return await future.timeout(timeout, onTimeout: () => fallback);
     } catch (_) {
       return fallback;
     }
-  }
-
-  void dispose() {
-    _watchdogTimer?.cancel();
-    WidgetsBinding.instance.removeObserver(this);
   }
 }
