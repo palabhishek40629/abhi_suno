@@ -42,5 +42,18 @@ class ShareHelper {
       });
     } catch (_) {}
   }
+
+  static Future<void> shareApp() async {
+    try {
+      final text = '🎧 Abhi Suno — 100% फ्री और बिना किसी विज्ञापन वाला म्यूज़िक ऐप!\n\n'
+          '✨ 320kbps अल्ट्रा HD साउंड, अनलिमिटेड डाउनलोड्स, लिरिक्स और पार्टी रूम!\n'
+          '📲 अभी डाउनलोड करें: https://github.com/palabhishek40629/abhi_suno/releases\n\n'
+          'निर्माता: Abhishek Pal (Computer Science & Engineering Student)';
+      await _channel.invokeMethod('shareText', {
+        'text': text,
+        'title': 'Share Abhi Suno App',
+      });
+    } catch (_) {}
+  }
 }
 

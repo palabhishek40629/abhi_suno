@@ -9,6 +9,7 @@ import '../services/playlist_service.dart';
 import '../services/device_audio_service.dart';
 import '../services/favorites_service.dart';
 import '../services/language_service.dart';
+import '../widgets/tactile_3d_wrapper.dart';
 
 class LibraryScreen extends StatefulWidget {
   final AbhiAudioHandler audioHandler;

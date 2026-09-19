@@ -47,6 +47,14 @@ class LanguageService extends ChangeNotifier {
   String get currentCode => _currentCode;
   bool get isHindi => _currentCode == 'hi' || _currentCode == 'bho' || _currentCode == 'raj' || _currentCode == 'har';
 
+  String get currentLanguageName {
+    final match = supportedLanguages.firstWhere(
+      (l) => l.code == _currentCode,
+      orElse: () => const LanguageInfo(code: 'hi', nativeName: 'हिन्दी', englishName: 'Hindi'),
+    );
+    return '${match.nativeName} (${match.englishName})';
+  }
+
   Future<void> _loadLanguagePreference() async {
     try {
       final prefs = await SharedPreferences.getInstance();
