@@ -6,7 +6,7 @@ class ScreenBubbleCelebration extends StatefulWidget {
 
   const ScreenBubbleCelebration({Key? key, required this.onComplete}) : super(key: key);
 
-  /// Helper to trigger the full-screen celebration from any context
+  /// Helper to trigger the floating like-button clone celebration
   static void show(BuildContext context) {
     OverlayEntry? entry;
     entry = OverlayEntry(
@@ -27,43 +27,26 @@ class ScreenBubbleCelebration extends StatefulWidget {
 class _ScreenBubbleCelebrationState extends State<ScreenBubbleCelebration>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
-  final List<_Bubble> _bubbles = [];
-  final Random _random = Random();
-
-  final List<Color> _bubbleColors = const [
-    Color(0xFFFF2A6D), // Neon Pink
-    Color(0xFFFF0055), // Radiant Crimson
-    Color(0xFFFFD700), // Amber Gold
-    Color(0xFF00E5FF), // Electric Cyan
-    Color(0xFFFF758C), // Rose Pink
-    Color(0xFFBA68C8), // Violet Glow
-  ];
+  final List<_FloatingHeartClone> _clones = [];
 
   @override
   void initState() {
     super.initState();
 
-    // Generate 36 colorful glowing bubbles dispersed across the entire screen
-    for (int i = 0; i < 36; i++) {
-      _bubbles.add(_Bubble(
-        startXRatio: _random.nextDouble(),
-        startYRatio: 0.6 + _random.nextDouble() * 0.45,
-        driftX: (_random.nextDouble() - 0.5) * 160.0,
-        floatDistance: 250.0 + _random.nextDouble() * 450.0,
-        size: 14.0 + _random.nextDouble() * 26.0,
-        color: _bubbleColors[_random.nextInt(_bubbleColors.length)],
-        delayRatio: _random.nextDouble() * 0.25,
-        isHeart: i % 3 == 0,
-      ));
-    }
+    // Exactly 3 elegant floating replicas of the like button!
+    _clones.add(_FloatingHeartClone(driftX: -18, speedFactor: 1.0, scale: 0.95, delayRatio: 0.0));
+    _clones.add(_FloatingHeartClone(driftX: 12, speedFactor: 1.15, scale: 1.1, delayRatio: 0.12));
+    _clones.add(_FloatingHeartClone(driftX: -6, speedFactor: 0.85, scale: 0.85, delayRatio: 0.22));
 
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1400),
+      duration: const Duration(milliseconds: 1100),
     );
 
     _controller.forward().then((_) {
-      if (mounted) widget.onComplete();
+      if (mounted) {
+        widget.onComplete();
+      }
     });
   }
 
@@ -76,6 +59,8 @@ class _ScreenBubbleCelebrationState extends State<ScreenBubbleCelebration>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final startX = size.width * 0.72;
+    final startY = size.height * 0.52;
 
     return IgnorePointer(
       child: AnimatedBuilder(
@@ -83,62 +68,53 @@ class _ScreenBubbleCelebrationState extends State<ScreenBubbleCelebration>
         builder: (context, _) {
           final t = _controller.value;
 
-          return SizedBox(
-            width: size.width,
-            height: size.height,
-            child: Stack(
-              children: _bubbles.map((b) {
-                if (t < b.delayRatio) return const SizedBox.shrink();
+          return Stack(
+            children: _clones.map((clone) {
+              final progress = ((t - clone.delayRatio) / (1.0 - clone.delayRatio)).clamp(0.0, 1.0);
+              if (progress <= 0.0) return const SizedBox.shrink();
 
-                final localT = ((t - b.delayRatio) / (1.0 - b.delayRatio)).clamp(0.0, 1.0);
-                final curved = Curves.easeOutCubic.transform(localT);
+              // Smooth rise upwards
+              final currentY = startY - (progress * 160.0 * clone.speedFactor);
+              // Subtle sine-wave wobble
+              final currentX = startX + clone.driftX + (sin(progress * pi * 2.5) * 14.0);
+              final opacity = (1.0 - progress).clamp(0.0, 1.0);
+              final scale = (clone.scale * (0.8 + 0.4 * progress));
 
-                final x = (b.startXRatio * size.width) + (b.driftX * curved);
-                final y = (b.startYRatio * size.height) - (b.floatDistance * curved);
-                final opacity = sin(localT * pi).clamp(0.0, 1.0);
-                final scale = 0.5 + (sin(localT * pi * 0.8) * 0.7);
-
-                return Positioned(
-                  left: x,
-                  top: y,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Transform.scale(
-                      scale: scale,
-                      child: Container(
-                        width: b.size,
-                        height: b.size,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.9),
-                              b.color.withOpacity(0.8),
-                              b.color.withOpacity(0.2),
-                            ],
-                            stops: const [0.0, 0.6, 1.0],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: b.color.withOpacity(0.6),
-                              blurRadius: 12,
-                              spreadRadius: 2,
-                            ),
-                          ],
+              return Positioned(
+                left: currentX,
+                top: currentY,
+                child: Opacity(
+                  opacity: opacity,
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFFFF2A6D), Color(0xFFFF007F)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        child: b.isHeart
-                            ? Icon(
-                                Icons.favorite_rounded,
-                                size: b.size * 0.55,
-                                color: Colors.white,
-                              )
-                            : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFF2A6D).withOpacity(0.6 * opacity),
+                            blurRadius: 14,
+                            spreadRadius: 2,
+                          ),
+                        ],
+                      ),
+                      child: const Icon(
+                        Icons.favorite_rounded,
+                        color: Colors.white,
+                        size: 22,
                       ),
                     ),
                   ),
-                );
-              }).toList(),
-            ),
+                ),
+              );
+            }).toList(),
           );
         },
       ),
@@ -146,24 +122,16 @@ class _ScreenBubbleCelebrationState extends State<ScreenBubbleCelebration>
   }
 }
 
-class _Bubble {
-  final double startXRatio;
-  final double startYRatio;
+class _FloatingHeartClone {
   final double driftX;
-  final double floatDistance;
-  final double size;
-  final Color color;
+  final double speedFactor;
+  final double scale;
   final double delayRatio;
-  final bool isHeart;
 
-  _Bubble({
-    required this.startXRatio,
-    required this.startYRatio,
+  _FloatingHeartClone({
     required this.driftX,
-    required this.floatDistance,
-    required this.size,
-    required this.color,
+    required this.speedFactor,
+    required this.scale,
     required this.delayRatio,
-    required this.isHeart,
   });
 }

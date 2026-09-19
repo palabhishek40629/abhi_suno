@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../utils/app_constants.dart';
 
@@ -32,8 +33,8 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
 
     _controller.forward();
 
-    // Fast transition (~0.9s total) to Home screen
-    Timer(const Duration(milliseconds: 950), () {
+    // Fast transition (~1.0s) into the main app
+    Timer(const Duration(milliseconds: 1100), () {
       if (mounted) {
         widget.onFinish();
       }
@@ -49,26 +50,43 @@ class _AnimatedSplashScreenState extends State<AnimatedSplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: SizedBox.expand(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: Image.asset(
-            'assets/images/startup_wide.png',
-            width: double.infinity,
-            height: double.infinity,
-            fit: BoxFit.cover, // 100% Full-Screen Edge-to-Edge Fill! Zero Letterboxing!
-            errorBuilder: (_, __, ___) => Image.asset(
-              AppConstants.startupAsset,
-              width: double.infinity,
-              height: double.infinity,
+      backgroundColor: const Color(0xFF09090D),
+      body: FadeTransition(
+        opacity: _fadeAnimation,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Layer 1: Ambient Blurred Background Glow (No black borders; seamlessly matches poster colors)
+            Image.asset(
+              'assets/images/startup_wide.png',
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Image.asset(
-                AppConstants.logoAsset,
-                fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF0B0D14)),
+            ),
+            BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 36, sigmaY: 36),
+              child: Container(
+                color: Colors.black.withOpacity(0.55),
               ),
             ),
-          ),
+            // Layer 2: 100% Crisp, Complete, Uncut & Unzoomed Poster in Center
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
+                child: Image.asset(
+                  'assets/images/startup_wide.png',
+                  fit: BoxFit.contain, // Complete poster without ANY zoom or cuts!
+                  errorBuilder: (_, __, ___) => Image.asset(
+                    AppConstants.startupAsset,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Image.asset(
+                      AppConstants.logoAsset,
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -1,3 +1,5 @@
+import android.app.PictureInPictureParams
+import android.util.Rational
 package com.abhishekpal.abhisuno
 
 import android.app.Activity
@@ -62,6 +64,21 @@ class MainActivity: AudioServiceActivity() {
         // Production Native Channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, NATIVE_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
+                                "enterPip" -> {
+                    try {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            val params = PictureInPictureParams.Builder()
+                                .setAspectRatio(Rational(16, 9))
+                                .build()
+                            val entered = enterPictureInPictureMode(params)
+                            result.success(entered)
+                        } else {
+                            result.success(false)
+                        }
+                    } catch (e: Exception) {
+                        result.error("PIP_ERROR", e.message, null)
+                    }
+                }
                 "getAppVersion" -> {
                     try {
                         val pInfo = packageManager.getPackageInfo(packageName, 0)

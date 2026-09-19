@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:lottie/lottie.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
 import '../services/download_service.dart';
@@ -19,17 +21,37 @@ class NowPlayingScreen extends StatefulWidget {
   State<NowPlayingScreen> createState() => _NowPlayingScreenState();
 }
 
-class _NowPlayingScreenState extends State<NowPlayingScreen> {
+class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerProviderStateMixin {
   final DownloadService _downloadService = DownloadService();
   final FavoritesService _favoritesService = FavoritesService();
+  static const MethodChannel _nativeChannel = MethodChannel('com.abhishekpal.abhisuno/native');
+
   bool _isDownloading = false;
   double _downloadPercent = 0.0;
   bool _isDownloaded = false;
+
+  late AnimationController _lottieController;
 
   @override
   void initState() {
     super.initState();
     _checkDownloadStatus();
+
+    _lottieController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+
+    final song = widget.audioHandler.currentSong;
+    if (song != null && _favoritesService.isFavorite(song.id)) {
+      _lottieController.value = 0.5;
+    }
+  }
+
+  @override
+  void dispose() {
+    _lottieController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkDownloadStatus() async {
@@ -40,6 +62,20 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         setState(() => _isDownloaded = downloaded);
       }
     }
+  }
+
+  Future<void> _enterPictureInPicture() async {
+    try {
+      final bool? entered = await _nativeChannel.invokeMethod<bool>('enterPip');
+      if (entered != true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(LanguageService().isHindi ? 'पिक्चर-इन-पिक्चर शुरू हुआ' : 'Floating Player active'),
+            backgroundColor: const Color(0xFF00E5FF),
+          ),
+        );
+      }
+    } catch (_) {}
   }
 
   void _triggerDownload(SongModel song) async {
@@ -77,7 +113,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ? 'Gaana app me download ho gaya! Offline sun sakte hain.'
                 : 'Download nahi ho paya, kripya dobara koshish karein.',
           ),
-          backgroundColor: success ? const Color(0xFF05D9E8) : Colors.redAccent,
+          backgroundColor: success ? const Color(0xFF00E5FF) : Colors.redAccent,
         ),
       );
     }
@@ -127,10 +163,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         ),
                       ),
                       TextButton.icon(
-                        icon: const Icon(Icons.add, color: Color(0xFF05D9E8), size: 18),
+                        icon: const Icon(Icons.add, color: Color(0xFF00E5FF), size: 18),
                         label: Text(
                           isHindi ? 'नई प्लेलिस्ट' : 'New',
-                          style: const TextStyle(color: Color(0xFF05D9E8)),
+                          style: const TextStyle(color: Color(0xFF00E5FF)),
                         ),
                         onPressed: () {
                           Navigator.pop(ctx);
@@ -159,18 +195,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               color: Colors.white10,
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.queue_music_rounded, color: Color(0xFF05D9E8), size: 20),
+                            child: const Icon(Icons.queue_music_rounded, color: Color(0xFF00E5FF), size: 20),
                           ),
                           title: Text(p.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                           subtitle: Text('${p.songs.length} ${isHindi ? "गाने" : "songs"}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                          trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF05D9E8)),
+                          trailing: const Icon(Icons.add_circle_outline_rounded, color: Color(0xFF00E5FF)),
                           onTap: () async {
                             await playlistService.addSongToPlaylist(p.id, song);
                             if (mounted) {
                               Navigator.pop(ctx);
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
-                                  backgroundColor: const Color(0xFF05D9E8),
+                                  backgroundColor: const Color(0xFF00E5FF),
                                   content: Text(isHindi ? '"${p.name}" में गाना जुड़ गया!' : 'Added to "${p.name}"!'),
                                 ),
                               );
@@ -208,7 +244,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             hintText: isHindi ? 'प्लेलिस्ट का नाम' : 'Playlist name',
             hintStyle: const TextStyle(color: Colors.white38),
             enabledBorder: const UnderlineInputBorder(
-              borderSide: BorderSide(color: Color(0xFF05D9E8)),
+              borderSide: BorderSide(color: Color(0xFF00E5FF)),
             ),
           ),
         ),
@@ -219,7 +255,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF05D9E8),
+              backgroundColor: const Color(0xFF00E5FF),
               foregroundColor: Colors.black,
             ),
             onPressed: () async {
@@ -231,7 +267,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   Navigator.pop(ctx);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      backgroundColor: const Color(0xFF05D9E8),
+                      backgroundColor: const Color(0xFF00E5FF),
                       content: Text(isHindi ? '"$name" बन गई और गाना जुड़ गया!' : 'Playlist "$name" created!'),
                     ),
                   );
@@ -253,6 +289,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    const primaryCyan = Color(0xFF00E5FF);
+    const primaryPink = Color(0xFFFF2A6D);
+
     return StreamBuilder<SongModel?>(
       stream: widget.audioHandler.currentSongStream,
       initialData: widget.audioHandler.currentSong,
@@ -277,15 +316,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Color(0xFF1F1124), // Rich deep magenta ambient
-                  Color(0xFF0D0D0E), // Obsidian black
+                  Color(0xFF1B0E23), // Deep radiant obsidian magenta
+                  Color(0xFF0B0D13), // Pure obsidian black
                 ],
               ),
             ),
             child: SafeArea(
               child: Column(
                 children: [
-                  // Top App Bar
+                  // Top App Bar with PiP Floating Button
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
@@ -317,10 +356,34 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             ),
                           ],
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.playlist_add_rounded, color: Colors.white, size: 28),
-                          tooltip: 'Add to Playlist',
-                          onPressed: () => _showAddToPlaylistSheet(song),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // FLOATING PICTURE-IN-PICTURE (PiP) BUTTON
+                            Container(
+                              margin: const EdgeInsets.only(right: 6),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    primaryCyan.withOpacity(0.25),
+                                    primaryPink.withOpacity(0.15),
+                                  ],
+                                ),
+                                border: Border.all(color: primaryCyan.withOpacity(0.4)),
+                              ),
+                              child: IconButton(
+                                icon: const Icon(Icons.picture_in_picture_alt_rounded, color: primaryCyan, size: 20),
+                                tooltip: 'Floating Mini Player (PiP)',
+                                onPressed: _enterPictureInPicture,
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.playlist_add_rounded, color: Colors.white, size: 28),
+                              tooltip: 'Add to Playlist',
+                              onPressed: () => _showAddToPlaylistSheet(song),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -337,12 +400,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFF00E5FF).withOpacity(0.25),
+                            color: primaryCyan.withOpacity(0.25),
                             blurRadius: 32,
                             offset: const Offset(0, 16),
                           ),
                           BoxShadow(
-                            color: const Color(0xFFFF2A6D).withOpacity(0.18),
+                            color: primaryPink.withOpacity(0.18),
                             blurRadius: 28,
                             offset: const Offset(0, -6),
                           ),
@@ -369,7 +432,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
                   const Spacer(),
 
-                  // Title, Artist, Radiant Like Button, Download & Share
+                  // Middle Row: Title, Artist, Lottie Like Button & In-App Download (Share moved to bottom!)
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Row(
@@ -403,7 +466,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           ),
                         ),
 
-                        // RADIANT GLOWING LIKE BUTTON (Play-Button Style + Screen-Wide Bubble Celebration)
+                        // LOTTIE LIKE BUTTON (Using User's exact LottieFiles Animation + Rising 3-Clone Animation)
                         AnimatedBuilder(
                           animation: _favoritesService,
                           builder: (context, _) {
@@ -412,13 +475,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               onTap: () async {
                                 final added = await _favoritesService.toggleFavorite(song);
                                 if (added) {
+                                  _lottieController.animateTo(0.5, curve: Curves.easeOut);
                                   ScreenBubbleCelebration.show(context);
+                                } else {
+                                  _lottieController.animateTo(1.0, curve: Curves.easeIn).then((_) {
+                                    if (mounted) _lottieController.reset();
+                                  });
                                 }
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       duration: const Duration(seconds: 1),
-                                      backgroundColor: added ? const Color(0xFFFF2A6D) : Colors.grey.shade900,
+                                      backgroundColor: added ? primaryPink : Colors.grey.shade900,
                                       content: Text(
                                         added
                                             ? (LanguageService().isHindi ? 'पसंदीदा में जोड़ा गया!' : 'Added to Favorites!')
@@ -429,48 +497,59 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                 }
                               },
                               child: Container(
-                                width: 44,
-                                height: 44,
-                                margin: const EdgeInsets.symmetric(horizontal: 4),
+                                width: 48,
+                                height: 48,
+                                margin: const EdgeInsets.symmetric(horizontal: 6),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: isFav
-                                        ? [const Color(0xFFFF2A6D), const Color(0xFFFF007F)]
-                                        : [const Color(0xFF00E5FF), const Color(0xFF0077FE)],
+                                        ? [primaryPink, const Color(0xFFFF007F)]
+                                        : [primaryCyan, const Color(0xFF0077FE)],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: (isFav ? const Color(0xFFFF2A6D) : const Color(0xFF00E5FF)).withOpacity(0.45),
+                                      color: (isFav ? primaryPink : primaryCyan).withOpacity(0.45),
                                       blurRadius: 14,
                                       offset: const Offset(0, 4),
                                     ),
                                   ],
                                 ),
-                                child: Icon(
-                                  isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                  color: Colors.white,
-                                  size: 22,
+                                child: ClipOval(
+                                  child: Center(
+                                    child: Lottie.asset(
+                                      'assets/animations/like_heart.json',
+                                      controller: _lottieController,
+                                      width: 44,
+                                      height: 44,
+                                      fit: BoxFit.contain,
+                                      errorBuilder: (_, __, ___) => Icon(
+                                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                                        color: Colors.white,
+                                        size: 24,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             );
                           },
                         ),
 
-                        // In-App Download Button
+                        // RADIANT IN-APP DOWNLOAD BUTTON
                         _isDownloading
                             ? SizedBox(
-                                width: 34,
-                                height: 34,
+                                width: 38,
+                                height: 38,
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
                                     CircularProgressIndicator(
                                       value: _downloadPercent,
                                       strokeWidth: 3,
-                                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF05D9E8)),
+                                      valueColor: const AlwaysStoppedAnimation<Color>(primaryCyan),
                                     ),
                                     Text(
                                       '${(_downloadPercent * 100).toInt()}%',
@@ -479,28 +558,39 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                   ],
                                 ),
                               )
-                            : IconButton(
-                                icon: Icon(
-                                  _isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
-                                  color: _isDownloaded ? const Color(0xFF05D9E8) : Colors.white70,
-                                  size: 26,
+                            : Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: _isDownloaded
+                                        ? [const Color(0xFF00E676), const Color(0xFF00B0FF)]
+                                        : [Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.04)],
+                                  ),
+                                  border: Border.all(
+                                    color: _isDownloaded ? const Color(0xFF00E676) : Colors.white24,
+                                  ),
+                                  boxShadow: [
+                                    if (_isDownloaded)
+                                      BoxShadow(
+                                        color: const Color(0xFF00E676).withOpacity(0.4),
+                                        blurRadius: 12,
+                                        offset: const Offset(0, 3),
+                                      ),
+                                  ],
                                 ),
-                                tooltip: 'App me Download Karein',
-                                onPressed: () => _triggerDownload(song),
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  icon: Icon(
+                                    _isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
+                                    color: _isDownloaded ? Colors.black : Colors.white,
+                                    size: 22,
+                                  ),
+                                  tooltip: 'App me Download Karein',
+                                  onPressed: () => _triggerDownload(song),
+                                ),
                               ),
-
-                        // Share Button
-                        IconButton(
-                          icon: const Icon(Icons.share_rounded, color: Colors.white70, size: 24),
-                          tooltip: 'Share Song',
-                          onPressed: () {
-                            ShareHelper.shareSong(
-                              title: song.title,
-                              artist: song.artist,
-                              streamUrl: song.streamUrl,
-                            );
-                          },
-                        ),
                       ],
                     ),
                   ),
@@ -525,7 +615,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                 trackHeight: 3.5,
                                 thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
                                 overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-                                activeTrackColor: const Color(0xFF05D9E8),
+                                activeTrackColor: primaryCyan,
                                 inactiveTrackColor: Colors.white12,
                                 thumbColor: Colors.white,
                               ),
@@ -560,7 +650,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     },
                   ),
 
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 8),
 
                   // Main Controls: Shuffle, Previous, Big Radiant Play/Pause, Next, Loop
                   Padding(
@@ -568,25 +658,55 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
+                        // Radiant Shuffle Button
                         StreamBuilder<bool>(
                           stream: widget.audioHandler.shuffleStream,
                           initialData: widget.audioHandler.isShuffle,
                           builder: (context, snapshot) {
                             final isShuffle = snapshot.data ?? widget.audioHandler.isShuffle;
-                            return IconButton(
-                              icon: Icon(
-                                Icons.shuffle_rounded,
-                                color: isShuffle ? const Color(0xFF05D9E8) : Colors.white54,
-                                size: 24,
+                            return Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isShuffle ? primaryCyan.withOpacity(0.2) : Colors.transparent,
+                                border: Border.all(
+                                  color: isShuffle ? primaryCyan : Colors.transparent,
+                                  width: 1.2,
+                                ),
+                                boxShadow: isShuffle
+                                    ? [
+                                        BoxShadow(
+                                          color: primaryCyan.withOpacity(0.3),
+                                          blurRadius: 8,
+                                        ),
+                                      ]
+                                    : null,
                               ),
-                              tooltip: isShuffle ? 'Shuffle On' : 'Shuffle Off',
-                              onPressed: () => widget.audioHandler.toggleShuffle(),
+                              child: IconButton(
+                                icon: Icon(
+                                  Icons.shuffle_rounded,
+                                  color: isShuffle ? primaryCyan : Colors.white54,
+                                  size: 24,
+                                ),
+                                tooltip: isShuffle ? 'Shuffle On' : 'Shuffle Off',
+                                onPressed: () => widget.audioHandler.toggleShuffle(),
+                              ),
                             );
                           },
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 40),
-                          onPressed: () => widget.audioHandler.skipToPrevious(),
+                        // Radiant Previous Button
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.08),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 30),
+                            onPressed: () => widget.audioHandler.skipToPrevious(),
+                          ),
                         ),
                         // Big Play / Pause Button with Radiant Cyan & Magenta Gradient
                         StreamBuilder<bool>(
@@ -628,23 +748,53 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             );
                           },
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 40),
-                          onPressed: () => widget.audioHandler.skipToNext(),
+                        // Radiant Next Button
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withOpacity(0.08),
+                            border: Border.all(color: Colors.white12),
+                          ),
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 30),
+                            onPressed: () => widget.audioHandler.skipToNext(),
+                          ),
                         ),
+                        // Radiant Repeat Button
                         StreamBuilder<bool>(
                           stream: widget.audioHandler.repeatStream,
                           initialData: widget.audioHandler.isRepeat,
                           builder: (context, snapshot) {
                             final isRepeat = snapshot.data ?? widget.audioHandler.isRepeat;
-                            return IconButton(
-                              icon: Icon(
-                                isRepeat ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                                color: isRepeat ? const Color(0xFF05D9E8) : Colors.white54,
-                                size: 24,
+                            return Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isRepeat ? primaryCyan.withOpacity(0.2) : Colors.transparent,
+                                border: Border.all(
+                                  color: isRepeat ? primaryCyan : Colors.transparent,
+                                  width: 1.2,
+                                ),
+                                boxShadow: isRepeat
+                                    ? [
+                                        BoxShadow(
+                                          color: primaryCyan.withOpacity(0.3),
+                                          blurRadius: 8,
+                                        ),
+                                      ]
+                                    : null,
                               ),
-                              tooltip: isRepeat ? 'Repeat On' : 'Repeat Off',
-                              onPressed: () => widget.audioHandler.toggleRepeat(),
+                              child: IconButton(
+                                icon: Icon(
+                                  isRepeat ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                                  color: isRepeat ? primaryCyan : Colors.white54,
+                                  size: 24,
+                                ),
+                                tooltip: isRepeat ? 'Repeat On' : 'Repeat Off',
+                                onPressed: () => widget.audioHandler.toggleRepeat(),
+                              ),
                             );
                           },
                         ),
@@ -654,23 +804,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
                   const Spacer(),
 
-                  // Bottom Action Utilities: Synchronized Karaoke Lyrics & 10-Band Equalizer
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  // ================================================================
+                  // DEDICATED BOTTOM SECTION: Lyrics, 10-Band EQ & Share Song!
+                  // ================================================================
+                  Container(
+                    margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.04),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white12),
+                    ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        // Synchronized Karaoke Lyrics Toggle Button
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white10,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          ),
-                          icon: const Icon(Icons.lyrics_rounded, size: 18, color: Color(0xFF00E5FF)),
-                          label: Text(LanguageService().t('lyrics'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                          onPressed: () {
+                        // Synchronized Karaoke Lyrics
+                        InkWell(
+                          onTap: () {
                             showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
@@ -678,18 +828,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               builder: (_) => LyricsSheet(song: song, audioHandler: widget.audioHandler),
                             );
                           },
-                        ),
-                        // 10-Band Equalizer & 3D Spatial Surround
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white10,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: primaryCyan.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: primaryCyan.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.lyrics_rounded, size: 16, color: primaryCyan),
+                                const SizedBox(width: 6),
+                                Text(
+                                  LanguageService().t('lyrics'),
+                                  style: const TextStyle(color: primaryCyan, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
                           ),
-                          icon: const Icon(Icons.equalizer_rounded, size: 18, color: Color(0xFFFF2A6D)),
-                          label: Text(LanguageService().t('equalizer'), style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-                          onPressed: () {
+                        ),
+
+                        // 10-Band Equalizer & 3D Surround
+                        InkWell(
+                          onTap: () {
                             showModalBottomSheet(
                               context: context,
                               isScrollControlled: true,
@@ -697,6 +859,63 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               builder: (_) => EqualizerSheet(audioHandler: widget.audioHandler),
                             );
                           },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: primaryPink.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: primaryPink.withOpacity(0.4)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.equalizer_rounded, size: 16, color: primaryPink),
+                                const SizedBox(width: 6),
+                                Text(
+                                  LanguageService().t('equalizer'),
+                                  style: const TextStyle(color: primaryPink, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                        // DEDICATED RADIANT SHARE BUTTON IN BOTTOM SECTION!
+                        InkWell(
+                          onTap: () {
+                            ShareHelper.shareSong(
+                              title: song.title,
+                              artist: song.artist,
+                              streamUrl: song.streamUrl,
+                            );
+                          },
+                          borderRadius: BorderRadius.circular(16),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFF9100), Color(0xFFFF5252)],
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFF9100).withOpacity(0.4),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.share_rounded, size: 16, color: Colors.white),
+                                const SizedBox(width: 6),
+                                Text(
+                                  LanguageService().isHindi ? 'शेयर करें' : 'Share',
+                                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ],
                     ),

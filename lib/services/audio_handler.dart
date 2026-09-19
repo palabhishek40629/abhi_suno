@@ -185,12 +185,13 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   // ============================================================================
   // PLAYBACK DECISION FLOW (Immediately Stops Current Track First!)
   // ============================================================================
+  int _playGeneration = 0;
+
   Future<void> playSong(SongModel song, {List<SongModel>? queue}) async {
+    final gen = ++_playGeneration;
     try {
-      // 1. CRITICAL REQUIREMENT: Instantly stop any currently playing track first!
-      if (_player.playing) {
-        await _player.stop();
-      }
+      // 1. Non-blocking pause/stop so UI thread never freezes
+      _player.pause();
 
       _hasPreloadedNext = false;
       _applyVolumeNormalization(song);
@@ -219,11 +220,11 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         _playlistSubject.add(List.unmodifiable(_playlist));
       }
 
+      // 2. IMMEDIATELY update current song & media item so UI switches in 0ms!
       _currentSong = song;
       _currentSongSubject.add(_currentSong);
-
-      // Record to smart history for Home Continue Listening
       _historyService.recordSongPlay(song);
+      _historyService.updatePosition(Duration.zero);
 
       final item = MediaItem(
         id: song.id,
@@ -235,16 +236,15 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       );
       mediaItem.add(item);
 
-      // 1. Check PERMANENT local downloaded file
+      // 3. Resolve audio source
+      AudioSource? source;
       if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
-        await _player.setAudioSource(AudioSource.file(song.localFilePath!));
+        source = AudioSource.file(song.localFilePath!);
       } else {
-        // 2. Check full cached file in local cache tiers
         final cachedFile = await _cacheManager.getCachedSongFile(song.id);
         if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 500000) {
-          await _player.setAudioSource(AudioSource.file(cachedFile.path));
+          source = AudioSource.file(cachedFile.path);
         } else {
-          // 3. Play direct high-speed Akamai CDN audio stream URL
           String? audioUrl = song.streamUrl;
           if (audioUrl == null || audioUrl.isEmpty) {
             audioUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: '320kbps');
@@ -257,16 +257,21 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
               'Accept': '*/*',
               'Connection': 'keep-alive',
             };
-            await _player.setAudioSource(
-              AudioSource.uri(Uri.parse(audioUrl), headers: streamHeaders),
-            );
-
-            // Stream caching to local cache in background
+            source = AudioSource.uri(Uri.parse(audioUrl), headers: streamHeaders);
           }
         }
       }
 
-      await _player.play();
+      // Discard stale audio operations if user tapped another track
+      if (gen != _playGeneration) return;
+
+      if (source != null) {
+        // 4. CRITICAL: Always start every track from 0:00! Never resume previous song's position!
+        await _player.setAudioSource(source, initialPosition: Duration.zero);
+        await _player.seek(Duration.zero);
+        if (gen != _playGeneration) return;
+        await _player.play();
+      }
     } catch (_) {}
   }
 
