@@ -1,6 +1,7 @@
+package com.abhishekpal.abhisuno
+
 import android.app.PictureInPictureParams
 import android.util.Rational
-package com.abhishekpal.abhisuno
 
 import android.app.Activity
 import android.content.Intent
@@ -84,7 +85,7 @@ class MainActivity: AudioServiceActivity() {
                         val pInfo = packageManager.getPackageInfo(packageName, 0)
                         result.success(pInfo.versionName)
                     } catch (e: Exception) {
-                        result.success("3.4.0")
+                        result.success("3.6.0")
                     }
                 }
                 "getInitialSharedText" -> {
