@@ -191,7 +191,20 @@ class MusicService {
         .trim();
   }
 
+  Future<List<String>> getAutocompleteSuggestions(String query) async {
+    return await _saavnAdapter.getAutocompleteSuggestions(query);
+  }
+
+  Future<List<JioSaavnPlaylist>> searchPlaylists(String query) async {
+    return await _saavnAdapter.searchPlaylists(query);
+  }
+
+  Future<List<SongModel>> getPlaylistSongs(String playlistId) async {
+    return await _saavnAdapter.getPlaylistSongs(playlistId);
+  }
+
   void dispose() {
     _yt.close();
   }
 }
+

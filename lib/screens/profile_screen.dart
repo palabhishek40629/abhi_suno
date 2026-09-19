@@ -12,6 +12,7 @@ import '../services/update_service.dart';
 import '../utils/app_constants.dart';
 import '../widgets/equalizer_sheet.dart';
 import '../widgets/tactile_3d_wrapper.dart';
+import '../widgets/party_room_card.dart';
 import '../services/audio_handler.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -702,6 +703,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ],
                 ),
+
+                const SizedBox(height: 12),
+
+                // ================================================================
+                // EXPANDABLE SECTION: 👥 पार्टी रूम ("सुनो साथ में" / Listen Together)
+                // ================================================================
+                PartyRoomCard(audioHandler: widget.audioHandler),
 
                 const SizedBox(height: 12),
 

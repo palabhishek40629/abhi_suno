@@ -16,4 +16,17 @@ class ShareHelper {
       });
     } catch (_) {}
   }
+
+  static Future<void> shareCustomText({
+    required String text,
+    required String title,
+  }) async {
+    try {
+      await _channel.invokeMethod('shareText', {
+        'text': text,
+        'title': title,
+      });
+    } catch (_) {}
+  }
 }
+

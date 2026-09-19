@@ -219,6 +219,17 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           }
         }
         _playlistSubject.add(List.unmodifiable(_playlist));
+      } else {
+        final idx = _playlist.indexWhere((s) => s.id == song.id);
+        if (idx != -1) {
+          _currentIndex = idx;
+        } else {
+          _playlist.add(song);
+          _originalPlaylist.add(song);
+          _currentIndex = _playlist.length - 1;
+          _playlistSubject.add(List.unmodifiable(_playlist));
+          _autoFetchMoreSongs(song);
+        }
       }
 
       // 2. IMMEDIATELY update current song & media item so UI switches in 0ms!
@@ -335,10 +346,17 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> skipToNext() async {
-    if (_playlist.isEmpty) return;
+    if (_playlist.isEmpty) {
+      if (_currentSong != null) _autoFetchMoreSongs(_currentSong!);
+      return;
+    }
+    if (_playlist.length - _currentIndex <= 2 && _currentSong != null) {
+      _autoFetchMoreSongs(_currentSong!);
+    }
     int nextIdx = _currentIndex + 1;
     if (nextIdx >= _playlist.length) nextIdx = 0;
-    await playSong(_playlist[nextIdx]);
+    _currentIndex = nextIdx;
+    await playSong(_playlist[_currentIndex]);
   }
 
   @override
@@ -350,7 +368,26 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     }
     int prevIdx = _currentIndex - 1;
     if (prevIdx < 0) prevIdx = _playlist.length - 1;
-    await playSong(_playlist[prevIdx]);
+    _currentIndex = prevIdx;
+    await playSong(_playlist[_currentIndex]);
+  }
+
+  Future<void> _autoFetchMoreSongs(SongModel baseSong) async {
+    try {
+      final cleanQ = '${baseSong.title} ${baseSong.artist}'.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+      final more = await JioSaavnAdapter().searchSongs(cleanQ, limit: 10);
+      if (more.isNotEmpty) {
+        final existingIds = _playlist.map((s) => s.id).toSet();
+        for (final m in more) {
+          if (!existingIds.contains(m.id)) {
+            _playlist.add(m);
+            _originalPlaylist.add(m);
+            existingIds.add(m.id);
+          }
+        }
+        _playlistSubject.add(List.unmodifiable(_playlist));
+      }
+    } catch (_) {}
   }
 
   Future<void> setVolume(double vol) async {
@@ -369,3 +406,4 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     } catch (_) {}
   }
 }
+

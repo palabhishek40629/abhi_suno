@@ -46,8 +46,9 @@ class UpdateService {
         return version;
       }
     } catch (_) {}
-    return '3.7.0';
+    return '3.8.0';
   }
+
 
   /// Check GitHub Releases asynchronously for updates
   Future<UpdateInfo?> checkForUpdate() async {

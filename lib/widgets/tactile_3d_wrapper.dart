@@ -10,17 +10,19 @@ class Tactile3DWrapper extends StatefulWidget {
   final BorderRadius? borderRadius;
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
+  final bool isCircle;
 
   const Tactile3DWrapper({
     Key? key,
     required this.child,
     this.onTap,
     this.onLongPress,
-    this.scaleElevation = 1.05,
+    this.scaleElevation = 1.15,
     this.glowColor,
     this.borderRadius,
     this.padding,
     this.margin,
+    this.isCircle = false,
   }) : super(key: key);
 
   @override
@@ -46,7 +48,7 @@ class _Tactile3DWrapperState extends State<Tactile3DWrapper> {
   @override
   Widget build(BuildContext context) {
     final glow = widget.glowColor ?? const Color(0xFF00E5FF);
-    final radius = widget.borderRadius ?? BorderRadius.circular(16);
+    final radius = widget.isCircle ? null : (widget.borderRadius ?? BorderRadius.circular(16));
 
     return Container(
       margin: widget.margin,
@@ -60,25 +62,27 @@ class _Tactile3DWrapperState extends State<Tactile3DWrapper> {
           behavior: HitTestBehavior.opaque,
           child: AnimatedScale(
             scale: _isPressed ? widget.scaleElevation : 1.0,
-            duration: const Duration(milliseconds: 140),
+            duration: const Duration(milliseconds: 180),
             curve: Curves.easeOutBack,
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 140),
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOutBack,
               padding: widget.padding,
               decoration: BoxDecoration(
+                shape: widget.isCircle ? BoxShape.circle : BoxShape.rectangle,
                 borderRadius: radius,
                 boxShadow: _isPressed
                     ? [
                         BoxShadow(
-                          color: glow.withOpacity(0.55),
-                          blurRadius: 22,
-                          spreadRadius: 1.5,
-                          offset: const Offset(0, 6),
+                          color: glow.withOpacity(0.65),
+                          blurRadius: 28,
+                          spreadRadius: 3.0,
+                          offset: const Offset(0, 8),
                         ),
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.6),
-                          blurRadius: 14,
-                          offset: const Offset(0, 4),
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
                         ),
                       ]
                     : [],
@@ -91,3 +95,4 @@ class _Tactile3DWrapperState extends State<Tactile3DWrapper> {
     );
   }
 }
+

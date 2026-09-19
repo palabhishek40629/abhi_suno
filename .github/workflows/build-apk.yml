@@ -39,48 +39,44 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.7.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v3.8.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v3.7.0-release
-          path: AbhiSuno-v3.7.0-release.apk
+          name: AbhiSuno-v3.8.0-release
+          path: AbhiSuno-v3.8.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v3.7.0-${{ github.run_number }}
-          name: "Abhi Suno v3.7.0 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v3.8.0-${{ github.run_number }}
+          name: "Abhi Suno v3.8.0 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v3.7.0 Master Edition - Next-Gen Audio & DJ Engine
+            ### 🎧 Abhi Suno v3.8.0 Master Edition - Party Room & Instant Next Engine
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 🎧 **Next-Gen Audio & DJ Engine:**
-              - **Seamless DJ Crossfade (0ms Silence):** Smooth 2-8s crossfade blending tracks with zero delay.
-              - **Dynamic Volume Normalization (ReplayGain):** Intelligently balances volume differences between 70s-90s retro tracks and punchy modern beats.
-              - **10-Band Studio Equalizer & 3D Spatial Surround:** 10 sliders (32Hz to 16kHz), bass boost dial, 3D surround sound toggle, and tailored acoustic presets (Car Audio Ultra-Bass, Vocal Booster, Rock Stage, Acoustic Live, Dolby Atmos 360°).
-            - ⚡ **Instant Play & Auto Fullscreen Player:**
-              - Tapping any track anywhere instantly halts prior audio and launches the immersive fullscreen NowPlaying player.
-            - 🌟 **Edge-to-Edge Fullscreen HD Startup Poster:**
-              - Startup splash uses high-res edge-to-edge rendering with full screen coverage.
-            - ♾️ **Continuous Infinite Discovery Feed:**
-              - Fast, non-blocking endless feed scrolling on Home Screen powered by an in-memory 10-minute cache and 23-genre query pool.
-            - 🌅 **Time-of-Day AI Curated Mix:**
-              - Dynamically shifts across Morning Energy, Afternoon Focus, Sunset Golden Classics, and Midnight Lo-Fi based on user time.
-            - 💖 **Radiant Glowing Buttons & Fullscreen Bubble Celebration:**
-              - Glowing neon gradients on Like and Play buttons; liking any track unleashes 36 floating radiant neon spheres and hearts across the device screen.
-            - 👤 **Customizable User Profile:**
-              - Edit name modal dialog and native photo gallery picker directly from Profile Screen.
-            - 🗂️ **Collapsible Accordion Settings:**
-              - Organized into clean expandable accordion cards inside Profile Screen.
-            - 🎤 **Synchronized Karaoke Lyrics Engine:**
-              - Multi-engine search with synchronized glowing line-by-line karaoke tracking.
+            - 🚀 **Zero-Delay Next Track Playback:**
+              - Next button instantly transitions from 0:00 to the subsequent track with 0 delay.
+              - Auto-fetches next recommendation batch seamlessly when queue reaches last 2 tracks, completely eliminating single-track looping.
+            - 👥 **पार्टी रूम ("सुनो साथ में" / Listen Together):**
+              - Positioned elegantly in Profile Screen directly between Audio & DJ Engine and Language Settings.
+              - **Option 1 (पार्टी रूम बनाएं / Generate Code):** Generates unique 6-digit party room code (`ABHI-XXXX`), real-time device counter, and WhatsApp invite sharing.
+              - **Option 2 (रूम से जुड़ें / Join Room):** Modal input to connect unlimited devices to stream music together in real-time.
+            - 🔍 **Live JioSaavn Instant Search & Playlists:**
+              - Autocomplete search suggestions directly powered by JioSaavn live catalog (<50ms response).
+              - Dedicated **Playlists & Albums** section in search results with cover art, track count badge, and instant tap-to-play.
+              - Added `playlists` filter chip alongside `all`, `songs`, and `artists`.
+            - 💎 **Radiant Glowing Buttons App-Wide:**
+              - All playback controls (Previous, Next, Shuffle, Repeat, Like, Song Share, Download, Lyrics, EQ, PiP) styled with radiant circular gradients and luminous ambient drop shadows matching the Big Play button.
+            - 🌟 **Enhanced 3D Touch/Elevation Effect:**
+              - Noticeably smoother, larger 3D tactile elevation (`scaleElevation: 1.15`, `Curves.easeOutBack`, 28px radiant bloom) on touch across all controls and interactive cards.
 
-            **Direct APK Download:** `AbhiSuno-v3.7.0-release.apk`
-          files: AbhiSuno-v3.7.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v3.8.0-release.apk`
+          files: AbhiSuno-v3.8.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
+

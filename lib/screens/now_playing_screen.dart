@@ -331,9 +331,23 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        IconButton(
-                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 32),
-                          onPressed: () => Navigator.pop(context),
+                        Tactile3DWrapper(
+                          onTap: () => Navigator.pop(context),
+                          scaleElevation: 1.15,
+                          isCircle: true,
+                          glowColor: Colors.white,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: Colors.white.withOpacity(0.12),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white, size: 28),
+                            ),
+                          ),
                         ),
                         Column(
                           children: [
@@ -361,28 +375,62 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             // FLOATING PICTURE-IN-PICTURE (PiP) BUTTON
-                            Container(
-                              margin: const EdgeInsets.only(right: 6),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    primaryCyan.withOpacity(0.25),
-                                    primaryPink.withOpacity(0.15),
+                            Tactile3DWrapper(
+                              onTap: _enterPictureInPicture,
+                              scaleElevation: 1.15,
+                              isCircle: true,
+                              glowColor: primaryCyan,
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                margin: const EdgeInsets.only(right: 8),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF00E5FF), Color(0xFF00B0FF)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primaryCyan.withOpacity(0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 3),
+                                    ),
                                   ],
                                 ),
-                                border: Border.all(color: primaryCyan.withOpacity(0.4)),
-                              ),
-                              child: IconButton(
-                                icon: const Icon(Icons.picture_in_picture_alt_rounded, color: primaryCyan, size: 20),
-                                tooltip: 'Floating Mini Player (PiP)',
-                                onPressed: _enterPictureInPicture,
+                                child: const Center(
+                                  child: Icon(Icons.picture_in_picture_alt_rounded, color: Colors.black, size: 20),
+                                ),
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.playlist_add_rounded, color: Colors.white, size: 28),
-                              tooltip: 'Add to Playlist',
-                              onPressed: () => _showAddToPlaylistSheet(song),
+                            Tactile3DWrapper(
+                              onTap: () => _showAddToPlaylistSheet(song),
+                              scaleElevation: 1.15,
+                              isCircle: true,
+                              glowColor: primaryPink,
+                              child: Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFFFF2A6D), Color(0xFFFF7597)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: primaryPink.withOpacity(0.4),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.playlist_add_rounded, color: Colors.white, size: 22),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -492,28 +540,29 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                   );
                                 }
                               },
-                              scaleElevation: 1.08,
-                              borderRadius: BorderRadius.circular(24),
+                              scaleElevation: 1.15,
+                              isCircle: true,
+                              glowColor: primaryPink,
                               child: Container(
-                                width: 44,
-                                height: 44,
+                                width: 46,
+                                height: 46,
                                 margin: const EdgeInsets.symmetric(horizontal: 4),
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   gradient: LinearGradient(
                                     colors: isFav
                                         ? [primaryPink, const Color(0xFFFF007F)]
-                                        : [primaryCyan.withOpacity(0.25), Colors.white.withOpacity(0.08)],
+                                        : [const Color(0xFFFF2A6D).withOpacity(0.35), Colors.white.withOpacity(0.08)],
                                     begin: Alignment.topLeft,
                                     end: Alignment.bottomRight,
                                   ),
                                   border: Border.all(
-                                    color: isFav ? primaryPink : primaryCyan.withOpacity(0.6),
-                                    width: 1.4,
+                                    color: isFav ? primaryPink : const Color(0xFFFF2A6D).withOpacity(0.6),
+                                    width: 1.5,
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: (isFav ? primaryPink : primaryCyan).withOpacity(0.4),
+                                      color: (isFav ? primaryPink : const Color(0xFFFF2A6D)).withOpacity(0.4),
                                       blurRadius: 14,
                                       offset: const Offset(0, 3),
                                     ),
@@ -522,8 +571,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                 child: Center(
                                   child: Icon(
                                     isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                                    color: isFav ? Colors.white : primaryCyan,
-                                    size: 23,
+                                    color: isFav ? Colors.white : const Color(0xFFFF2A6D),
+                                    size: 24,
                                   ),
                                 ),
                               ),
@@ -540,31 +589,33 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                               streamUrl: song.streamUrl,
                             );
                           },
-                          scaleElevation: 1.08,
-                          borderRadius: BorderRadius.circular(24),
+                          scaleElevation: 1.15,
+                          isCircle: true,
+                          glowColor: const Color(0xFFFF9100),
                           child: Container(
-                            width: 44,
-                            height: 44,
+                            width: 46,
+                            height: 46,
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              gradient: LinearGradient(
+                              gradient: const LinearGradient(
                                 colors: [
-                                  const Color(0xFFFF9100).withOpacity(0.25),
-                                  const Color(0xFFFF5252).withOpacity(0.15),
+                                  Color(0xFFFF9100),
+                                  Color(0xFFFF5252),
                                 ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
                               ),
-                              border: Border.all(color: const Color(0xFFFF9100).withOpacity(0.6), width: 1.2),
                               boxShadow: [
                                 BoxShadow(
-                                  color: const Color(0xFFFF9100).withOpacity(0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
+                                  color: const Color(0xFFFF9100).withOpacity(0.4),
+                                  blurRadius: 14,
+                                  offset: const Offset(0, 3),
                                 ),
                               ],
                             ),
                             child: const Center(
-                              child: Icon(Icons.share_rounded, color: Color(0xFFFF9100), size: 21),
+                              child: Icon(Icons.share_rounded, color: Colors.white, size: 22),
                             ),
                           ),
                         ),
@@ -572,8 +623,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         // RADIANT IN-APP DOWNLOAD BUTTON
                         _isDownloading
                             ? SizedBox(
-                                width: 38,
-                                height: 38,
+                                width: 46,
+                                height: 46,
                                 child: Stack(
                                   alignment: Alignment.center,
                                   children: [
@@ -589,37 +640,42 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                   ],
                                 ),
                               )
-                            : Container(
-                                width: 44,
-                                height: 44,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: LinearGradient(
-                                    colors: _isDownloaded
-                                        ? [const Color(0xFF00E676), const Color(0xFF00B0FF)]
-                                        : [Colors.white.withOpacity(0.12), Colors.white.withOpacity(0.04)],
-                                  ),
-                                  border: Border.all(
-                                    color: _isDownloaded ? const Color(0xFF00E676) : Colors.white24,
-                                  ),
-                                  boxShadow: [
-                                    if (_isDownloaded)
+                            : Tactile3DWrapper(
+                                onTap: () => _triggerDownload(song),
+                                scaleElevation: 1.15,
+                                isCircle: true,
+                                glowColor: const Color(0xFF00E676),
+                                child: Container(
+                                  width: 46,
+                                  height: 46,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: LinearGradient(
+                                      colors: _isDownloaded
+                                          ? [const Color(0xFF00E676), const Color(0xFF00B0FF)]
+                                          : [const Color(0xFF00E676).withOpacity(0.35), Colors.white.withOpacity(0.08)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    border: Border.all(
+                                      color: _isDownloaded ? const Color(0xFF00E676) : const Color(0xFF00E676).withOpacity(0.6),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: [
                                       BoxShadow(
                                         color: const Color(0xFF00E676).withOpacity(0.4),
-                                        blurRadius: 12,
+                                        blurRadius: 14,
                                         offset: const Offset(0, 3),
                                       ),
-                                  ],
-                                ),
-                                child: IconButton(
-                                  padding: EdgeInsets.zero,
-                                  icon: Icon(
-                                    _isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
-                                    color: _isDownloaded ? Colors.black : Colors.white,
-                                    size: 22,
+                                    ],
                                   ),
-                                  tooltip: 'App me Download Karein',
-                                  onPressed: () => _triggerDownload(song),
+                                  child: Center(
+                                    child: Icon(
+                                      _isDownloaded ? Icons.download_done_rounded : Icons.download_rounded,
+                                      color: _isDownloaded ? Colors.black : const Color(0xFF00E676),
+                                      size: 23,
+                                    ),
+                                  ),
                                 ),
                               ),
                       ],
@@ -695,48 +751,73 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           initialData: widget.audioHandler.isShuffle,
                           builder: (context, snapshot) {
                             final isShuffle = snapshot.data ?? widget.audioHandler.isShuffle;
-                            return Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isShuffle ? primaryCyan.withOpacity(0.2) : Colors.transparent,
-                                border: Border.all(
-                                  color: isShuffle ? primaryCyan : Colors.transparent,
-                                  width: 1.2,
+                            return Tactile3DWrapper(
+                              onTap: () => widget.audioHandler.toggleShuffle(),
+                              scaleElevation: 1.15,
+                              isCircle: true,
+                              glowColor: primaryCyan,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: LinearGradient(
+                                    colors: isShuffle
+                                        ? [const Color(0xFF00E5FF), const Color(0xFF00B0FF)]
+                                        : [const Color(0xFF00E5FF).withOpacity(0.2), Colors.white.withOpacity(0.06)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  border: Border.all(
+                                    color: isShuffle ? const Color(0xFF00E5FF) : Colors.white24,
+                                    width: 1.4,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF00E5FF).withOpacity(isShuffle ? 0.45 : 0.15),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
                                 ),
-                                boxShadow: isShuffle
-                                    ? [
-                                        BoxShadow(
-                                          color: primaryCyan.withOpacity(0.3),
-                                          blurRadius: 8,
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  Icons.shuffle_rounded,
-                                  color: isShuffle ? primaryCyan : Colors.white54,
-                                  size: 24,
+                                child: Center(
+                                  child: Icon(
+                                    Icons.shuffle_rounded,
+                                    color: isShuffle ? Colors.black : Colors.white,
+                                    size: 22,
+                                  ),
                                 ),
-                                tooltip: isShuffle ? 'Shuffle On' : 'Shuffle Off',
-                                onPressed: () => widget.audioHandler.toggleShuffle(),
                               ),
                             );
                           },
                         ),
                         // Radiant Previous Button
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.08),
-                            border: Border.all(color: Colors.white12),
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.skip_previous_rounded, color: Colors.white, size: 30),
-                            onPressed: () => widget.audioHandler.skipToPrevious(),
+                        Tactile3DWrapper(
+                          onTap: () => widget.audioHandler.skipToPrevious(),
+                          scaleElevation: 1.15,
+                          isCircle: true,
+                          glowColor: const Color(0xFF7C4DFF),
+                          child: Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF7C4DFF), Color(0xFF536DFE)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF7C4DFF).withOpacity(0.45),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.skip_previous_rounded, color: Colors.white, size: 30),
+                            ),
                           ),
                         ),
                         // Big Play / Pause Button with Radiant Cyan & Magenta Gradient
@@ -745,58 +826,78 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           builder: (context, playSnapshot) {
                             final isPlaying = playSnapshot.data ?? widget.audioHandler.player.playing;
                             return Tactile3DWrapper(
-                              scaleElevation: 1.08,
-                              borderRadius: BorderRadius.circular(36),
+                              scaleElevation: 1.18,
+                              isCircle: true,
                               glowColor: const Color(0xFF00E5FF),
+                              onTap: () {
+                                if (isPlaying) {
+                                  widget.audioHandler.pause();
+                                } else {
+                                  widget.audioHandler.play();
+                                }
+                              },
                               child: Container(
-                              width: 68,
-                              height: 68,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: const LinearGradient(
-                                  colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF00E5FF).withOpacity(0.4),
-                                    blurRadius: 20,
-                                    offset: const Offset(0, 6),
+                                width: 70,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
                                   ),
-                                ],
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                  color: Colors.white,
-                                  size: 38,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF00E5FF).withOpacity(0.55),
+                                      blurRadius: 24,
+                                      spreadRadius: 2.0,
+                                      offset: const Offset(0, 6),
+                                    ),
+                                    BoxShadow(
+                                      color: const Color(0xFFFF2A6D).withOpacity(0.4),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
                                 ),
-                                onPressed: () {
-                                  if (isPlaying) {
-                                    widget.audioHandler.pause();
-                                  } else {
-                                    widget.audioHandler.play();
-                                  }
-                                },
+                                child: Center(
+                                  child: Icon(
+                                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                    color: Colors.white,
+                                    size: 40,
+                                  ),
+                                ),
                               ),
-                            ),
                             );
                           },
                         ),
                         // Radiant Next Button
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withOpacity(0.08),
-                            border: Border.all(color: Colors.white12),
-                          ),
-                          child: IconButton(
-                            padding: EdgeInsets.zero,
-                            icon: const Icon(Icons.skip_next_rounded, color: Colors.white, size: 30),
-                            onPressed: () => widget.audioHandler.skipToNext(),
+                        Tactile3DWrapper(
+                          onTap: () => widget.audioHandler.skipToNext(),
+                          scaleElevation: 1.15,
+                          isCircle: true,
+                          glowColor: const Color(0xFFFF2A6D),
+                          child: Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFFFF2A6D), Color(0xFFFF7597)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFFFF2A6D).withOpacity(0.45),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Icon(Icons.skip_next_rounded, color: Colors.white, size: 30),
+                            ),
                           ),
                         ),
                         // Radiant Repeat Button
@@ -805,31 +906,50 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                           initialData: widget.audioHandler.isRepeat,
                           builder: (context, snapshot) {
                             final isRepeat = snapshot.data ?? widget.audioHandler.isRepeat;
-                            return Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isRepeat ? primaryCyan.withOpacity(0.2) : Colors.transparent,
-                                border: Border.all(
-                                  color: isRepeat ? primaryCyan : Colors.transparent,
-                                  width: 1.2,
-                                ),
-                                boxShadow: isRepeat
-                                    ? [
-                                        BoxShadow(
-                                          color: primaryCyan.withOpacity(0.3),
-                                          blurRadius: 8,
+                            return Tactile3DWrapper(
+                              onTap: () => widget.audioHandler.toggleRepeat(),
+                              scaleElevation: 1.15,
+                              isCircle: true,
+                              glowColor: primaryPink,
+                              child: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: theme.brightness == Brightness.light
+                                      ? LinearGradient(
+                                          colors: isRepeat
+                                              ? [const Color(0xFFFF2A6D), const Color(0xFFFF7597)]
+                                              : [const Color(0xFFFF2A6D).withOpacity(0.2), Colors.black.withOpacity(0.06)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        )
+                                      : LinearGradient(
+                                          colors: isRepeat
+                                              ? [const Color(0xFFFF2A6D), const Color(0xFFFF7597)]
+                                              : [const Color(0xFFFF2A6D).withOpacity(0.2), Colors.white.withOpacity(0.06)],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
                                         ),
-                                      ]
-                                    : null,
-                              ),
-                              child: IconButton(
-                                icon: Icon(
-                                  isRepeat ? Icons.repeat_one_rounded : Icons.repeat_rounded,
-                                  color: isRepeat ? primaryCyan : Colors.white54,
-                                  size: 24,
+                                  border: Border.all(
+                                    color: isRepeat ? const Color(0xFFFF2A6D) : Colors.white24,
+                                    width: 1.4,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFFFF2A6D).withOpacity(isRepeat ? 0.45 : 0.15),
+                                      blurRadius: 14,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ],
                                 ),
-                                tooltip: isRepeat ? 'Repeat On' : 'Repeat Off',
-                                onPressed: () => widget.audioHandler.toggleRepeat(),
+                                child: Center(
+                                  child: Icon(
+                                    isRepeat ? Icons.repeat_one_rounded : Icons.repeat_rounded,
+                                    color: isRepeat ? Colors.white : Colors.white70,
+                                    size: 22,
+                                  ),
+                                ),
                               ),
                             );
                           },
@@ -855,7 +975,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
                         // Synchronized Karaoke Lyrics
-                        InkWell(
+                        Tactile3DWrapper(
                           onTap: () {
                             showModalBottomSheet(
                               context: context,
@@ -864,21 +984,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                               builder: (_) => LyricsSheet(song: song, audioHandler: widget.audioHandler),
                             );
                           },
-                          borderRadius: BorderRadius.circular(16),
+                          scaleElevation: 1.12,
+                          glowColor: primaryCyan,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: primaryCyan.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: primaryCyan.withOpacity(0.4)),
+                              gradient: LinearGradient(
+                                colors: [primaryCyan.withOpacity(0.25), const Color(0xFF00B0FF).withOpacity(0.12)],
+                              ),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: primaryCyan.withOpacity(0.6), width: 1.4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryCyan.withOpacity(0.25),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.lyrics_rounded, size: 16, color: primaryCyan),
-                                const SizedBox(width: 6),
+                                const Icon(Icons.lyrics_rounded, size: 18, color: primaryCyan),
+                                const SizedBox(width: 8),
                                 Text(
                                   LanguageService().t('lyrics'),
-                                  style: const TextStyle(color: primaryCyan, fontSize: 12, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(color: primaryCyan, fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
@@ -886,7 +1016,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                         ),
 
                         // 10-Band Equalizer & 3D Surround
-                        InkWell(
+                        Tactile3DWrapper(
                           onTap: () {
                             showModalBottomSheet(
                               context: context,
@@ -895,28 +1025,36 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                               builder: (_) => EqualizerSheet(audioHandler: widget.audioHandler),
                             );
                           },
-                          borderRadius: BorderRadius.circular(16),
+                          scaleElevation: 1.12,
+                          glowColor: primaryPink,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                             decoration: BoxDecoration(
-                              color: primaryPink.withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: primaryPink.withOpacity(0.4)),
+                              gradient: LinearGradient(
+                                colors: [primaryPink.withOpacity(0.25), const Color(0xFFFF007F).withOpacity(0.12)],
+                              ),
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border.all(color: primaryPink.withOpacity(0.6), width: 1.4),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: primaryPink.withOpacity(0.25),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.equalizer_rounded, size: 16, color: primaryPink),
-                                const SizedBox(width: 6),
+                                const Icon(Icons.equalizer_rounded, size: 18, color: primaryPink),
+                                const SizedBox(width: 8),
                                 Text(
                                   LanguageService().t('equalizer'),
-                                  style: const TextStyle(color: primaryPink, fontSize: 12, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(color: primaryPink, fontSize: 13, fontWeight: FontWeight.bold),
                                 ),
                               ],
                             ),
                           ),
                         ),
-
-
                       ],
                     ),
                   ),

@@ -9,6 +9,8 @@ import '../services/language_service.dart';
 import '../services/music_service.dart';
 import '../services/performance_guard.dart';
 import '../services/theme_service.dart';
+import '../services/audio_providers/jiosaavn_adapter.dart';
+import '../widgets/tactile_3d_wrapper.dart';
 
 class SearchScreen extends StatefulWidget {
   final AbhiAudioHandler audioHandler;
@@ -27,14 +29,16 @@ class _SearchScreenState extends State<SearchScreen> {
   final LanguageService _lang = LanguageService();
 
   List<SongModel> _results = [];
+  List<JioSaavnPlaylist> _playlistResults = [];
   List<String> _history = [];
   List<String> _liveSuggestions = [];
   bool _isSearching = false;
   bool _hasSearched = false;
-  String _activeFilter = 'all'; // 'all', 'songs', 'artists', 'playlists'
+  String _activeFilter = 'all'; // 'all', 'songs', 'playlists', 'artists'
 
   Timer? _debounceTimer;
   static const String _historyKey = 'abhi_suno_search_history';
+
 
   @override
   void initState() {
@@ -103,17 +107,12 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
-    _debounceTimer = Timer(const Duration(milliseconds: 350), () async {
+    _debounceTimer = Timer(const Duration(milliseconds: 120), () async {
       try {
-        final songs = await PerformanceGuard.safeAsync<List<SongModel>>(
-          _musicService.searchSongs(query),
-          timeout: const Duration(seconds: 4),
-          fallback: <SongModel>[],
-        );
+        final suggestions = await _musicService.getAutocompleteSuggestions(query);
         if (mounted) {
-          final titles = songs.map((s) => s.title).take(5).toList();
           setState(() {
-            _liveSuggestions = titles;
+            _liveSuggestions = suggestions;
           });
         }
       } catch (_) {}
@@ -134,14 +133,23 @@ class _SearchScreenState extends State<SearchScreen> {
     });
 
     try {
-      final res = await PerformanceGuard.safeAsync<List<SongModel>>(
-        _musicService.searchSongs(clean),
-        timeout: const Duration(seconds: 7),
-        fallback: <SongModel>[],
-      );
+      final futures = await Future.wait([
+        PerformanceGuard.safeAsync<List<SongModel>>(
+          _musicService.searchSongs(clean),
+          timeout: const Duration(seconds: 7),
+          fallback: <SongModel>[],
+        ),
+        PerformanceGuard.safeAsync<List<JioSaavnPlaylist>>(
+          _musicService.searchPlaylists(clean),
+          timeout: const Duration(seconds: 7),
+          fallback: <JioSaavnPlaylist>[],
+        ),
+      ]);
+
       if (mounted) {
         setState(() {
-          _results = res;
+          _results = futures[0] as List<SongModel>;
+          _playlistResults = futures[1] as List<JioSaavnPlaylist>;
           _isSearching = false;
         });
       }
@@ -151,6 +159,44 @@ class _SearchScreenState extends State<SearchScreen> {
       }
     }
   }
+
+  void _playPlaylist(JioSaavnPlaylist pl) async {
+    final isHindi = _lang.isHindi;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 2),
+        backgroundColor: const Color(0xFF00E5FF),
+        content: Text(
+          isHindi ? '"${pl.title}" के गाने लोड हो रहे हैं...' : 'Loading "${pl.title}" playlist...',
+          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+
+    try {
+      final songs = await _musicService.getPlaylistSongs(pl.id);
+      if (songs.isNotEmpty) {
+        widget.audioHandler.playSong(songs.first, queue: songs);
+        if (mounted) {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.redAccent,
+              content: Text(isHindi ? 'प्लेलिस्ट में कोई गाना नहीं मिला।' : 'No tracks found in this playlist.'),
+            ),
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
 
   void _confirmDeleteHistory(String query) {
     final isHindi = _lang.isHindi;
@@ -297,18 +343,23 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
 
-            // Filter Pills (All / Songs / Artists / Playlists)
+            // Filter Pills (All / Songs / Playlists / Artists)
             if (_hasSearched)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                child: Row(
-                  children: [
-                    _buildFilterChip('all', isHindi ? 'सभी' : 'All', primaryColor, textColor, cardColor),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('songs', isHindi ? 'गाने' : 'Songs', primaryColor, textColor, cardColor),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('artists', isHindi ? 'कलाकार' : 'Artists', primaryColor, textColor, cardColor),
-                  ],
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('all', isHindi ? 'सभी' : 'All', primaryColor, textColor, cardColor),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('songs', isHindi ? 'गाने' : 'Songs', primaryColor, textColor, cardColor),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('playlists', isHindi ? 'प्लेलिस्ट' : 'Playlists', primaryColor, textColor, cardColor),
+                      const SizedBox(width: 8),
+                      _buildFilterChip('artists', isHindi ? 'कलाकार' : 'Artists', primaryColor, textColor, cardColor),
+                    ],
+                  ),
                 ),
               ),
 
@@ -441,7 +492,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
               ),
 
-            // Search Results List
+            // Search Results View
             if (_hasSearched)
               Expanded(
                 child: _isSearching
@@ -450,68 +501,273 @@ class _SearchScreenState extends State<SearchScreen> {
                           valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
                         ),
                       )
-                    : displayResults.isEmpty
-                        ? Center(
-                            child: Text(
-                              isHindi
-                                  ? 'कोई गाना नहीं मिला। कृपया दूसरा नाम खोजें।'
-                                  : 'No songs found. Try a different query.',
-                              style: TextStyle(color: subtextColor),
-                            ),
-                          )
-                        : ListView.builder(
-                            physics: const BouncingScrollPhysics(),
-                            padding: const EdgeInsets.only(bottom: 90),
-                            itemCount: displayResults.length,
-                            itemBuilder: (context, index) {
-                              final song = displayResults[index];
-                              return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                                leading: ClipRRect(
-                                  borderRadius: BorderRadius.circular(8),
-                                  child: Image.network(
-                                    song.thumbnailUrl,
-                                    width: 52,
-                                    height: 52,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      width: 52,
-                                      height: 52,
-                                      color: Colors.grey.shade900,
-                                      child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                    : (_activeFilter == 'playlists'
+                        ? (_playlistResults.isEmpty
+                            ? Center(
+                                child: Text(
+                                  isHindi ? 'कोई प्लेलिस्ट नहीं मिली।' : 'No playlists found.',
+                                  style: TextStyle(color: subtextColor),
+                                ),
+                              )
+                            : ListView.builder(
+                                physics: const BouncingScrollPhysics(),
+                                padding: const EdgeInsets.only(left: 16, right: 16, bottom: 90, top: 8),
+                                itemCount: _playlistResults.length,
+                                itemBuilder: (context, index) {
+                                  final pl = _playlistResults[index];
+                                  return Tactile3DWrapper(
+                                    onTap: () => _playPlaylist(pl),
+                                    scaleElevation: 1.06,
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    borderRadius: BorderRadius.circular(16),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: cardColor,
+                                        borderRadius: BorderRadius.circular(16),
+                                        border: Border.all(color: Colors.white10),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          ClipRRect(
+                                            borderRadius: BorderRadius.circular(12),
+                                            child: Image.network(
+                                              pl.imageUrl,
+                                              width: 58,
+                                              height: 58,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                width: 58,
+                                                height: 58,
+                                                color: Colors.grey.shade900,
+                                                child: const Icon(Icons.album_rounded, color: Colors.white54),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 14),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  pl.title,
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(color: textColor, fontSize: 14, fontWeight: FontWeight.bold),
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  '${pl.subtitle} • ${pl.songCount > 0 ? "${pl.songCount} ${isHindi ? 'गाने' : 'songs'}" : (isHindi ? 'प्लेलिस्ट' : 'Playlist')}',
+                                                  maxLines: 1,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: TextStyle(color: subtextColor, fontSize: 12),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          IconButton(
+                                            icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor, size: 34),
+                                            onPressed: () => _playPlaylist(pl),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                                  );
+                                },
+                              ))
+                        : (displayResults.isEmpty && _playlistResults.isEmpty
+                            ? Center(
+                                child: Text(
+                                  isHindi
+                                      ? 'कोई परिणाम नहीं मिला। कृपया दूसरा नाम खोजें।'
+                                      : 'No results found. Try a different query.',
+                                  style: TextStyle(color: subtextColor),
                                 ),
-                                title: Text(
-                                  song.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
-                                ),
-                                subtitle: Text(
-                                  song.artist,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(color: subtextColor, fontSize: 12),
-                                ),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    IconButton(
-                                      icon: Icon(Icons.download_rounded, color: subtextColor, size: 22),
-                                      tooltip: _lang.t('download'),
-                                      onPressed: () => _downloadSong(song),
+                              )
+                            : ListView(
+                                physics: const BouncingScrollPhysics(),
+                                padding: const EdgeInsets.only(bottom: 90),
+                                children: [
+                                  // Playlists Section (Shown on 'all' tab when playlists exist)
+                                  if (_activeFilter == 'all' && _playlistResults.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              Icon(Icons.queue_music_rounded, color: primaryColor, size: 20),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                isHindi ? 'प्लेलिस्ट और एल्बम' : 'Playlists & Albums',
+                                                style: TextStyle(
+                                                  color: textColor,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          TextButton(
+                                            onPressed: () => setState(() => _activeFilter = 'playlists'),
+                                            child: Text(
+                                              isHindi ? 'सभी देखें' : 'See all',
+                                              style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    IconButton(
-                                      icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor, size: 32),
-                                      onPressed: () => _playSong(song),
+                                    SizedBox(
+                                      height: 180,
+                                      child: ListView.builder(
+                                        scrollDirection: Axis.horizontal,
+                                        physics: const BouncingScrollPhysics(),
+                                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                                        itemCount: _playlistResults.length,
+                                        itemBuilder: (context, idx) {
+                                          final pl = _playlistResults[idx];
+                                          return Tactile3DWrapper(
+                                            onTap: () => _playPlaylist(pl),
+                                            scaleElevation: 1.10,
+                                            borderRadius: BorderRadius.circular(16),
+                                            child: Container(
+                                              width: 132,
+                                              margin: const EdgeInsets.only(right: 12),
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Stack(
+                                                    children: [
+                                                      ClipRRect(
+                                                        borderRadius: BorderRadius.circular(14),
+                                                        child: Image.network(
+                                                          pl.imageUrl,
+                                                          width: 132,
+                                                          height: 120,
+                                                          fit: BoxFit.cover,
+                                                          errorBuilder: (_, __, ___) => Container(
+                                                            width: 132,
+                                                            height: 120,
+                                                            color: Colors.grey.shade900,
+                                                            child: const Icon(Icons.album_rounded, color: Colors.white54, size: 40),
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      if (pl.songCount > 0)
+                                                        Positioned(
+                                                          bottom: 6,
+                                                          right: 6,
+                                                          child: Container(
+                                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                            decoration: BoxDecoration(
+                                                              color: Colors.black.withOpacity(0.75),
+                                                              borderRadius: BorderRadius.circular(6),
+                                                            ),
+                                                            child: Text(
+                                                              '${pl.songCount}',
+                                                              style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 6),
+                                                  Text(
+                                                    pl.title,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(color: textColor, fontSize: 12, fontWeight: FontWeight.bold),
+                                                  ),
+                                                  Text(
+                                                    pl.subtitle,
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
+                                                    style: TextStyle(color: subtextColor, fontSize: 11),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                                     ),
                                   ],
-                                ),
-                                onTap: () => _playSong(song),
-                              );
-                            },
-                          ),
+
+                                  // Songs Section Header
+                                  if (displayResults.isNotEmpty) ...[
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.music_note_rounded, color: primaryColor, size: 20),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            isHindi ? 'गाने' : 'Songs',
+                                            style: TextStyle(
+                                              color: textColor,
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                          Text(
+                                            ' (${displayResults.length})',
+                                            style: TextStyle(color: subtextColor, fontSize: 13),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ...displayResults.map((song) {
+                                      return ListTile(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                                        leading: ClipRRect(
+                                          borderRadius: BorderRadius.circular(8),
+                                          child: Image.network(
+                                            song.thumbnailUrl,
+                                            width: 52,
+                                            height: 52,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (_, __, ___) => Container(
+                                              width: 52,
+                                              height: 52,
+                                              color: Colors.grey.shade900,
+                                              child: const Icon(Icons.music_note_rounded, color: Colors.white54),
+                                            ),
+                                          ),
+                                        ),
+                                        title: Text(
+                                          song.title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: textColor, fontWeight: FontWeight.w600),
+                                        ),
+                                        subtitle: Text(
+                                          song.artist,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(color: subtextColor, fontSize: 12),
+                                        ),
+                                        trailing: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: Icon(Icons.download_rounded, color: subtextColor, size: 22),
+                                              tooltip: _lang.t('download'),
+                                              onPressed: () => _downloadSong(song),
+                                            ),
+                                            IconButton(
+                                              icon: Icon(Icons.play_circle_fill_rounded, color: primaryColor, size: 32),
+                                              onPressed: () => _playSong(song),
+                                            ),
+                                          ],
+                                        ),
+                                        onTap: () => _playSong(song),
+                                      );
+                                    }).toList(),
+                                  ],
+                                ],
+                              ))),
               ),
           ],
         );
