@@ -109,8 +109,8 @@ jobs:
             - 🎵 **Spotify Reorderable Queue & 25° Angled Genre Cards:**
               - Live drag-and-drop queue reordering and filtered search in Downloads and Liked Songs.
 
-            **Direct APK Download:** `AbhiSuno-v4.1.0-release.apk`
-          files: AbhiSuno-v4.1.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.2.0-release.apk`
+          files: AbhiSuno-v4.2.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
