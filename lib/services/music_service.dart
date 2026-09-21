@@ -74,7 +74,7 @@ class MusicService {
     return [];
   }
 
-  /// Multi-Source Lyrics Engine (JioSaavn Official Lyrics + LRCLIB Synced LRC Timestamps)
+  /// Multi-Source Lyrics Engine (JioSaavn Official Lyrics + LRCLIB Synced LRC + OVH Fallback)
   Future<String> fetchLyrics(String title, String artist, {String? songId}) async {
     final cacheKey = '$title-$artist'.toLowerCase();
     if (_lyricsCache.containsKey(cacheKey)) {
@@ -99,7 +99,7 @@ class MusicService {
         .first
         .trim();
 
-    // 2. LRCLIB Fuzzy Search endpoint (synced LRC lines for karaoke)
+    // 2. LRCLIB Search with Title + Artist (7-second timeout)
     try {
       final searchUrl = Uri.parse(
         'https://lrclib.net/api/search?q=${Uri.encodeComponent("$cleanT $cleanA")}',
@@ -107,7 +107,7 @@ class MusicService {
       final res = await http.get(
         searchUrl,
         headers: {'User-Agent': 'AbhiSuno/4.1.0 (palabhishek40629@gmail.com)'},
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 7));
 
       if (res.statusCode == 200) {
         final List<dynamic> list = json.decode(res.body);
@@ -126,7 +126,36 @@ class MusicService {
       }
     } catch (_) {}
 
-    // 3. LRCLIB Exact Get endpoint
+    // 3. LRCLIB Search with Clean Title Alone (Matches 100% chartbusters regardless of artist formatting)
+    try {
+      if (cleanT.isNotEmpty && cleanT != title) {
+        final titleOnlyUrl = Uri.parse(
+          'https://lrclib.net/api/search?q=${Uri.encodeComponent(cleanT)}',
+        );
+        final res = await http.get(
+          titleOnlyUrl,
+          headers: {'User-Agent': 'AbhiSuno/4.1.0 (palabhishek40629@gmail.com)'},
+        ).timeout(const Duration(seconds: 6));
+
+        if (res.statusCode == 200) {
+          final List<dynamic> list = json.decode(res.body);
+          for (final item in list) {
+            if (item['syncedLyrics'] != null && item['syncedLyrics'].toString().trim().isNotEmpty) {
+              final lyrics = item['syncedLyrics'].toString();
+              _lyricsCache[cacheKey] = lyrics;
+              return lyrics;
+            }
+            if (item['plainLyrics'] != null && item['plainLyrics'].toString().trim().isNotEmpty) {
+              final lyrics = item['plainLyrics'].toString();
+              _lyricsCache[cacheKey] = lyrics;
+              return lyrics;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 4. LRCLIB Exact Get endpoint
     try {
       final exactUrl = Uri.parse(
         'https://lrclib.net/api/get?track_name=${Uri.encodeComponent(cleanT)}&artist_name=${Uri.encodeComponent(cleanA)}',
@@ -134,7 +163,7 @@ class MusicService {
       final res = await http.get(
         exactUrl,
         headers: {'User-Agent': 'AbhiSuno/4.1.0 (palabhishek40629@gmail.com)'},
-      ).timeout(const Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
         final data = json.decode(res.body);
@@ -151,7 +180,25 @@ class MusicService {
       }
     } catch (_) {}
 
-    // 4. Fallback lyrics
+    // 5. Lyrics.ovh Public Fallback API
+    try {
+      if (cleanA.isNotEmpty && cleanT.isNotEmpty) {
+        final ovhUrl = Uri.parse(
+          'https://api.lyrics.ovh/v1/${Uri.encodeComponent(cleanA)}/${Uri.encodeComponent(cleanT)}',
+        );
+        final res = await http.get(ovhUrl).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200) {
+          final data = json.decode(res.body);
+          if (data['lyrics'] != null && data['lyrics'].toString().trim().isNotEmpty) {
+            final lyrics = data['lyrics'].toString().trim();
+            _lyricsCache[cacheKey] = lyrics;
+            return lyrics;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 6. Graceful Fallback
     const fallback = 'गीत के बोल उपलब्ध नहीं हैं।\n\nअभी सुनो - शुद्ध भारतीय संगीत प्लेयर';
     _lyricsCache[cacheKey] = fallback;
     return fallback;
@@ -196,9 +243,9 @@ class MusicService {
 
   String _cleanTitle(String title) {
     return title
-        .replaceAll(RegExp(r'\(.*?(\\bofficial|video|audio|lyric|song|4k|hd|remix).*?\)', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\[.*?(\\bofficial|video|audio|lyric|song|4k|hd|remix).*?\]', caseSensitive: false), '')
-        .replaceAll(RegExp(r'\|.*\$'), '')
+        .replaceAll(RegExp(r'\(.*?\)|\[.*?\]'), '')
+        .replaceAll(RegExp(r'["\-_|]'), ' ')
+        .replaceAll(RegExp(r'\s+'), ' ')
         .trim();
   }
 

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "123586201518",
+    "project_id": "abhi-suno",
+    "storage_bucket": "abhi-suno.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:123586201518:android:ce063cce38445c21d7ea3f",
+        "android_client_info": {
+          "package_name": "com.abhishekpal.abhisuno"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUWNeWdYdDBW0E0eFZV4fMuwNRDuRRS2I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

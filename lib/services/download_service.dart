@@ -75,8 +75,8 @@ class DownloadService extends ChangeNotifier {
       }
 
       final prefs = await SharedPreferences.getInstance();
-      final audioQuality = prefs.getString('audio_download_quality_pref') ?? '320kbps';
-      final thumbQuality = prefs.getString('thumbnail_download_quality_pref') ?? 'low';
+      final audioQuality = prefs.getString('audio_download_quality_pref') ?? '160kbps';
+      final thumbQuality = prefs.getString('thumbnail_download_quality_pref') ?? '200px';
 
       // Check temporary cache tiers to avoid redundant download
       final cachedFile = await _cacheManager.getCachedSongFile(song.id);
@@ -130,19 +130,18 @@ class DownloadService extends ChangeNotifier {
       song.localFilePath = filePath;
       song.isDownloaded = true;
 
-      // Download thumbnail in user-chosen quality (default low/optimized to save space)
+      // Download thumbnail in 200px crisp quality (never degraded 50x50)
       final thumbPath = '${permDir.path}/$safeName.jpg';
       try {
         if (song.thumbnailUrl.isNotEmpty) {
           String thumbDownloadUrl = song.thumbnailUrl;
-          if (thumbQuality == 'low') {
-            thumbDownloadUrl = thumbDownloadUrl
-                .replaceAll('500x500', '50x50')
-                .replaceAll('150x150', '50x50');
-          } else if (thumbQuality == 'medium') {
-            thumbDownloadUrl = thumbDownloadUrl.replaceAll('500x500', '150x150');
-          } else {
+          if (thumbQuality == 'high') {
             thumbDownloadUrl = thumbDownloadUrl.replaceAll('150x150', '500x500');
+          } else {
+            // Default crisp ~200px thumbnail (150x150 or 250x250)
+            thumbDownloadUrl = thumbDownloadUrl
+                .replaceAll('500x500', '250x250')
+                .replaceAll('50x50', '250x250');
           }
           await _dio.download(thumbDownloadUrl, thumbPath);
           if (File(thumbPath).existsSync() && File(thumbPath).lengthSync() > 100) {

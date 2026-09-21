@@ -16,8 +16,8 @@ class _DownloadSettingsScreenState extends State<DownloadSettingsScreen> {
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
 
-  String _audioQuality = '320kbps';
-  String _thumbQuality = 'low';
+  String _audioQuality = '160kbps';
+  String _thumbQuality = '200px';
   bool _downloadLyrics = true;
 
   @override
@@ -32,8 +32,8 @@ class _DownloadSettingsScreenState extends State<DownloadSettingsScreen> {
       setState(() {
         _audioQuality = prefs.getString('audio_download_quality_pref') ??
             prefs.getString('audio_quality_pref') ??
-            '320kbps';
-        _thumbQuality = prefs.getString('thumbnail_download_quality_pref') ?? 'low';
+            '160kbps';
+        _thumbQuality = prefs.getString('thumbnail_download_quality_pref') ?? '200px';
         _downloadLyrics = prefs.getBool('auto_download_lyrics') ?? true;
       });
     }
@@ -97,6 +97,17 @@ class _DownloadSettingsScreenState extends State<DownloadSettingsScreen> {
                 ),
                 const SizedBox(height: 10),
                 _buildOptionCard(
+                  title: isHindi ? '160 kbps (मीडियम क्वालिटी - अनुशंसित)' : '160 kbps (Medium Quality - Recommended)',
+                  subtitle: isHindi ? 'संतुलित साउंड और कम स्टोरेज • तेज डाउनलोड' : 'Balanced audio & storage footprint',
+                  isSelected: _audioQuality == '160kbps',
+                  accentColor: const Color(0xFF00E5FF),
+                  cardColor: cardColor,
+                  textColor: textColor,
+                  subtextColor: subtextColor,
+                  onTap: () => _setAudioQuality('160kbps'),
+                ),
+                const SizedBox(height: 8),
+                _buildOptionCard(
                   title: isHindi ? '320 kbps (अल्ट्रा एचडी लॉसलेस)' : '320 kbps (Ultra HD Lossless)',
                   subtitle: isHindi ? 'उच्चतम स्टूडियो साउंड क्वालिटी • सर्वोत्तम अनुभव' : 'Highest fidelity studio audio',
                   isSelected: _audioQuality == '320kbps',
@@ -105,17 +116,6 @@ class _DownloadSettingsScreenState extends State<DownloadSettingsScreen> {
                   textColor: textColor,
                   subtextColor: subtextColor,
                   onTap: () => _setAudioQuality('320kbps'),
-                ),
-                const SizedBox(height: 8),
-                _buildOptionCard(
-                  title: isHindi ? '160 kbps (हाई क्वालिटी)' : '160 kbps (High Quality)',
-                  subtitle: isHindi ? 'संतुलित साउंड और कम स्टोरेज • तेज डाउनलोड' : 'Balanced audio & storage footprint',
-                  isSelected: _audioQuality == '160kbps',
-                  accentColor: const Color(0xFF00E5FF),
-                  cardColor: cardColor,
-                  textColor: textColor,
-                  subtextColor: subtextColor,
-                  onTap: () => _setAudioQuality('160kbps'),
                 ),
                 const SizedBox(height: 8),
                 _buildOptionCard(
@@ -140,30 +140,19 @@ class _DownloadSettingsScreenState extends State<DownloadSettingsScreen> {
                 ),
                 const SizedBox(height: 10),
                 _buildOptionCard(
-                  title: isHindi ? 'लो क्वालिटी (Low 150x150 - अनुशंसित)' : 'Low Quality (150x150 - Recommended)',
-                  subtitle: isHindi ? 'मात्र 5-10 KB • स्टोरेज बचाएं और ऑफलाइन फोटो देखें' : 'Only 5-10 KB • Saves storage & loads fast',
-                  isSelected: _thumbQuality == 'low',
+                  title: isHindi ? 'मीडियम क्वालिटी (~200px - अनुशंसित)' : 'Medium Quality (~200px - Recommended)',
+                  subtitle: isHindi ? 'स्पष्ट व साफ फोटो • कम एमबी स्टोरेज' : 'Crisp & sharp artwork with minimal storage',
+                  isSelected: _thumbQuality == '200px' || _thumbQuality == 'medium',
                   accentColor: const Color(0xFFFF2A6D),
                   cardColor: cardColor,
                   textColor: textColor,
                   subtextColor: subtextColor,
-                  onTap: () => _setThumbQuality('low'),
+                  onTap: () => _setThumbQuality('200px'),
                 ),
                 const SizedBox(height: 8),
                 _buildOptionCard(
-                  title: isHindi ? 'मीडियम क्वालिटी (Medium 300x300)' : 'Medium Quality (300x300)',
-                  subtitle: isHindi ? 'लगभग 20-30 KB • साफ और स्पष्ट कवर आर्ट' : 'Approx 20-30 KB • Crisp & clear artwork',
-                  isSelected: _thumbQuality == 'medium',
-                  accentColor: const Color(0xFFFF2A6D),
-                  cardColor: cardColor,
-                  textColor: textColor,
-                  subtextColor: subtextColor,
-                  onTap: () => _setThumbQuality('medium'),
-                ),
-                const SizedBox(height: 8),
-                _buildOptionCard(
-                  title: isHindi ? 'हाई क्वालिटी (High 500x500 HD)' : 'High Quality (500x500 HD)',
-                  subtitle: isHindi ? 'लगभग 60-100 KB • ओरिजिनल स्टूडियो आर्ट' : 'Approx 60-100 KB • Full size studio art',
+                  title: isHindi ? 'हाई क्वालिटी (500x500 HD)' : 'High Quality (500x500 HD)',
+                  subtitle: isHindi ? 'ओरिजिनल फुल एचडी स्टूडियो आर्ट' : 'Original full size studio art',
                   isSelected: _thumbQuality == 'high',
                   accentColor: const Color(0xFFFF2A6D),
                   cardColor: cardColor,

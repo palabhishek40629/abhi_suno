@@ -783,7 +783,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                         child: Center(
                                           child: Icon(
-                                            Icons.play_arrow_rounded,
+                                            isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                             color: Colors.white,
                                             size: 24,
                                           ),
@@ -933,8 +933,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ),
                                           ],
                                         ),
-                                        child: const Icon(
-                                          Icons.play_arrow_rounded,
+                                        child: Icon(
+                                          isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                           color: Colors.white,
                                           size: 20,
                                         ),

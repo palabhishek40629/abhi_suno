@@ -115,6 +115,30 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     });
 
     _player.playerStateStream.listen((state) {
+      final playing = state.playing;
+      final procState = const {
+        ProcessingState.idle: AudioProcessingState.idle,
+        ProcessingState.loading: AudioProcessingState.loading,
+        ProcessingState.buffering: AudioProcessingState.buffering,
+        ProcessingState.ready: AudioProcessingState.ready,
+        ProcessingState.completed: AudioProcessingState.completed,
+      }[state.processingState] ?? AudioProcessingState.idle;
+
+      playbackState.add(playbackState.value.copyWith(
+        controls: [
+          MediaControl.skipToPrevious,
+          if (playing) MediaControl.pause else MediaControl.play,
+          MediaControl.skipToNext,
+          MediaControl.stop,
+        ],
+        processingState: procState,
+        playing: playing,
+        updatePosition: _player.position,
+        bufferedPosition: _player.bufferedPosition,
+        speed: _player.speed,
+        queueIndex: _currentIndex >= 0 ? _currentIndex : null,
+      ));
+
       if (state.processingState == ProcessingState.completed) {
         if (_isRepeat) {
           _player.seek(Duration.zero);
@@ -359,14 +383,25 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   @override
   Future<void> skipToNext() async {
     if (_playlist.isEmpty) {
-      if (_currentSong != null) _autoFetchMoreSongs(_currentSong!);
-      return;
+      if (_currentSong != null) await _autoFetchMoreSongs(_currentSong!);
+      if (_playlist.isEmpty) return;
     }
+
+    // Auto-fetch more songs when near the end (<= 2 tracks left)
     if (_playlist.length - _currentIndex <= 2 && _currentSong != null) {
-      _autoFetchMoreSongs(_currentSong!);
+      await _autoFetchMoreSongs(_currentSong!);
     }
+
     int nextIdx = _currentIndex + 1;
-    if (nextIdx >= _playlist.length) nextIdx = 0;
+    if (nextIdx >= _playlist.length) {
+      // If we hit the end of the playlist, fetch fresh similar songs so playback never stops!
+      if (_currentSong != null) {
+        await _autoFetchMoreSongs(_currentSong!);
+      }
+      if (nextIdx >= _playlist.length) {
+        nextIdx = 0; // Fallback loop if offline
+      }
+    }
     _currentIndex = nextIdx;
     await playSong(_playlist[_currentIndex]);
   }
@@ -384,10 +419,29 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     await playSong(_playlist[_currentIndex]);
   }
 
+  bool _isFetchingMore = false;
+
   Future<void> _autoFetchMoreSongs(SongModel baseSong) async {
+    if (_isFetchingMore) return;
+    _isFetchingMore = true;
+
     try {
-      final cleanQ = '${baseSong.title} ${baseSong.artist}'.replaceAll(RegExp(r'\(.*?\)'), '').trim();
-      final more = await JioSaavnAdapter().searchSongs(cleanQ, limit: 10);
+      final primaryArtist = baseSong.artist
+          .replaceAll(RegExp(r'(VEVO|Official|Topic|Music|Zee Music|T-Series)', caseSensitive: false), '')
+          .split(',')
+          .first
+          .trim();
+
+      // Query similar tracks based on primary artist and vibe
+      List<SongModel> more = [];
+      if (primaryArtist.isNotEmpty && primaryArtist.length > 2) {
+        more = await JioSaavnAdapter().searchSongs('$primaryArtist Superhit Songs', limit: 12);
+      }
+      if (more.isEmpty) {
+        final cleanTitle = baseSong.title.replaceAll(RegExp(r'\(.*?\)|\[.*?\]'), '').trim();
+        more = await JioSaavnAdapter().searchSongs(cleanTitle, limit: 10);
+      }
+
       if (more.isNotEmpty) {
         final existingIds = _playlist.map((s) => s.id).toSet();
         for (final m in more) {
@@ -399,7 +453,9 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         }
         _playlistSubject.add(List.unmodifiable(_playlist));
       }
-    } catch (_) {}
+    } catch (_) {} finally {
+      _isFetchingMore = false;
+    }
   }
 
   Future<void> setVolume(double vol) async {

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import 'download_service.dart';
+import 'sync_service.dart';
 
 class UserPlaylist {
   final String id;
@@ -60,6 +61,7 @@ class PlaylistService extends ChangeNotifier {
       final data = json.encode(_playlists.map((p) => p.toJson()).toList());
       await prefs.setString(_storageKey, data);
       notifyListeners();
+      SyncService().syncUserData();
     } catch (_) {}
   }
 

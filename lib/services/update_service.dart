@@ -83,7 +83,8 @@ class UpdateService {
           }
         }
 
-        final cleanLatest = tagName.replaceAll(RegExp(r'[^0-9.]'), '').trim();
+        final rawLatest = tagName.replaceFirst(RegExp(r'^[vV]'), '').trim();
+        final cleanLatest = rawLatest.split('-').first.split('+').first.trim();
         final hasUpdate = _isNewerVersion(cleanLatest, currentVer);
 
         return UpdateInfo(
@@ -147,10 +148,13 @@ class UpdateService {
   bool _isNewerVersion(String latest, String current) {
     if (latest.isEmpty) return false;
     try {
-      final lParts = latest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
-      final cParts = current.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final cleanLatest = latest.replaceFirst(RegExp(r'^[vV]'), '').split('-').first.split('+').first.trim();
+      final cleanCurrent = current.replaceFirst(RegExp(r'^[vV]'), '').split('-').first.split('+').first.trim();
+      final lParts = cleanLatest.split('.').map((e) => int.tryParse(e) ?? 0).toList();
+      final cParts = cleanCurrent.split('.').map((e) => int.tryParse(e) ?? 0).toList();
 
-      for (int i = 0; i < 3; i++) {
+      final maxLen = lParts.length > cParts.length ? lParts.length : cParts.length;
+      for (int i = 0; i < maxLen; i++) {
         final l = i < lParts.length ? lParts[i] : 0;
         final c = i < cParts.length ? cParts[i] : 0;
         if (l > c) return true;

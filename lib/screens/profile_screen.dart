@@ -22,6 +22,8 @@ import 'app_settings_screen.dart';
 import 'theme_selection_screen.dart';
 import 'download_settings_screen.dart';
 import 'storage_management_screen.dart';
+import '../services/auth_service.dart';
+import '../services/sync_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   final AbhiAudioHandler? audioHandler;
@@ -40,6 +42,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final MusicService _musicService = MusicService();
   final PlaylistService _playlistService = PlaylistService();
   final UpdateService _updateService = UpdateService();
+  final AuthService _auth = AuthService();
+  final SyncService _sync = SyncService();
 
   static const MethodChannel _nativeChannel = MethodChannel('com.abhishekpal.abhisuno/native');
 
@@ -750,7 +754,230 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 18),
 
                 // ================================================================
-                // MASTER SECTION: ⚙️ ऐप सेटिंग्स (App Settings Master Section)
+                // SECTION: ☁️ Google Account & Cloud Sync (Auto-Save Liked & Playlists)
+                // ================================================================
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF4285F4).withOpacity(0.15),
+                        ),
+                        child: const Icon(Icons.cloud_sync_rounded, color: Color(0xFF4285F4), size: 18),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        _lang.isHindi ? 'Google खाता एवं क्लाउड सिंक' : 'Google Account & Cloud Sync',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Google Account & Real-Time Sync Card
+                AnimatedBuilder(
+                  animation: Listenable.merge([_auth, _sync]),
+                  builder: (context, _) {
+                    final isLoggedIn = _auth.isLoggedIn;
+                    final user = _auth.currentUser;
+
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isLoggedIn
+                              ? [const Color(0xFF1A237E).withOpacity(0.35), const Color(0xFF0D47A1).withOpacity(0.18)]
+                              : [const Color(0xFF263238).withOpacity(0.35), Colors.white.withOpacity(0.04)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isLoggedIn ? const Color(0xFF4285F4).withOpacity(0.5) : Colors.white12,
+                          width: 1.4,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: (isLoggedIn ? const Color(0xFF4285F4) : Colors.black).withOpacity(0.18),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF4285F4), Color(0xFF34A853)],
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(0xFF4285F4).withOpacity(0.35),
+                                      blurRadius: 8,
+                                    ),
+                                  ],
+                                ),
+                                child: Center(
+                                  child: Icon(
+                                    isLoggedIn ? Icons.verified_user_rounded : Icons.account_circle_rounded,
+                                    color: Colors.white,
+                                    size: 26,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      isLoggedIn ? user.name : (_lang.isHindi ? 'Google से लॉगिन करें' : 'Sign in with Google'),
+                                      style: TextStyle(
+                                        color: textColor,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      isLoggedIn ? user.email : (_lang.isHindi ? 'लाइक्ड गाने और प्लेलिस्ट ऑटो-सेव रखें' : 'Auto-save liked songs & playlists'),
+                                      style: TextStyle(color: subtextColor, fontSize: 12),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (isLoggedIn)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF00E676).withOpacity(0.18),
+                                    borderRadius: BorderRadius.circular(10),
+                                    border: Border.all(color: const Color(0xFF00E676), width: 1.0),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.check_circle_rounded, color: Color(0xFF00E676), size: 12),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _lang.isHindi ? 'सिंक चालू' : 'Synced',
+                                        style: const TextStyle(color: Color(0xFF00E676), fontSize: 11, fontWeight: FontWeight.bold),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const Divider(color: Colors.white10, height: 22),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              // Login / Logout Action Button
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: isLoggedIn ? Colors.white12 : const Color(0xFF4285F4),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                ),
+                                icon: Icon(
+                                  isLoggedIn ? Icons.logout_rounded : Icons.login_rounded,
+                                  size: 16,
+                                  color: Colors.white,
+                                ),
+                                label: Text(
+                                  isLoggedIn
+                                      ? (_lang.isHindi ? 'लॉगआउट' : 'Sign Out')
+                                      : (_lang.isHindi ? 'Google लॉगिन' : 'Google Sign-In'),
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: () async {
+                                  if (isLoggedIn) {
+                                    await _auth.signOut();
+                                  } else {
+                                    final ok = await _auth.signInWithGoogle();
+                                    if (ok) {
+                                      final res = await _sync.restoreUserCloudData();
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            backgroundColor: const Color(0xFF00E676),
+                                            content: Text(
+                                              _lang.isHindi
+                                                  ? 'लॉगिन सफल! ${res["songs"]} गाने व ${res["playlists"]} प्लेलिस्ट सिंक हो गए।'
+                                                  : 'Signed in! ${res["songs"]} songs & ${res["playlists"]} playlists synced.',
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  }
+                                },
+                              ),
+                              // 1-Click Sync Now Button
+                              OutlinedButton.icon(
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: const Color(0xFF00E5FF).withOpacity(0.6)),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                ),
+                                icon: _sync.isSyncing
+                                    ? const SizedBox(
+                                        width: 14,
+                                        height: 14,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF00E5FF)),
+                                      )
+                                    : const Icon(Icons.sync_rounded, size: 16, color: Color(0xFF00E5FF)),
+                                label: Text(
+                                  _lang.isHindi ? 'अभी सिंक करें' : 'Sync Now',
+                                  style: const TextStyle(color: Color(0xFF00E5FF), fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                                onPressed: () async {
+                                  if (!isLoggedIn) {
+                                    await _auth.signInWithGoogle();
+                                  }
+                                  await _sync.syncUserData();
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        backgroundColor: const Color(0xFF00E5FF),
+                                        content: Text(
+                                          _lang.isHindi
+                                              ? 'लाइक्ड गाने और प्लेलिस्ट क्लाउड पर सुरक्षित हो गए!'
+                                              : 'Liked songs & playlists synced successfully!',
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 16),
+
+                // ================================================================
+                // MASTER SECTION: ⚙️ ऐप सेटिंग्स (Single Master Entry)
                 // ================================================================
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -779,7 +1006,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
                 const SizedBox(height: 8),
 
-                // Master Clickable Card: ⚙️ सभी सेटिंग्स खोलें (Open Full App Settings)
+                // Master Clickable Card: ⚙️ सभी ऐप सेटिंग्स खोलें (Open Full App Settings)
                 Tactile3DWrapper(
                   onTap: () {
                     Navigator.of(context).push(
@@ -831,217 +1058,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                               const SizedBox(height: 3),
                               Text(
-                                _lang.isHindi ? 'थीम, भाषा, डाउनलोड, स्टोरेज एवं अन्य' : 'Theme, language, storage, downloads & more',
+                                _lang.isHindi
+                                    ? 'थीम, भाषा, डाउनलोड, स्टोरेज, अपडेट एवं अन्य'
+                                    : 'Theme, language, storage, downloads, updates & more',
                                 style: TextStyle(color: subtextColor, fontSize: 12),
                               ),
                             ],
                           ),
                         ),
                         const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF00E5FF), size: 16),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // 1. 🎨 App Theme (Opens in dedicated page)
-                Tactile3DWrapper(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const ThemeSelectionScreen()),
-                    );
-                  },
-                  scaleElevation: 1.04,
-                  glowColor: const Color(0xFF00E5FF),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF00E5FF).withOpacity(0.15),
-                          ),
-                          child: const Icon(Icons.palette_rounded, color: Color(0xFF00E5FF), size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _lang.isHindi ? 'ऐप थीम (App Theme)' : 'App Theme',
-                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              Text(
-                                _getThemeName(_theme.currentMode),
-                                style: TextStyle(color: subtextColor, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right_rounded, color: Colors.white38),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // 2. 🌐 App Language (Opens in dedicated page)
-                Tactile3DWrapper(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
-                    );
-                  },
-                  scaleElevation: 1.04,
-                  glowColor: const Color(0xFF00E676),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFF00E676).withOpacity(0.15),
-                          ),
-                          child: const Icon(Icons.translate_rounded, color: Color(0xFF00E676), size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _lang.isHindi ? 'ऐप की भाषा (Language)' : 'App Language',
-                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              Text(
-                                _lang.currentLanguageName,
-                                style: TextStyle(color: subtextColor, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right_rounded, color: Colors.white38),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // 3. 📥 Download Settings (Opens in dedicated page)
-                Tactile3DWrapper(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const DownloadSettingsScreen()),
-                    );
-                  },
-                  scaleElevation: 1.04,
-                  glowColor: const Color(0xFFFF2A6D),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFFF2A6D).withOpacity(0.15),
-                          ),
-                          child: const Icon(Icons.download_rounded, color: Color(0xFFFF2A6D), size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _lang.isHindi ? 'डाउनलोड सेटिंग्स (Downloads)' : 'Download Settings',
-                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              Text(
-                                '$_audioQuality • $_thumbQuality quality',
-                                style: TextStyle(color: subtextColor, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right_rounded, color: Colors.white38),
-                      ],
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 10),
-
-                // 4. 💾 Storage Management (Opens in dedicated page)
-                Tactile3DWrapper(
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const StorageManagementScreen()),
-                    );
-                  },
-                  scaleElevation: 1.04,
-                  glowColor: const Color(0xFFFFB300),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white12),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: const Color(0xFFFFB300).withOpacity(0.15),
-                          ),
-                          child: const Icon(Icons.storage_rounded, color: Color(0xFFFFB300), size: 20),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                _lang.isHindi ? 'स्टोरेज प्रबंधन (Storage)' : 'Storage Management',
-                                style: TextStyle(color: textColor, fontWeight: FontWeight.bold, fontSize: 14),
-                              ),
-                              Text(
-                                '${_tempCacheMB.toStringAsFixed(1)} MB cache • ${_permStorageMB.toStringAsFixed(1)} MB songs',
-                                style: TextStyle(color: subtextColor, fontSize: 12),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(Icons.chevron_right_rounded, color: Colors.white38),
                       ],
                     ),
                   ),

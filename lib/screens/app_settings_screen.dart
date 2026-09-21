@@ -50,7 +50,7 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
 
       if (info != null && info.hasUpdate) {
         _showUpdateDialog(info);
-      } else {
+      } else if (info != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: const Color(0xFF00E676),
@@ -58,6 +58,18 @@ class _AppSettingsScreenState extends State<AppSettingsScreen> {
               _lang.isHindi
                   ? 'आपका ऐप पहले से ही नवीनतम वर्ज़न (v$_installedVersion) पर है!'
                   : 'Your app is up to date (v$_installedVersion)!',
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.orangeAccent,
+            content: Text(
+              _lang.isHindi
+                  ? 'सर्वर से कनेक्ट नहीं हो सका। कृपया इंटरनेट जांचें।'
+                  : 'Could not reach update server. Check internet connection.',
               style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
             ),
           ),

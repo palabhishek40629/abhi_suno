@@ -404,11 +404,31 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                                       }
                                     },
                                   ),
-                            IconButton(
-                              icon: const Icon(Icons.play_circle_fill_rounded, color: Color(0xFF05D9E8), size: 36),
-                              onPressed: () {
-                                _playSong(playlist.songs.first, playlist.songs);
-                                Navigator.pop(ctx);
+                            StreamBuilder<MediaItem?>(
+                              stream: widget.audioHandler.mediaItem,
+                              builder: (context, mediaSnap) {
+                                return StreamBuilder<PlaybackState>(
+                                  stream: widget.audioHandler.playbackState,
+                                  builder: (context, playSnap) {
+                                    final currentId = mediaSnap.data?.id;
+                                    final isPlaylistPlaying = playlist.songs.any((s) => s.id == currentId) &&
+                                        (playSnap.data?.playing ?? widget.audioHandler.playbackState.value.playing);
+                                    return IconButton(
+                                      icon: Icon(
+                                        isPlaylistPlaying ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                                        color: const Color(0xFF05D9E8),
+                                        size: 36,
+                                      ),
+                                      onPressed: () {
+                                        if (isPlaylistPlaying) {
+                                          widget.audioHandler.pause();
+                                        } else {
+                                          _playSong(playlist.songs.first, playlist.songs);
+                                        }
+                                      },
+                                    );
+                                  },
+                                );
                               },
                             ),
                           ],

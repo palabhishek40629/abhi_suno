@@ -1162,128 +1162,150 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                   // DEDICATED BOTTOM SECTION: Lyrics, 10-Band EQ & Share Song!
                   // ================================================================
                   Container(
-                    margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    margin: const EdgeInsets.fromLTRB(14, 4, 14, 16),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.04),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(color: Colors.white12),
                     ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        // Synchronized Karaoke Lyrics
-                        Tactile3DWrapper(
-                          onTap: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => LyricsSheet(song: song, audioHandler: widget.audioHandler),
-                            );
-                          },
-                          scaleElevation: 1.12,
-                          glowColor: primaryCyan,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [primaryCyan.withOpacity(0.25), const Color(0xFF00B0FF).withOpacity(0.12)],
+                        // 1. Synchronized Karaoke Lyrics
+                        Expanded(
+                          child: Tactile3DWrapper(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => LyricsSheet(song: song, audioHandler: widget.audioHandler),
+                              );
+                            },
+                            scaleElevation: 1.10,
+                            glowColor: primaryCyan,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [primaryCyan.withOpacity(0.25), const Color(0xFF00B0FF).withOpacity(0.12)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: primaryCyan.withOpacity(0.6), width: 1.2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryCyan.withOpacity(0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: primaryCyan.withOpacity(0.6), width: 1.4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: primaryCyan.withOpacity(0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.lyrics_rounded, size: 16, color: primaryCyan),
-                                const SizedBox(width: 6),
-                                Text(
-                                  LanguageService().t('lyrics'),
-                                  style: const TextStyle(color: primaryCyan, fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ],
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.lyrics_rounded, size: 15, color: primaryCyan),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      LanguageService().t('lyrics'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: primaryCyan, fontSize: 11.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
 
-                        // 10-Band Equalizer & 3D Surround
-                        Tactile3DWrapper(
-                          onTap: () {
-                            showModalBottomSheet(
-                              context: context,
-                              isScrollControlled: true,
-                              backgroundColor: Colors.transparent,
-                              builder: (_) => EqualizerSheet(audioHandler: widget.audioHandler),
-                            );
-                          },
-                          scaleElevation: 1.12,
-                          glowColor: primaryPink,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [primaryPink.withOpacity(0.25), const Color(0xFFFF007F).withOpacity(0.12)],
+                        // 2. 10-Band Equalizer & 3D Surround
+                        Expanded(
+                          child: Tactile3DWrapper(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                backgroundColor: Colors.transparent,
+                                builder: (_) => EqualizerSheet(audioHandler: widget.audioHandler),
+                              );
+                            },
+                            scaleElevation: 1.10,
+                            glowColor: primaryPink,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [primaryPink.withOpacity(0.25), const Color(0xFFFF007F).withOpacity(0.12)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: primaryPink.withOpacity(0.6), width: 1.2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: primaryPink.withOpacity(0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: primaryPink.withOpacity(0.6), width: 1.4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: primaryPink.withOpacity(0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.equalizer_rounded, size: 16, color: primaryPink),
-                                const SizedBox(width: 6),
-                                Text(
-                                  LanguageService().t('equalizer'),
-                                  style: const TextStyle(color: primaryPink, fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ],
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.equalizer_rounded, size: 15, color: primaryPink),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      LanguageService().t('equalizer'),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: primaryPink, fontSize: 11.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
 
-                        // Spotify Reorderable Queue
-                        Tactile3DWrapper(
-                          onTap: () => _showQueueSheet(context),
-                          scaleElevation: 1.12,
-                          glowColor: const Color(0xFFFFB300),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [const Color(0xFFFFB300).withOpacity(0.25), const Color(0xFFFF8F00).withOpacity(0.12)],
+                        // 3. Spotify Reorderable Queue
+                        Expanded(
+                          child: Tactile3DWrapper(
+                            onTap: () => _showQueueSheet(context),
+                            scaleElevation: 1.10,
+                            glowColor: const Color(0xFFFFB300),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [const Color(0xFFFFB300).withOpacity(0.25), const Color(0xFFFF8F00).withOpacity(0.12)],
+                                ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: const Color(0xFFFFB300).withOpacity(0.6), width: 1.2),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFFFB300).withOpacity(0.25),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: const Color(0xFFFFB300).withOpacity(0.6), width: 1.4),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: const Color(0xFFFFB300).withOpacity(0.25),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 3),
-                                ),
-                              ],
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.queue_music_rounded, size: 16, color: Color(0xFFFFB300)),
-                                const SizedBox(width: 6),
-                                Text(
-                                  LanguageService().isHindi ? 'कतार' : 'Queue',
-                                  style: const TextStyle(color: Color(0xFFFFB300), fontSize: 12, fontWeight: FontWeight.bold),
-                                ),
-                              ],
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.queue_music_rounded, size: 15, color: Color(0xFFFFB300)),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      LanguageService().isHindi ? 'कतार' : 'Queue',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Color(0xFFFFB300), fontSize: 11.5, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),

@@ -144,6 +144,15 @@ class MainActivity: AudioServiceActivity() {
                     try {
                         val file = File(filePath)
                         if (file.exists()) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                if (!packageManager.canRequestPackageInstalls()) {
+                                    val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                        data = Uri.parse("package:$packageName")
+                                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                                    }
+                                    startActivity(settingsIntent)
+                                }
+                            }
                             val uri = FileProvider.getUriForFile(
                                 this,
                                 "$packageName.fileprovider",

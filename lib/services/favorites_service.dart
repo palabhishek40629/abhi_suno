@@ -3,6 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 
+import 'sync_service.dart';
+
 class FavoritesService extends ChangeNotifier {
   static final FavoritesService _instance = FavoritesService._internal();
   factory FavoritesService() => _instance;
@@ -61,6 +63,7 @@ class FavoritesService extends ChangeNotifier {
 
     notifyListeners();
     await _saveToStorage();
+    SyncService().syncUserData();
     return willBeFavorite;
   }
 
