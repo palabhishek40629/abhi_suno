@@ -335,10 +335,6 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                 ),
               ),
             ),
-                  ],
-                ),
-              ),
-            ),
 
           // Loading Indicator
           if (_isLoading)
