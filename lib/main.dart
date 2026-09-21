@@ -256,10 +256,8 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
           final textColor = _theme.textColor;
           final primaryColor = _theme.primaryColor;
 
-          return Stack(
-            children: [
-              Scaffold(
-                backgroundColor: _theme.scaffoldBg,
+          return Scaffold(
+            backgroundColor: _theme.scaffoldBg,
                 body: Container(
                   decoration: _theme.backgroundDecoration,
                   child: SafeArea(
@@ -383,10 +381,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                       ),
                     ],
                   ),
-              ),
-            ],
-          );
-        },
+                ),
+              );
+            },
       ),
     );
   }

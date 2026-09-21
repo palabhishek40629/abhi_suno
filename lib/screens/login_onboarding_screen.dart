@@ -274,7 +274,6 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
 
           // Poster Image with Glow & Tactile 3D Physics (Unclipped 3:4 Portrait, No Watermark)
           Tactile3DWrapper(
-            maxTiltAngle: 0.12,
             scaleElevation: 1.03,
             glowColor: cyanNeon,
             child: Container(
