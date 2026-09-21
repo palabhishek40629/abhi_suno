@@ -121,7 +121,7 @@ class SyncService extends ChangeNotifier {
 
     final backupMap = {
       'app': 'AbhiSuno',
-      'version': '4.1.0',
+      'version': '4.2.0',
       'export_date': DateTime.now().toIso8601String(),
       'liked_songs_count': favs.length,
       'playlists_count': playlists.length,

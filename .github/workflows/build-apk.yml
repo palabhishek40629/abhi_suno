@@ -65,23 +65,23 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.1.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.2.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v4.1.0-release
-          path: AbhiSuno-v4.1.0-release.apk
+          name: AbhiSuno-v4.2.0-release
+          path: AbhiSuno-v4.2.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.1.0-${{ github.run_number }}
-          name: "Abhi Suno v4.1.0 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v4.2.0-${{ github.run_number }}
+          name: "Abhi Suno v4.2.0 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v4.1.0 Master Edition - Full Spotify Architecture & Zero Crashes
+            ### 🎧 Abhi Suno v4.2.0 Master Edition - 2-Tap Smart Exit & Devanagari Lyrics
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
             - 🚀 **Universal 3D Tactile Physics with Scroll Guard:**
