@@ -99,6 +99,29 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
     }
   }
 
+  void _downloadAll() {
+    final isHindi = _lang.isHindi;
+    final toDownload = _songs.where((s) => !_downloadService.isSongDownloaded(s.id)).toList();
+    if (toDownload.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF00E676),
+          content: Text(isHindi ? 'सभी गाने पहले से डाउनलोड हैं!' : 'All songs are already downloaded!'),
+        ),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF2FC0DB),
+        content: Text(isHindi
+            ? '${toDownload.length} गाने डाउनलोड कतार में जोड़े गए (एक-एक करके डाउनलोड होंगे)'
+            : '${toDownload.length} songs added to download queue (sequential download)'),
+      ),
+    );
+    _downloadService.downloadSongsSequentially(toDownload);
+  }
+
   void _downloadSong(SongModel song) async {
     final isHindi = _lang.isHindi;
     final isDownloaded = _downloadService.isSongDownloaded(song.id);
@@ -216,7 +239,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             ),
           ),
 
-          // Play All & Shuffle Buttons
+          // Play All, Shuffle & Download All Buttons
           if (!_isLoading && _songs.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -224,12 +247,13 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                 child: Row(
                   children: [
                     Expanded(
+                      flex: 4,
                       child: Tactile3DWrapper(
                         onTap: _playAll,
                         scaleElevation: 1.05,
                         glowColor: cyanNeon,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(colors: [cyanNeon, Color(0xFF00A2C7)]),
                             borderRadius: BorderRadius.circular(16),
@@ -240,25 +264,26 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 22),
-                              const SizedBox(width: 6),
+                              const Icon(Icons.play_arrow_rounded, color: Colors.black, size: 20),
+                              const SizedBox(width: 4),
                               Text(
                                 isHindi ? 'सभी बजाएं' : 'Play All',
-                                style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 14),
+                                style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
+                      flex: 3,
                       child: Tactile3DWrapper(
                         onTap: _shuffleAll,
                         scaleElevation: 1.05,
                         glowColor: pinkNeon,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                           decoration: BoxDecoration(
                             color: const Color(0xFF131726),
                             borderRadius: BorderRadius.circular(16),
@@ -267,17 +292,49 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Icon(Icons.shuffle_rounded, color: pinkNeon, size: 18),
-                              const SizedBox(width: 6),
+                              const Icon(Icons.shuffle_rounded, color: pinkNeon, size: 17),
+                              const SizedBox(width: 4),
                               Text(
                                 isHindi ? 'शफ़ल' : 'Shuffle',
-                                style: const TextStyle(color: pinkNeon, fontWeight: FontWeight.bold, fontSize: 14),
+                                style: const TextStyle(color: pinkNeon, fontWeight: FontWeight.bold, fontSize: 13),
                               ),
                             ],
                           ),
                         ),
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 4,
+                      child: Tactile3DWrapper(
+                        onTap: _downloadAll,
+                        scaleElevation: 1.05,
+                        glowColor: const Color(0xFF00E676),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF131726),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFF00E676).withOpacity(0.5)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.file_download_outlined, color: Color(0xFF00E676), size: 17),
+                              const SizedBox(width: 4),
+                              Text(
+                                isHindi ? 'सब डाउनलोड' : 'Download All',
+                                style: const TextStyle(color: Color(0xFF00E676), fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
                   ],
                 ),
               ),

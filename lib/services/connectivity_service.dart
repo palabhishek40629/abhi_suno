@@ -16,7 +16,7 @@ class ConnectivityService extends ChangeNotifier {
 
   void _init() {
     checkConnection();
-    _timer = Timer.periodic(const Duration(seconds: 6), (_) => checkConnection());
+    _timer = Timer.periodic(const Duration(seconds: 30), (_) => checkConnection());
   }
 
   Future<void> checkConnection() async {

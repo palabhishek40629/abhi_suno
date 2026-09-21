@@ -41,11 +41,27 @@ class LanguageService extends ChangeNotifier {
     LanguageInfo(code: 'kok', nativeName: 'कोंकणी', englishName: 'Konkani'),
   ];
 
-  String _currentCode = 'hi';
+  static String get _initialSystemCode {
+    try {
+      final code = PlatformDispatcher.instance.locale.languageCode.toLowerCase();
+      if (code == 'hi' || code == 'bho' || code == 'raj' || code == 'har') return 'hi';
+      if (code == 'en') return 'en';
+      final match = supportedLanguages.any((l) => l.code == code);
+      return match ? code : 'en';
+    } catch (_) {
+      return 'en';
+    }
+  }
+
+  String _currentCode = _initialSystemCode;
   bool _manualSelected = false;
 
   String get currentCode => _currentCode;
   bool get isHindi => _currentCode == 'hi' || _currentCode == 'bho' || _currentCode == 'raj' || _currentCode == 'har';
+
+  Future<void> init() async {
+    await _loadLanguagePreference();
+  }
 
   String get currentLanguageName {
     final match = supportedLanguages.firstWhere(

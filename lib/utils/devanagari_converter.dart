@@ -388,4 +388,46 @@ class DevanagariConverter {
 
     return result.isEmpty ? input : result;
   }
+
+  /// Cleans raw lyrics by stripping timestamps, LRC metadata headers, and publisher noise,
+  /// preserving only the authentic lyrics lines formatted in Devanagari.
+  static String cleanLyricsText(String raw) {
+    if (raw.isEmpty) return '';
+    final lines = raw.split('\n');
+    final timestampRegex = RegExp(r'\[\d{2}:\d{2}\.\d{2,3}\]');
+    final headerRegex = RegExp(r'^\[[a-zA-Z]{2,8}:.*\]$');
+    final cleanLines = <String>[];
+
+    for (var line in lines) {
+      line = line.replaceAll(timestampRegex, '').trim();
+      if (line.isEmpty) continue;
+      if (headerRegex.hasMatch(line)) continue;
+      if (_isGarbageLine(line)) continue;
+
+      final devanagari = toDevanagari(line);
+      if (devanagari.trim().isNotEmpty) {
+        cleanLines.add(devanagari);
+      }
+    }
+
+    return cleanLines.join('\n');
+  }
+
+  static bool _isGarbageLine(String line) {
+    final lower = line.toLowerCase();
+    return lower.contains('written by') ||
+        lower.contains('गीतकार') ||
+        lower.contains('lyrics powered by') ||
+        lower.contains('musixmatch') ||
+        lower.contains('genius.com') ||
+        lower.contains('synced by') ||
+        lower.contains('sync by') ||
+        lower.contains('translated by') ||
+        lower.contains('distributed by') ||
+        lower.contains('all rights reserved') ||
+        lower.contains('copyright') ||
+        lower.contains('http://') ||
+        lower.contains('https://') ||
+        lower.contains('www.');
+  }
 }

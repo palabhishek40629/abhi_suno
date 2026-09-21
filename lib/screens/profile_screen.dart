@@ -74,6 +74,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfileData();
   }
 
+  @override
+  void dispose() {
+    _urlController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     final savedPath = prefs.getString('user_custom_profile_image');

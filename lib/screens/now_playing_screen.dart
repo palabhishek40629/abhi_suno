@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +35,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   bool _isDownloaded = false;
 
   late AnimationController _lottieController;
+  StreamSubscription<SongModel?>? _songSub;
 
   @override
   void initState() {
@@ -49,10 +51,22 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
     if (song != null && _favoritesService.isFavorite(song.id)) {
       _lottieController.value = 0.5;
     }
+
+    _songSub = widget.audioHandler.currentSongStream.listen((song) {
+      if (mounted) {
+        _checkDownloadStatus();
+        if (song != null && _favoritesService.isFavorite(song.id)) {
+          _lottieController.value = 0.5;
+        } else {
+          _lottieController.value = 0.0;
+        }
+      }
+    });
   }
 
   @override
   void dispose() {
+    _songSub?.cancel();
     _lottieController.dispose();
     super.dispose();
   }

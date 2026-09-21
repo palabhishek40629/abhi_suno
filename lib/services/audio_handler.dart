@@ -201,7 +201,8 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
     final nextSong = _playlist[nextIndex];
     if (nextSong.streamUrl == null || nextSong.streamUrl!.isEmpty) {
       try {
-        final url = await _audioRepo.resolveAudioStreamUrl(nextSong.id, quality: '320kbps');
+        final query = '${nextSong.title} ${nextSong.artist}';
+        final url = await _audioRepo.resolveAudioStreamUrl(nextSong.id, query: query, quality: '320kbps');
         if (url != null) {
           nextSong.streamUrl = url;
           _audioRepo.cacheStreamUrl(nextSong.id, url);
@@ -289,10 +290,11 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         } else {
           String? audioUrl = song.streamUrl;
           if (audioUrl == null || audioUrl.isEmpty) {
-            audioUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: '320kbps');
+            final songQuery = '${song.title} ${song.artist}'.trim();
+            audioUrl = await _audioRepo.resolveAudioStreamUrl(song.id, query: songQuery, quality: '320kbps');
             if (audioUrl == null || audioUrl.isEmpty) {
               try {
-                final cleanQ = '${song.title} ${song.artist}'.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+                final cleanQ = songQuery.replaceAll(RegExp(r'\(.*?\)'), '').trim();
                 final matches = await JioSaavnAdapter().searchSongs(cleanQ, limit: 1);
                 if (matches.isNotEmpty && matches.first.streamUrl != null && matches.first.streamUrl!.isNotEmpty) {
                   audioUrl = matches.first.streamUrl;

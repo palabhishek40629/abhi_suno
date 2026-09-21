@@ -1,6 +1,7 @@
 package com.abhishekpal.abhisuno
 
 import android.app.PictureInPictureParams
+import android.app.DownloadManager
 import android.util.Rational
 
 import android.app.Activity
@@ -104,10 +105,62 @@ class MainActivity: AudioServiceActivity() {
                     }
 
                 }
-                "getInitialSharedText" -> {
+                "getInitialSharedText", "getSharedLink" -> {
                     val text = initialSharedText
                     initialSharedText = null
                     result.success(text)
+                }
+                "openDownloadsFolder" -> {
+                    try {
+                        val intent = Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(Uri.parse(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path), "*/*")
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                            }
+                            startActivity(intent)
+                            result.success(true)
+                        } catch (e2: Exception) {
+                            result.error("FOLDER_ERROR", e2.message, null)
+                        }
+                    }
+                }
+                "saveTextToDownloads" -> {
+                    try {
+                        val fileName = call.argument<String>("fileName") ?: "Lyrics.txt"
+                        val content = call.argument<String>("content") ?: ""
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            val resolver = contentResolver
+                            val contentValues = ContentValues().apply {
+                                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS + "/AbhiSuno")
+                            }
+                            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+                            if (uri != null) {
+                                resolver.openOutputStream(uri)?.use { stream ->
+                                    stream.write(content.toByteArray(Charsets.UTF_8))
+                                }
+                                result.success(true)
+                            } else {
+                                result.success(false)
+                            }
+                        } else {
+                            val downloadDir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "AbhiSuno")
+                            if (!downloadDir.exists()) downloadDir.mkdirs()
+                            val textFile = File(downloadDir, fileName)
+                            textFile.writeText(content, Charsets.UTF_8)
+                            result.success(true)
+                        }
+                    } catch (e: Exception) {
+                        result.error("SAVE_TEXT_ERROR", e.message, null)
+                    }
                 }
                 "getStorageInfo" -> {
                     try {

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'user_service.dart';
+import 'language_service.dart';
 
 class UserAccount {
   final String uid;
@@ -17,9 +19,9 @@ class UserAccount {
     required this.isLoggedIn,
   });
 
-  factory UserAccount.guest() => UserAccount(
+  factory UserAccount.guest([bool isHindi = false]) => UserAccount(
         uid: '',
-        name: 'अतिथि (Guest)',
+        name: isHindi ? 'अतिथि' : 'Guest',
         email: 'guest@abhisuno.app',
         photoUrl: '',
         isLoggedIn: false,
@@ -33,46 +35,79 @@ class AuthService extends ChangeNotifier {
     _loadUser();
   }
 
-  UserAccount _currentUser = UserAccount.guest();
+  static const String kNameKey = 'user_custom_profile_name';
+  static const String kEmailKey = 'user_custom_profile_email';
+  static const String kImageKey = 'user_custom_profile_image';
+  static const String kBioKey = 'user_custom_profile_bio';
+  static const String kLoggedInKey = 'user_is_logged_in';
+  static const String kGoogleUserKey = 'user_is_google_account';
+  static const String kUidKey = 'user_uid';
+
+  UserAccount _currentUser = UserAccount.guest(LanguageService().isHindi);
   UserAccount get currentUser => _currentUser;
   bool get isLoggedIn => _currentUser.isLoggedIn;
 
   Future<void> _loadUser() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final isLoggedIn = prefs.getBool('user_is_logged_in') ?? false;
-      if (isLoggedIn) {
+      final loggedIn = prefs.getBool(kLoggedInKey) ?? prefs.getBool('user_is_logged_in') ?? false;
+      if (loggedIn) {
+        final name = prefs.getString(kNameKey) ?? prefs.getString('user_name') ?? 'Abhishek Pal';
+        final email = prefs.getString(kEmailKey) ?? prefs.getString('user_email') ?? 'palabhishek40629@gmail.com';
+        final photo = prefs.getString(kImageKey) ?? prefs.getString('user_photo_url') ?? '';
+        final uid = prefs.getString(kUidKey) ?? 'user_${email.hashCode.abs()}';
+
         _currentUser = UserAccount(
-          uid: prefs.getString('user_uid') ?? 'user_${DateTime.now().millisecondsSinceEpoch}',
-          name: prefs.getString('user_name') ?? 'Abhishek Pal',
-          email: prefs.getString('user_email') ?? 'palabhishek40629@gmail.com',
-          photoUrl: prefs.getString('user_photo_url') ?? '',
+          uid: uid,
+          name: name,
+          email: email,
+          photoUrl: photo,
           isLoggedIn: true,
         );
+        notifyListeners();
+      } else {
+        _currentUser = UserAccount.guest(LanguageService().isHindi);
         notifyListeners();
       }
     } catch (_) {}
   }
 
-  Future<bool> signInWithGoogle({String? customEmail, String? customName}) async {
+  Future<bool> signInWithGoogle({String? customEmail, String? customName, String? photoUrl}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final email = customEmail ?? prefs.getString('user_email') ?? 'palabhishek40629@gmail.com';
-      final name = customName ?? prefs.getString('user_name') ?? 'Abhishek Pal';
+      final email = (customEmail != null && customEmail.trim().isNotEmpty)
+          ? customEmail.trim()
+          : (prefs.getString(kEmailKey) ?? prefs.getString('user_email') ?? 'palabhishek40629@gmail.com');
+      final name = (customName != null && customName.trim().isNotEmpty)
+          ? customName.trim()
+          : (prefs.getString(kNameKey) ?? prefs.getString('user_name') ?? 'Abhishek Pal');
+      final photo = (photoUrl != null && photoUrl.trim().isNotEmpty)
+          ? photoUrl.trim()
+          : (prefs.getString(kImageKey) ?? '');
       final uid = 'google_${email.hashCode.abs()}';
 
       _currentUser = UserAccount(
         uid: uid,
         name: name,
         email: email,
-        photoUrl: '',
+        photoUrl: photo,
         isLoggedIn: true,
       );
 
-      await prefs.setBool('user_is_logged_in', true);
-      await prefs.setString('user_uid', uid);
+      await prefs.setBool(kLoggedInKey, true);
+      await prefs.setBool(kGoogleUserKey, true);
+      await prefs.setString(kUidKey, uid);
+      await prefs.setString(kNameKey, name);
+      await prefs.setString(kEmailKey, email);
+      if (photo.isNotEmpty) {
+        await prefs.setString(kImageKey, photo);
+      }
+
       await prefs.setString('user_name', name);
       await prefs.setString('user_email', email);
+
+      // Keep UserService perfectly synchronized
+      await UserService().loginWithGoogle(name: name, email: email, photoUrl: photo.isNotEmpty ? photo : null);
 
       notifyListeners();
       return true;
@@ -84,8 +119,11 @@ class AuthService extends ChangeNotifier {
   Future<void> signOut() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('user_is_logged_in', false);
-      _currentUser = UserAccount.guest();
+      await prefs.setBool(kLoggedInKey, false);
+      await prefs.setBool(kGoogleUserKey, false);
+      await prefs.remove(kUidKey);
+      _currentUser = UserAccount.guest(LanguageService().isHindi);
+      await UserService().logout();
       notifyListeners();
     } catch (_) {}
   }

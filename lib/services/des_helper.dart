@@ -28,13 +28,22 @@ class DesHelper {
         return null;
       }
 
-      // Upgrade CDN stream bitrates to 320 kbps or 160 kbps direct Akamai CDN
-      final targetSuffix = quality.contains('160') ? '_160.mp4' : '_320.mp4';
+      // Select target bitrate suffix
+      final String targetSuffix;
+      if (quality.contains('96')) {
+        targetSuffix = '_96.mp4';
+      } else if (quality.contains('160')) {
+        targetSuffix = '_160.mp4';
+      } else {
+        targetSuffix = '_320.mp4';
+      }
 
-      if (decryptedString.contains('_96.mp4')) {
+      if (decryptedString.contains('_96.mp4') && targetSuffix != '_96.mp4') {
         decryptedString = decryptedString.replaceAll('_96.mp4', targetSuffix);
-      } else if (decryptedString.contains('_160.mp4') && targetSuffix == '_320.mp4') {
-        decryptedString = decryptedString.replaceAll('_160.mp4', '_320.mp4');
+      } else if (decryptedString.contains('_160.mp4') && targetSuffix != '_160.mp4') {
+        decryptedString = decryptedString.replaceAll('_160.mp4', targetSuffix);
+      } else if (decryptedString.contains('_320.mp4') && targetSuffix != '_320.mp4') {
+        decryptedString = decryptedString.replaceAll('_320.mp4', targetSuffix);
       }
 
       if (decryptedString.startsWith('http://')) {

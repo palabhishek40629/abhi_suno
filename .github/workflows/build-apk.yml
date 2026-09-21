@@ -65,52 +65,51 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.2.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.3.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v4.2.0-release
-          path: AbhiSuno-v4.2.0-release.apk
+          name: AbhiSuno-v4.3.0-release
+          path: AbhiSuno-v4.3.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.2.0-${{ github.run_number }}
-          name: "Abhi Suno v4.2.0 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v4.3.0-${{ github.run_number }}
+          name: "Abhi Suno v4.3.0 Ultimate Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v4.2.0 Master Edition - 2-Tap Smart Exit & Devanagari Lyrics
+            ### 🎧 Abhi Suno v4.3.0 Ultimate Master Edition
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 🚀 **Universal 3D Tactile Physics with Scroll Guard:**
-              - 10-pixel drag threshold prevents unintended button presses during list scrolling.
-            - 👤 **Compact Top-Right "एडिट प्रोफ़ाइल" Button:**
-              - Bold `FontWeight.w900` button in AppBar actions for ergonomic access.
-            - 📱 **Dedicated Full-Page Settings Screens:**
-              - Clean dedicated sub-pages for Theme, Language, Downloads, Storage, and About.
-            - 🔙 **Multi-Tap Smart Navigation:**
-              - 1 Tap: Go back or return to Home.
-              - 2 Taps: Instant return to Home from deep nested menus.
-              - 3 Taps: Full exit terminating all background audio services.
-            - ⚡ **Warm/Cold Resume Splash Overlay:**
-              - Smooth 1.2-second startup animation ensures zero UI freeze or hang on return.
-            - 🌐 **Ultra-Low-Latency WebSocket Party Room:**
-              - WebSocket connection (`wss://ntfy.sh/$topic/ws`) with auto-reconnect and SSE fallback.
-            - 📶 **Auto Offline Detection & Instant Downloads Navigation:**
-              - Floating offline banner with 1-tap jump to downloaded library.
-            - 📜 **JioSaavn Official Dual-Engine Lyrics & Offline Sync:**
-              - Synchronized `.lrc` downloaded for 100% offline karaoke lyrics.
-            - 🖼️ **Offline Artwork Local File Fallback:**
-              - Downloaded songs always display offline album art in player, mini player, and lock screen notification.
-            - ▶️ **Reactive Play/Pause State:**
-              - Real-time icon toggling between play and pause across all screens and playlists.
-            - 🎵 **Spotify Reorderable Queue & 25° Angled Genre Cards:**
-              - Live drag-and-drop queue reordering and filtered search in Downloads and Liked Songs.
+            - ⚡ **100% JioSaavn Primary Playback (<100ms Akamai CDN):**
+              - High-speed direct Akamai CDN streaming with automatic DES token decryptor.
+              - Intelligent YouTube fallback only when a song is unavailable on JioSaavn.
+            - 📥 **Sequential FIFO Download Engine:**
+              - Multi-song and playlist downloads process strictly one-by-one to prevent network throttling and device crashes.
+              - Complete triple-file caching: `.m4a` audio stream, high-resolution `.jpg` artwork, and synchronized `.lrc` lyrics.
+            - 📄 **Direct Lyrics (.txt) Download:**
+              - Save cleaned, synced lyrics directly to device's public `Download/AbhiSuno/` directory with one tap.
+            - 🌟 **Devanagari Karaoke UI & 3D Embossed Lyrics Paragraph:**
+              - Synchronized active voice line highlighted in an embossed 3D curved paragraph (`BorderRadius.circular(22)`).
+              - Play-button styled neon shader glow (`#2FC0DB` to `#D34C8C`) with calligraphy Devanagari `AmsSudha` font.
+              - Smart noise-filtering engine removes timestamps, publisher tags, and website URLs.
+            - 🌐 **100% English Language Purity:**
+              - Synchronous system locale auto-detection on first run. Zero Hindi text leakage in English mode.
+            - 🖼️ **Tactile 3D Onboarding Poster & Clean UI:**
+              - Full 3:4 portrait poster with 3D tactile physics without image clipping or watermark badges.
+            - 🔄 **Unified User Profile & Automatic Cloud Sync:**
+              - User name, bio, email, profile photo, liked songs, and custom playlists securely persisted and restored on login.
+            - 🔙 **2-Tap Smart Exit Navigation:**
+              - Tap 1: Navigate back or return to Home.
+              - Tap 2: Instant clean exit terminating background processes.
+            - 📱 **Reactive Now Playing Status:**
+              - Dynamic real-time sync for download and favorite status on song change.
 
-            **Direct APK Download:** `AbhiSuno-v4.2.0-release.apk`
-          files: AbhiSuno-v4.2.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.3.0-release.apk`
+          files: AbhiSuno-v4.3.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

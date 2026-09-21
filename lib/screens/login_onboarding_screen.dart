@@ -264,7 +264,7 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
                 ),
                 icon: const Icon(Icons.arrow_forward_ios_rounded, size: 12),
                 label: Text(
-                  isHindi ? 'स्किप करें (Skip)' : 'Skip',
+                  isHindi ? 'स्किप करें' : 'Skip',
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -272,28 +272,33 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
           ),
           const SizedBox(height: 16),
 
-          // Poster Image with Glow
-          Container(
-            height: MediaQuery.of(context).size.height * 0.44,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: cyanNeon.withOpacity(0.3),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(24),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  Image.asset(
+          // Poster Image with Glow & Tactile 3D Physics (Unclipped 3:4 Portrait, No Watermark)
+          Tactile3DWrapper(
+            maxTiltAngle: 0.12,
+            scaleElevation: 1.03,
+            glowColor: cyanNeon,
+            child: Container(
+              width: double.infinity,
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.46,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [
+                  BoxShadow(
+                    color: cyanNeon.withOpacity(0.35),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: AspectRatio(
+                  aspectRatio: 3 / 4,
+                  child: Image.asset(
                     'assets/images/welcome_banner.jpg',
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) => Container(
                       color: const Color(0xFF1F1F1F),
                       child: const Center(
@@ -301,30 +306,7 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
                       ),
                     ),
                   ),
-                  // Badge at Top
-                  Positioned(
-                    top: 14,
-                    left: 14,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white24),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.verified_rounded, color: cyanNeon, size: 13),
-                          SizedBox(width: 4),
-                          Text(
-                            'OFFICIAL ABHI SUNO APP',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 0.5),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -415,7 +397,7 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    isHindi ? 'आगे बढ़ें (Next)' : 'Next',
+                    isHindi ? 'आगे बढ़ें' : 'Next',
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                   const SizedBox(width: 8),
@@ -473,7 +455,7 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
               TextButton(
                 onPressed: _completeOnboarding,
                 child: Text(
-                  isHindi ? 'स्किप (Skip)' : 'Skip',
+                  isHindi ? 'स्किप' : 'Skip',
                   style: const TextStyle(color: cyanNeon, fontWeight: FontWeight.bold, fontSize: 14),
                 ),
               ),
@@ -503,7 +485,7 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        isHindi ? 'लॉगिन (Log In)' : 'Log In',
+                        isHindi ? 'लॉगिन' : 'Log In',
                         style: TextStyle(
                           color: _isLoginTab ? Colors.black : Colors.white70,
                           fontWeight: FontWeight.bold,
@@ -524,7 +506,7 @@ class _LoginOnboardingScreenState extends State<LoginOnboardingScreen> {
                       ),
                       alignment: Alignment.center,
                       child: Text(
-                        isHindi ? 'साइन अप (Sign Up)' : 'Sign Up',
+                        isHindi ? 'साइन अप' : 'Sign Up',
                         style: TextStyle(
                           color: !_isLoginTab ? Colors.white : Colors.white70,
                           fontWeight: FontWeight.bold,

@@ -31,6 +31,17 @@ class DownloadService extends ChangeNotifier {
   final Map<String, double> _downloadProgress = {};
   Map<String, double> get downloadProgress => Map.unmodifiable(_downloadProgress);
 
+  final List<SongModel> _downloadQueue = [];
+  List<SongModel> get downloadQueue => List.unmodifiable(_downloadQueue);
+
+  SongModel? _currentlyDownloadingSong;
+  SongModel? get currentlyDownloadingSong => _currentlyDownloadingSong;
+  int get queueCount => _downloadQueue.length + (_currentlyDownloadingSong != null ? 1 : 0);
+
+  bool _isWorkerRunning = false;
+  final Map<String, Completer<bool>> _taskCompleters = {};
+  final Map<String, Function(double)?> _taskProgressCallbacks = {};
+
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
@@ -55,10 +66,90 @@ class DownloadService extends ChangeNotifier {
     notifyListeners();
   }
 
+  bool isSongInQueue(String songId) {
+    return _currentlyDownloadingSong?.id == songId || _downloadQueue.any((s) => s.id == songId);
+  }
+
+  /// Sequential Single Track Download Entrypoint
   Future<bool> downloadSong(
     SongModel song, {
     Function(double progress)? onProgress,
   }) async {
+    if (isSongDownloaded(song.id)) {
+      if (onProgress != null) onProgress(1.0);
+      return true;
+    }
+
+    if (isSongInQueue(song.id)) {
+      if (onProgress != null) {
+        _taskProgressCallbacks[song.id] = onProgress;
+      }
+      return _taskCompleters[song.id]?.future ?? Future.value(true);
+    }
+
+    final completer = Completer<bool>();
+    _taskCompleters[song.id] = completer;
+    if (onProgress != null) {
+      _taskProgressCallbacks[song.id] = onProgress;
+    }
+
+    _downloadQueue.add(song);
+    notifyListeners();
+
+    _startSequentialWorker();
+    return completer.future;
+  }
+
+  /// Enqueue Batch of Songs (e.g. Playlist "Download All") Sequentially
+  Future<void> downloadSongsSequentially(List<SongModel> songs) async {
+    for (final song in songs) {
+      if (!isSongDownloaded(song.id) && !isSongInQueue(song.id)) {
+        final completer = Completer<bool>();
+        _taskCompleters[song.id] = completer;
+        _downloadQueue.add(song);
+      }
+    }
+    notifyListeners();
+    _startSequentialWorker();
+  }
+
+  /// Single-Worker Sequential Processor (Strictly One Song At A Time)
+  Future<void> _startSequentialWorker() async {
+    if (_isWorkerRunning) return;
+    _isWorkerRunning = true;
+
+    while (_downloadQueue.isNotEmpty) {
+      final song = _downloadQueue.removeAt(0);
+      _currentlyDownloadingSong = song;
+      notifyListeners();
+
+      bool success = false;
+      try {
+        success = await _executeSingleDownload(song);
+      } catch (_) {
+        success = false;
+      }
+
+      final completer = _taskCompleters.remove(song.id);
+      if (completer != null && !completer.isCompleted) {
+        completer.complete(success);
+      }
+      _taskProgressCallbacks.remove(song.id);
+      _downloadProgress.remove(song.id);
+
+      _currentlyDownloadingSong = null;
+      notifyListeners();
+    }
+
+    _isWorkerRunning = false;
+    try {
+      _nativeChannel.invokeMethod('dismissDownloadNotification');
+    } catch (_) {}
+    notifyListeners();
+  }
+
+  /// Internal Worker Method to download Audio + High-Res Banner + Synced Lyrics
+  Future<bool> _executeSingleDownload(SongModel song) async {
     try {
       final permDir = await _cacheManager.permanentDir;
       final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
@@ -70,15 +161,15 @@ class DownloadService extends ChangeNotifier {
         song.localFilePath = filePath;
         song.isDownloaded = true;
         await _saveOfflineTrack(song);
-        if (onProgress != null) onProgress(1.0);
+        _taskProgressCallbacks[song.id]?.call(1.0);
         return true;
       }
 
       final prefs = await SharedPreferences.getInstance();
-      final audioQuality = prefs.getString('audio_download_quality_pref') ?? '160kbps';
+      final audioQuality = prefs.getString('audio_download_quality_pref') ?? '320kbps';
       final thumbQuality = prefs.getString('thumbnail_download_quality_pref') ?? '200px';
 
-      // Check temporary cache tiers to avoid redundant download
+      // 1. Check temporary cache tiers to avoid redundant download
       final cachedFile = await _cacheManager.getCachedSongFile(song.id);
       if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 50000) {
         try {
@@ -86,15 +177,16 @@ class DownloadService extends ChangeNotifier {
           song.localFilePath = filePath;
           song.isDownloaded = true;
           await _saveOfflineTrack(song);
-          if (onProgress != null) onProgress(1.0);
+          _taskProgressCallbacks[song.id]?.call(1.0);
           return true;
         } catch (_) {}
       }
 
-      // Resolve stream URL with selected quality
+      // 2. Resolve stream URL with 100% JioSaavn Primary
       String? streamUrl = song.streamUrl;
       if (streamUrl == null || streamUrl.isEmpty) {
-        streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id, quality: audioQuality);
+        final query = '${song.title} ${song.artist}'.trim();
+        streamUrl = await _audioRepo.resolveAudioStreamUrl(song.id, query: query, quality: audioQuality);
       }
 
       if (streamUrl == null || streamUrl.isEmpty) {
@@ -103,14 +195,17 @@ class DownloadService extends ChangeNotifier {
 
       _downloadProgress[song.id] = 0.0;
       notifyListeners();
-      if (onProgress != null) onProgress(0.0);
+      _taskProgressCallbacks[song.id]?.call(0.0);
 
       final downloadOptions = Options(
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Accept': '*/*',
+          'Connection': 'keep-alive',
         },
       );
 
+      // 3. Download Audio Stream Sequentially
       await _dio.download(
         streamUrl,
         filePath,
@@ -120,10 +215,12 @@ class DownloadService extends ChangeNotifier {
             final progress = received / total;
             _downloadProgress[song.id] = progress;
             notifyListeners();
-            if (onProgress != null) onProgress(progress);
+            _taskProgressCallbacks[song.id]?.call(progress);
             try {
+              final remaining = _downloadQueue.length;
+              final statusTitle = remaining > 0 ? '${song.title} (+$remaining in queue)' : song.title;
               _nativeChannel.invokeMethod('updateDownloadNotification', {
-                'title': song.title,
+                'title': statusTitle,
                 'progress': (progress * 100).toInt(),
                 'isDone': false,
               });
@@ -132,13 +229,9 @@ class DownloadService extends ChangeNotifier {
         },
       );
 
-      _downloadProgress.remove(song.id);
-
       final audioFile = File(filePath);
       if (!audioFile.existsSync() || audioFile.lengthSync() < 50000) {
         try { if (audioFile.existsSync()) audioFile.deleteSync(); } catch (_) {}
-        try { _nativeChannel.invokeMethod('dismissDownloadNotification'); } catch (_) {}
-        notifyListeners();
         return false;
       }
 
@@ -153,7 +246,7 @@ class DownloadService extends ChangeNotifier {
       song.localFilePath = filePath;
       song.isDownloaded = true;
 
-      // Download thumbnail in 200px crisp quality (never degraded 50x50)
+      // 4. Download High-Res / Crisp Artwork Banner (.jpg)
       final thumbPath = '${permDir.path}/$safeName.jpg';
       try {
         if (song.thumbnailUrl.isNotEmpty) {
@@ -161,7 +254,6 @@ class DownloadService extends ChangeNotifier {
           if (thumbQuality == 'high') {
             thumbDownloadUrl = thumbDownloadUrl.replaceAll('150x150', '500x500');
           } else {
-            // Default crisp ~200px thumbnail (150x150 or 250x250)
             thumbDownloadUrl = thumbDownloadUrl
                 .replaceAll('500x500', '250x250')
                 .replaceAll('50x50', '250x250');
@@ -173,11 +265,11 @@ class DownloadService extends ChangeNotifier {
         }
       } catch (_) {}
 
-      // Download lyrics for 100% offline reading
+      // 5. Download Synced Timestamps Lyrics (.lrc)
       final lyricsPath = '${permDir.path}/$safeName.lrc';
       try {
         final lyrics = await MusicService().fetchLyrics(song.title, song.artist, songId: song.id);
-        if (lyrics.isNotEmpty && !lyrics.contains('गीत के बोल उपलब्ध नहीं हैं')) {
+        if (lyrics.isNotEmpty && !lyrics.contains('गीत के बोल उपलब्ध नहीं हैं') && !lyrics.contains('Lyrics not available')) {
           final lrcFile = File(lyricsPath);
           await lrcFile.writeAsString(lyrics);
           song.localLyricsPath = lyricsPath;
@@ -188,9 +280,6 @@ class DownloadService extends ChangeNotifier {
       await _saveOfflineTrack(song);
       return true;
     } catch (e) {
-      try { _nativeChannel.invokeMethod('dismissDownloadNotification'); } catch (_) {}
-      _downloadProgress.remove(song.id);
-      notifyListeners();
       return false;
     }
   }

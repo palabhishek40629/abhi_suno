@@ -132,7 +132,9 @@ class _LanguageSelectionScreenState extends State<LanguageSelectionScreen> {
                               duration: const Duration(milliseconds: 1400),
                               backgroundColor: const Color(0xFF00E676),
                               content: Text(
-                                '✅ ${lang.nativeName} (${lang.englishName}) सेट हो गई',
+                                _lang.isHindi
+                                    ? '✅ ${lang.nativeName} (${lang.englishName}) सेट हो गई'
+                                    : '✅ ${lang.englishName} language set successfully',
                                 style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
                               ),
                             ),

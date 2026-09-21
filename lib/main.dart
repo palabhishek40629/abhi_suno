@@ -19,11 +19,14 @@ import 'screens/search_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/login_onboarding_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Anti-Hang Watchdog & Image Cache Throttling
   PerformanceGuard.initialize();
+
+  // Auto-detect and initialize system language synchronously
+  await LanguageService().init();
 
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -165,10 +168,6 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   int _backPressCount = 0;
   Timer? _backResetTimer;
 
-  // Warm resume splash state
-  bool _showResumeSplash = false;
-  Timer? _resumeSplashTimer;
-
   @override
   void initState() {
     super.initState();
@@ -180,7 +179,6 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _backResetTimer?.cancel();
-    _resumeSplashTimer?.cancel();
     super.dispose();
   }
 
@@ -191,14 +189,6 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
     } else if (state == AppLifecycleState.resumed) {
       _checkExternalShareIntent();
       _connectivity.checkConnection();
-      // Show fast 1.2s branded resume splash on reopen, then return smoothly right where the user was
-      setState(() => _showResumeSplash = true);
-      _resumeSplashTimer?.cancel();
-      _resumeSplashTimer = Timer(const Duration(milliseconds: 1200), () {
-        if (mounted) {
-          setState(() => _showResumeSplash = false);
-        }
-      });
     }
   }
 
@@ -393,67 +383,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                       ),
                     ],
                   ),
-                ),
               ),
-
-              // Warm Resume Branded Startup Splash Overlay
-              if (_showResumeSplash)
-                Positioned.fill(
-                  child: AnimatedOpacity(
-                    opacity: _showResumeSplash ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Container(
-                      color: const Color(0xFF09090D),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Image.asset(
-                              'assets/images/logo.png',
-                              width: 86,
-                              height: 86,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                Icons.music_note_rounded,
-                                size: 80,
-                                color: Color(0xFF6C5CE7),
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-                            Text(
-                              _lang.isHindi ? 'अभी सुनो' : 'Abhi Suno',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 24,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.2,
-                                decoration: TextDecoration.none,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              _lang.isHindi ? 'लोड हो रहा है...' : 'Loading...',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.6),
-                                fontSize: 13,
-                                fontWeight: FontWeight.normal,
-                                decoration: TextDecoration.none,
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.5,
-                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6C5CE7)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
             ],
           );
         },

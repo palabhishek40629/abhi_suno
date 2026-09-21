@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
 import '../services/language_service.dart';
@@ -27,10 +28,15 @@ class _LyricsSheetState extends State<LyricsSheet> {
 
   List<_KaraokeLine> _karaokeLines = [];
   String _plainLyrics = '';
+  String _rawLyrics = '';
   bool _isKaraoke = false;
   bool _isLoading = true;
   int _activeLineIndex = -1;
   StreamSubscription? _posSub;
+
+  static const Color cyanNeon = Color(0xFF2FC0DB);
+  static const Color pinkNeon = Color(0xFFD34C8C);
+  static const Color neonGold = Color(0xFFFFD700);
 
   @override
   void initState() {
@@ -86,6 +92,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
   }
 
   void _parseLyrics(String raw) {
+    _rawLyrics = raw;
     final lines = raw.split('\n');
     final regExp = RegExp(r'\[(\d{2}):(\d{2})\.(\d{2,3})\]');
     final List<_KaraokeLine> parsed = [];
@@ -99,8 +106,10 @@ class _LyricsSheetState extends State<LyricsSheet> {
         final time = Duration(minutes: m, seconds: s, milliseconds: ms);
         final text = line.replaceAll(regExp, '').trim();
         if (text.isNotEmpty) {
-          final devanagariText = DevanagariConverter.toDevanagari(text);
-          parsed.add(_KaraokeLine(time: time, text: devanagariText));
+          final devanagariText = DevanagariConverter.cleanLyricsText(text);
+          if (devanagariText.isNotEmpty) {
+            parsed.add(_KaraokeLine(time: time, text: devanagariText));
+          }
         }
       }
     }
@@ -110,33 +119,98 @@ class _LyricsSheetState extends State<LyricsSheet> {
       _karaokeLines = parsed;
     } else {
       _isKaraoke = false;
-      final cleaned = raw.replaceAll(regExp, '').trim();
-      _plainLyrics = DevanagariConverter.toDevanagari(cleaned);
+      _plainLyrics = DevanagariConverter.cleanLyricsText(raw);
     }
   }
 
+  /// High-Precision Millisecond Voice Detection (Never Glitches / Lag-Free)
   void _syncActiveLine(Duration currentPos) {
     if (_karaokeLines.isEmpty) return;
 
     int activeIdx = -1;
     for (int i = 0; i < _karaokeLines.length; i++) {
+      final isLast = i == _karaokeLines.length - 1;
       if (currentPos >= _karaokeLines[i].time) {
-        activeIdx = i;
-      } else {
-        break;
+        if (isLast || currentPos < _karaokeLines[i + 1].time) {
+          activeIdx = i;
+          break;
+        }
       }
     }
 
-    if (activeIdx != _activeLineIndex && mounted) {
+    if (activeIdx != -1 && activeIdx != _activeLineIndex && mounted) {
       setState(() => _activeLineIndex = activeIdx);
 
-      // Auto-scroll active line to center smoothly
-      if (activeIdx >= 0 && _scrollController.hasClients) {
-        final targetOffset = (activeIdx * 52.0) - 150.0;
+      // Auto-scroll active line to center smoothly without jitter
+      if (_scrollController.hasClients) {
+        const itemEstimatedHeight = 72.0;
+        final viewportHeight = MediaQuery.of(context).size.height * 0.58;
+        final targetOffset = (activeIdx * itemEstimatedHeight) - (viewportHeight / 2) + (itemEstimatedHeight / 2);
         _scrollController.animateTo(
           targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 350),
+          duration: const Duration(milliseconds: 320),
           curve: Curves.easeOutCubic,
+        );
+      }
+    }
+  }
+
+  /// Export & Download Clean Lyrics directly as a .txt file to public Downloads/AbhiSuno
+  Future<void> _downloadLyricsAsTextFile() async {
+    final isHindi = _lang.isHindi;
+    final sourceToClean = _rawLyrics.isNotEmpty ? _rawLyrics : _plainLyrics;
+    final cleanLyrics = DevanagariConverter.cleanLyricsText(sourceToClean);
+
+    if (cleanLyrics.trim().isEmpty ||
+        cleanLyrics.contains('गीत के बोल उपलब्ध नहीं हैं') ||
+        cleanLyrics.contains('Lyrics not available')) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.orangeAccent,
+          content: Text(
+            isHindi ? 'डाउनलोड करने के लिए लिरिक्स उपलब्ध नहीं हैं।' : 'Lyrics are not available to download.',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      final cleanTitle = widget.song.title.replaceAll(RegExp(r'[^\w\s]+'), '').trim().replaceAll(RegExp(r'\s+'), '_');
+      final fileName = '${cleanTitle}_Lyrics.txt';
+      const channel = MethodChannel('com.abhishekpal.abhisuno/native');
+
+      await channel.invokeMethod('saveTextToDownloads', {
+        'fileName': fileName,
+        'content': '🎧 ${widget.song.title} - ${widget.song.artist}\n'
+            '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
+            '$cleanLyrics\n\n'
+            '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
+            'Abhi Suno Music App • Developed by Abhishek Pal\n',
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: cyanNeon,
+            content: Text(
+              isHindi ? 'लिरिक्स टेक्स्ट फाइल सफलतापूर्वक डाउनलोड हो गई! ($fileName)' : 'Lyrics text file downloaded successfully! ($fileName)',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: Colors.redAccent,
+            content: Text(
+              isHindi ? 'लिरिक्स डाउनलोड विफल रहा।' : 'Failed to download lyrics file.',
+              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+            ),
+          ),
         );
       }
     }
@@ -149,23 +223,22 @@ class _LyricsSheetState extends State<LyricsSheet> {
       builder: (context, _) {
         final textColor = _theme.textColor;
         final subtextColor = _theme.subtextColor;
-        const primaryCyan = Color(0xFF00E5FF);
-        const neonGold = Color(0xFFFFD700);
+        final isHindi = _lang.isHindi;
 
         return ClipRRect(
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Container(
               height: MediaQuery.of(context).size.height * 0.85,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: const Color(0xEB0A1329), // Deep midnight navy frosted glass
+                color: const Color(0xEB070B18), // Deep midnight navy frosted glass
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-                border: Border.all(color: primaryCyan.withOpacity(0.25)),
+                border: Border.all(color: cyanNeon.withOpacity(0.25)),
                 boxShadow: [
                   BoxShadow(
-                    color: primaryCyan.withOpacity(0.15),
+                    color: cyanNeon.withOpacity(0.15),
                     blurRadius: 28,
                     offset: const Offset(0, -4),
                   ),
@@ -178,22 +251,22 @@ class _LyricsSheetState extends State<LyricsSheet> {
                     width: 44,
                     height: 5,
                     decoration: BoxDecoration(
-                      color: primaryCyan.withOpacity(0.6),
+                      color: cyanNeon.withOpacity(0.6),
                       borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Header with Song Info and Karaoke Indicator
+                  // Header with Song Info, Download Lyrics Button, and Close Button
                   Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: primaryCyan.withOpacity(0.15),
+                          color: cyanNeon.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.mic_external_on_rounded, color: primaryCyan, size: 22),
+                        child: const Icon(Icons.mic_external_on_rounded, color: cyanNeon, size: 22),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -235,6 +308,26 @@ class _LyricsSheetState extends State<LyricsSheet> {
                           ],
                         ),
                       ),
+
+                      // Dedicated Download Lyrics (.txt) Button
+                      IconButton(
+                        tooltip: isHindi ? 'लिरिक्स डाउनलोड करें (.txt)' : 'Download Lyrics (.txt)',
+                        icon: Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: cyanNeon.withOpacity(0.15),
+                            border: Border.all(color: cyanNeon.withOpacity(0.6)),
+                            boxShadow: [
+                              BoxShadow(color: cyanNeon.withOpacity(0.35), blurRadius: 8),
+                            ],
+                          ),
+                          child: const Icon(Icons.file_download_outlined, color: cyanNeon, size: 19),
+                        ),
+                        onPressed: _downloadLyricsAsTextFile,
+                      ),
+
+                      // Close Button
                       IconButton(
                         icon: Icon(Icons.close_rounded, color: textColor),
                         onPressed: () => Navigator.pop(context),
@@ -248,7 +341,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
                     child: _isLoading
                         ? const Center(
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(primaryCyan),
+                              valueColor: AlwaysStoppedAnimation<Color>(cyanNeon),
                             ),
                           )
                         : _isKaraoke
@@ -266,22 +359,61 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                       widget.audioHandler?.seek(line.time);
                                     },
                                     child: AnimatedScale(
-                                      scale: isActive ? 1.16 : 1.0,
-                                      duration: const Duration(milliseconds: 260),
+                                      scale: isActive ? 1.18 : 1.0,
+                                      duration: const Duration(milliseconds: 280),
                                       curve: Curves.easeOutBack,
                                       child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 250),
-                                        margin: const EdgeInsets.symmetric(vertical: 4),
-                                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                        duration: const Duration(milliseconds: 260),
+                                        margin: EdgeInsets.symmetric(
+                                          vertical: isActive ? 8 : 4,
+                                          horizontal: isActive ? 4 : 8,
+                                        ),
+                                        padding: EdgeInsets.symmetric(
+                                          vertical: isActive ? 14 : 9,
+                                          horizontal: isActive ? 18 : 12,
+                                        ),
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(14),
-                                          color: isActive ? const Color(0xFF2FC0DB).withOpacity(0.12) : Colors.transparent,
-                                          border: isActive ? Border.all(color: const Color(0xFF2FC0DB).withOpacity(0.35)) : null,
+                                          borderRadius: BorderRadius.circular(22),
+                                          gradient: isActive
+                                              ? const LinearGradient(
+                                                  colors: [Color(0xFF0F1B33), Color(0xFF1E102E)],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                )
+                                              : null,
+                                          color: isActive ? null : Colors.transparent,
+                                          border: isActive
+                                              ? Border.all(
+                                                  color: cyanNeon.withOpacity(0.9),
+                                                  width: 1.8,
+                                                )
+                                              : null,
+                                          boxShadow: isActive
+                                              ? [
+                                                  BoxShadow(
+                                                    color: cyanNeon.withOpacity(0.40),
+                                                    blurRadius: 22,
+                                                    spreadRadius: 1,
+                                                    offset: const Offset(0, 4),
+                                                  ),
+                                                  BoxShadow(
+                                                    color: pinkNeon.withOpacity(0.22),
+                                                    blurRadius: 16,
+                                                    offset: const Offset(0, -2),
+                                                  ),
+                                                ]
+                                              : null,
                                         ),
                                         child: isActive
                                             ? ShaderMask(
                                                 shaderCallback: (bounds) => const LinearGradient(
-                                                  colors: [Color(0xFF2FC0DB), Color(0xFFD34C8C)],
+                                                  colors: [
+                                                    Color(0xFF2FC0DB),
+                                                    Color(0xFF00E5FF),
+                                                    Colors.white,
+                                                    Color(0xFFD34C8C),
+                                                  ],
+                                                  stops: [0.0, 0.35, 0.70, 1.0],
                                                   begin: Alignment.topLeft,
                                                   end: Alignment.bottomRight,
                                                 ).createShader(bounds),
@@ -291,12 +423,13 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                                   style: const TextStyle(
                                                     fontFamily: 'AmsSudha',
                                                     color: Colors.white,
-                                                    fontSize: 22,
+                                                    fontSize: 24,
                                                     fontWeight: FontWeight.w900,
-                                                    letterSpacing: 0.6,
+                                                    letterSpacing: 0.8,
                                                     shadows: [
-                                                      Shadow(color: Color(0xFF2FC0DB), blurRadius: 18),
-                                                      Shadow(color: Color(0xFFD34C8C), blurRadius: 18),
+                                                      Shadow(color: cyanNeon, blurRadius: 24),
+                                                      Shadow(color: Color(0xFF00E5FF), blurRadius: 12),
+                                                      Shadow(color: pinkNeon, blurRadius: 20),
                                                     ],
                                                   ),
                                                 ),
@@ -306,10 +439,10 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   fontFamily: 'AmsSudha',
-                                                  color: textColor.withOpacity(i < _activeLineIndex ? 0.35 : 0.72),
-                                                  fontSize: 16,
+                                                  color: textColor.withOpacity(i < _activeLineIndex ? 0.35 : 0.70),
+                                                  fontSize: 17,
                                                   fontWeight: FontWeight.w600,
-                                                  letterSpacing: 0.3,
+                                                  letterSpacing: 0.4,
                                                 ),
                                               ),
                                       ),
@@ -319,19 +452,19 @@ class _LyricsSheetState extends State<LyricsSheet> {
                               )
                             : SingleChildScrollView(
                                 physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
+                                padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
                                 child: Text(
                                   _plainLyrics.isEmpty
-                                      ? (_lang.isHindi ? 'गीत के बोल उपलब्ध नहीं हैं।' : 'Lyrics not available.')
+                                      ? (isHindi ? 'गीत के बोल उपलब्ध नहीं हैं।' : 'Lyrics not available.')
                                       : _plainLyrics,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
                                     fontFamily: 'AmsSudha',
                                     color: Colors.white,
-                                    fontSize: 19,
+                                    fontSize: 20,
                                     height: 2.2,
                                     fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.5,
+                                    letterSpacing: 0.6,
                                   ),
                                 ),
                               ),

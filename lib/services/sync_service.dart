@@ -5,6 +5,7 @@ import '../models/song_model.dart';
 import 'auth_service.dart';
 import 'favorites_service.dart';
 import 'playlist_service.dart';
+import 'user_service.dart';
 
 class SyncService extends ChangeNotifier {
   static final SyncService _instance = SyncService._internal();
@@ -33,11 +34,18 @@ class SyncService extends ChangeNotifier {
 
       final favs = FavoritesService().favoriteSongs;
       final playlists = PlaylistService().playlists;
+      final user = UserService();
 
       final payload = {
         'uid': uid,
         'email': auth.currentUser.email,
         'timestamp': DateTime.now().toIso8601String(),
+        'profile': {
+          'name': user.userName,
+          'bio': user.userBio,
+          'email': user.userEmail,
+          'image': user.profileImagePath ?? '',
+        },
         'liked_songs': favs.map((s) => s.toJson()).toList(),
         'playlists': playlists.map((p) => p.toJson()).toList(),
       };
@@ -73,6 +81,23 @@ class SyncService extends ChangeNotifier {
       final rawData = prefs.getString(syncKey);
       if (rawData != null && rawData.isNotEmpty) {
         final Map<String, dynamic> data = json.decode(rawData);
+
+        // Restore Profile
+        if (data.containsKey('profile')) {
+          final profile = data['profile'];
+          if (profile is Map<String, dynamic>) {
+            final name = profile['name'] as String?;
+            final bio = profile['bio'] as String?;
+            final email = profile['email'] as String?;
+            final image = profile['image'] as String?;
+            await UserService().updateProfile(
+              name: name,
+              bio: bio,
+              email: email,
+              imagePath: (image != null && image.isNotEmpty) ? image : null,
+            );
+          }
+        }
 
         // Restore Liked Songs
         if (data.containsKey('liked_songs')) {
@@ -121,7 +146,7 @@ class SyncService extends ChangeNotifier {
 
     final backupMap = {
       'app': 'AbhiSuno',
-      'version': '4.2.0',
+      'version': '4.3.0',
       'export_date': DateTime.now().toIso8601String(),
       'liked_songs_count': favs.length,
       'playlists_count': playlists.length,
