@@ -41,15 +41,15 @@ class MainActivity: AudioServiceActivity() {
         }
     }
 
-    override fun onTaskRemoved(rootIntent: Intent?) {
-        super.onTaskRemoved(rootIntent)
+    override fun onDestroy() {
         try {
-            // Stop background audio playback when app is swiped away from Recents
+            // Stop background audio playback when app is destroyed or killed
             val stopIntent = Intent(this, com.ryanheise.audioservice.AudioService::class.java).apply {
                 action = "com.ryanheise.audioservice.action.STOP"
             }
             startService(stopIntent)
         } catch (e: Exception) {}
+        super.onDestroy()
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -235,9 +235,9 @@ class MainActivity: AudioServiceActivity() {
                 }
                 "updateDownloadNotification" -> {
                     val title = call.argument<String>("title") ?: "Song"
-                    val progress = call.argument<Double>("progress") ?: 0.0
+                    val progressNumber = call.argument<Number>("progress") ?: 0
                     val isDone = call.argument<Boolean>("isDone") ?: false
-                    showDownloadNotification(title, (progress * 100).toInt(), isDone)
+                    showDownloadNotification(title, progressNumber.toInt(), isDone)
                     result.success(true)
                 }
                 "dismissDownloadNotification" -> {
@@ -292,5 +292,44 @@ class MainActivity: AudioServiceActivity() {
             }
             imagePickCallback = null
         }
+    }
+
+    private fun showDownloadNotification(title: String, progress: Int, isDone: Boolean) {
+        try {
+            val channelId = "abhisuno_downloads"
+            val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val channel = NotificationChannel(
+                    channelId,
+                    "Abhi Suno Downloads",
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = "Live song download progress notifications"
+                    setShowBadge(false)
+                }
+                notificationManager.createNotificationChannel(channel)
+            }
+
+            if (isDone) {
+                val builder = NotificationCompat.Builder(this, channelId)
+                    .setContentTitle(title)
+                    .setContentText("Download Complete")
+                    .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setAutoCancel(true)
+                notificationManager.notify(1099, builder.build())
+                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                    notificationManager.cancel(1099)
+                }, 3000)
+            } else {
+                val builder = NotificationCompat.Builder(this, channelId)
+                    .setContentTitle("Downloading: $title")
+                    .setContentText("$progress%")
+                    .setProgress(100, progress, false)
+                    .setSmallIcon(android.R.drawable.stat_sys_download)
+                    .setOngoing(true)
+                notificationManager.notify(1099, builder.build())
+            }
+        } catch (e: Exception) {}
     }
 }
