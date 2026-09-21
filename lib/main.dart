@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'services/audio_handler.dart';
 import 'services/party_room_service.dart';
 import 'services/language_service.dart';
@@ -16,6 +17,7 @@ import 'screens/home_screen.dart';
 import 'screens/explore_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/library_screen.dart';
+import 'screens/login_onboarding_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +68,7 @@ class AppBootstrapScreen extends StatefulWidget {
 class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
   AbhiAudioHandler? _audioHandler;
   bool _splashCompleted = false;
+  bool _hasCompletedOnboarding = true;
 
   @override
   void initState() {
@@ -74,6 +77,14 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
   }
 
   Future<void> _initializeServices() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final completed = prefs.getBool('has_completed_onboarding') ?? false;
+      if (mounted) {
+        setState(() => _hasCompletedOnboarding = completed);
+      }
+    } catch (_) {}
+
     try {
       final handler = await AudioService.init(
         builder: () => AbhiAudioHandler(),
@@ -105,24 +116,31 @@ class _AppBootstrapScreenState extends State<AppBootstrapScreen> {
   Widget build(BuildContext context) {
     final bool isReady = _audioHandler != null && _splashCompleted;
 
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 300),
-      transitionBuilder: (child, animation) {
-        return FadeTransition(opacity: animation, child: child);
-      },
-      child: isReady
-          ? MainNavigationScaffold(
-              key: const ValueKey('main_nav'),
-              audioHandler: _audioHandler!,
-            )
-          : AnimatedSplashScreen(
-              key: const ValueKey('splash_screen'),
-              onFinish: () {
-                if (mounted) {
-                  setState(() => _splashCompleted = true);
-                }
-              },
-            ),
+    if (!isReady) {
+      return AnimatedSplashScreen(
+        key: const ValueKey('splash_screen'),
+        onFinish: () {
+          if (mounted) {
+            setState(() => _splashCompleted = true);
+          }
+        },
+      );
+    }
+
+    if (!_hasCompletedOnboarding) {
+      return LoginOnboardingScreen(
+        key: const ValueKey('onboarding_screen'),
+        onComplete: () {
+          if (mounted) {
+            setState(() => _hasCompletedOnboarding = true);
+          }
+        },
+      );
+    }
+
+    return MainNavigationScaffold(
+      key: const ValueKey('main_nav'),
+      audioHandler: _audioHandler!,
     );
   }
 }
@@ -143,7 +161,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   final ConnectivityService _connectivity = ConnectivityService();
   static const MethodChannel _nativeChannel = MethodChannel('com.abhishekpal.abhisuno/native');
 
-  // Multi-tap back navigation tracking
+  // Multi-tap back navigation tracking (2-Tap Smart Exit)
   int _backPressCount = 0;
   Timer? _backResetTimer;
 
@@ -168,7 +186,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
+    if (state == AppLifecycleState.detached) {
+      widget.audioHandler.stop();
+    } else if (state == AppLifecycleState.resumed) {
       _checkExternalShareIntent();
       _connectivity.checkConnection();
       // Show fast 1.2s branded resume splash on reopen, then return smoothly right where the user was
@@ -207,26 +227,15 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
         setState(() => _currentIndex = 0);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ऐप बंद करने के लिए 2 बार और दबाएं'),
-            duration: Duration(milliseconds: 1200),
+          SnackBar(
+            content: Text(_lang.isHindi ? 'ऐप से बाहर निकलने के लिए एक बार फिर दबाएं' : 'Press back again to exit'),
+            duration: const Duration(milliseconds: 1200),
             behavior: SnackBarBehavior.floating,
           ),
         );
       }
-    } else if (_backPressCount == 2) {
-      // 2-taps: Return to Home tab from any deep screen
-      Navigator.of(context).popUntil((route) => route.isFirst);
-      setState(() => _currentIndex = 0);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('ऐप बंद करने के लिए 1 बार और दबाएं'),
-          duration: Duration(milliseconds: 1200),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } else if (_backPressCount >= 3) {
-      // 3-taps: Completely terminate app, including background audio
+    } else if (_backPressCount >= 2) {
+      // 2-taps: Immediately terminate app and stop background audio
       _backResetTimer?.cancel();
       widget.audioHandler.stop();
       SystemChannels.platform.invokeMethod('SystemNavigator.pop');
@@ -293,10 +302,10 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                               children: [
                                 const Icon(Icons.wifi_off_rounded, color: Colors.white, size: 18),
                                 const SizedBox(width: 8),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'ऑफ़लाइन मोड (Offline Mode) - डाउनलोड्स उपलब्ध हैं',
-                                    style: TextStyle(
+                                    _lang.isHindi ? 'ऑफ़लाइन मोड - डाउनलोड्स उपलब्ध हैं' : 'Offline Mode - Downloads Available',
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
@@ -313,9 +322,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                                       color: Colors.white,
                                       borderRadius: BorderRadius.circular(16),
                                     ),
-                                    child: const Text(
-                                      'डाउनलोड्स',
-                                      style: TextStyle(
+                                    child: Text(
+                                      _lang.isHindi ? 'डाउनलोड्स' : 'Downloads',
+                                      style: const TextStyle(
                                         color: Color(0xFFE65100),
                                         fontSize: 11,
                                         fontWeight: FontWeight.w900,
@@ -410,9 +419,9 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                               ),
                             ),
                             const SizedBox(height: 18),
-                            const Text(
-                              'अभी सुनो',
-                              style: TextStyle(
+                            Text(
+                              _lang.isHindi ? 'अभी सुनो' : 'Abhi Suno',
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 24,
                                 fontWeight: FontWeight.w900,
@@ -422,7 +431,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'लोड हो रहा है...',
+                              _lang.isHindi ? 'लोड हो रहा है...' : 'Loading...',
                               style: TextStyle(
                                 color: Colors.white.withOpacity(0.6),
                                 fontSize: 13,

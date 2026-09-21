@@ -7,6 +7,7 @@ import '../services/audio_handler.dart';
 import '../services/language_service.dart';
 import '../services/music_service.dart';
 import '../services/theme_service.dart';
+import '../utils/devanagari_converter.dart';
 
 class LyricsSheet extends StatefulWidget {
   final SongModel song;
@@ -98,7 +99,8 @@ class _LyricsSheetState extends State<LyricsSheet> {
         final time = Duration(minutes: m, seconds: s, milliseconds: ms);
         final text = line.replaceAll(regExp, '').trim();
         if (text.isNotEmpty) {
-          parsed.add(_KaraokeLine(time: time, text: text));
+          final devanagariText = DevanagariConverter.toDevanagari(text);
+          parsed.add(_KaraokeLine(time: time, text: devanagariText));
         }
       }
     }
@@ -108,7 +110,8 @@ class _LyricsSheetState extends State<LyricsSheet> {
       _karaokeLines = parsed;
     } else {
       _isKaraoke = false;
-      _plainLyrics = raw.replaceAll(regExp, '').trim();
+      final cleaned = raw.replaceAll(regExp, '').trim();
+      _plainLyrics = DevanagariConverter.toDevanagari(cleaned);
     }
   }
 
@@ -258,31 +261,57 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                   final line = _karaokeLines[i];
                                   final isActive = i == _activeLineIndex;
 
-                                  return AnimatedContainer(
-                                    duration: const Duration(milliseconds: 250),
-                                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(12),
-                                      color: isActive ? primaryCyan.withOpacity(0.12) : Colors.transparent,
-                                    ),
-                                    child: Text(
-                                      line.text,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: isActive
-                                            ? neonGold
-                                            : textColor.withOpacity(i < _activeLineIndex ? 0.4 : 0.75),
-                                        fontSize: isActive ? 20 : 16,
-                                        fontWeight: isActive ? FontWeight.w900 : FontWeight.w500,
-                                        letterSpacing: isActive ? 0.6 : 0.2,
-                                        shadows: isActive
-                                            ? [
-                                                BoxShadow(
-                                                  color: neonGold.withOpacity(0.6),
-                                                  blurRadius: 16,
+                                  return GestureDetector(
+                                    onTap: () {
+                                      widget.audioHandler?.seek(line.time);
+                                    },
+                                    child: AnimatedScale(
+                                      scale: isActive ? 1.16 : 1.0,
+                                      duration: const Duration(milliseconds: 260),
+                                      curve: Curves.easeOutBack,
+                                      child: AnimatedContainer(
+                                        duration: const Duration(milliseconds: 250),
+                                        margin: const EdgeInsets.symmetric(vertical: 4),
+                                        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          borderRadius: BorderRadius.circular(14),
+                                          color: isActive ? const Color(0xFF2FC0DB).withOpacity(0.12) : Colors.transparent,
+                                          border: isActive ? Border.all(color: const Color(0xFF2FC0DB).withOpacity(0.35)) : null,
+                                        ),
+                                        child: isActive
+                                            ? ShaderMask(
+                                                shaderCallback: (bounds) => const LinearGradient(
+                                                  colors: [Color(0xFF2FC0DB), Color(0xFFD34C8C)],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ).createShader(bounds),
+                                                child: Text(
+                                                  line.text,
+                                                  textAlign: TextAlign.center,
+                                                  style: const TextStyle(
+                                                    fontFamily: 'AmsSudha',
+                                                    color: Colors.white,
+                                                    fontSize: 22,
+                                                    fontWeight: FontWeight.w900,
+                                                    letterSpacing: 0.6,
+                                                    shadows: [
+                                                      Shadow(color: Color(0xFF2FC0DB), blurRadius: 18),
+                                                      Shadow(color: Color(0xFFD34C8C), blurRadius: 18),
+                                                    ],
+                                                  ),
                                                 ),
-                                              ]
-                                            : null,
+                                              )
+                                            : Text(
+                                                line.text,
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontFamily: 'AmsSudha',
+                                                  color: textColor.withOpacity(i < _activeLineIndex ? 0.35 : 0.72),
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  letterSpacing: 0.3,
+                                                ),
+                                              ),
                                       ),
                                     ),
                                   );
@@ -297,8 +326,9 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                       : _plainLyrics,
                                   textAlign: TextAlign.center,
                                   style: const TextStyle(
+                                    fontFamily: 'AmsSudha',
                                     color: Colors.white,
-                                    fontSize: 18,
+                                    fontSize: 19,
                                     height: 2.2,
                                     fontWeight: FontWeight.w600,
                                     letterSpacing: 0.5,

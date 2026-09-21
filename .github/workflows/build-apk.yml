@@ -34,6 +34,13 @@ jobs:
       - name: Get Flutter Dependencies
         run: flutter pub get
 
+      - name: Generate Production Release Keystore
+        run: |
+          keytool -genkey -v -keystore android/app/release.jks \
+            -alias abhisuno -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass abhisuno123 -keypass abhisuno123 \
+            -dname "CN=Abhishek Pal, OU=AbhiSuno, O=AbhiSuno Inc, L=Varanasi, S=UP, C=IN"
+
       - name: Build Android APK (Fat Release APK)
         run: |
           set -o pipefail

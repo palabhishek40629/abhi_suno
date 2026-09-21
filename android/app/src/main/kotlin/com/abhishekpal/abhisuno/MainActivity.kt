@@ -11,6 +11,10 @@ import android.os.Environment
 import android.os.StatFs
 import android.provider.MediaStore
 import android.provider.Settings
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.ContentValues
+import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -35,6 +39,17 @@ class MainActivity: AudioServiceActivity() {
         if (intent?.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
             initialSharedText = intent.getStringExtra(Intent.EXTRA_TEXT)
         }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        try {
+            // Stop background audio playback when app is swiped away from Recents
+            val stopIntent = Intent(this, com.ryanheise.audioservice.AudioService::class.java).apply {
+                action = "com.ryanheise.audioservice.action.STOP"
+            }
+            startService(stopIntent)
+        } catch (e: Exception) {}
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -144,6 +159,11 @@ class MainActivity: AudioServiceActivity() {
                     try {
                         val file = File(filePath)
                         if (file.exists()) {
+                            val pInfo = packageManager.getPackageArchiveInfo(filePath, 0)
+                            if (pInfo != null && pInfo.packageName != packageName) {
+                                result.error("SECURITY_VIOLATION", "APK package name does not match $packageName", null)
+                                return@setMethodCallHandler
+                            }
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                 if (!packageManager.canRequestPackageInstalls()) {
                                     val settingsIntent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
@@ -178,6 +198,25 @@ class MainActivity: AudioServiceActivity() {
                     try {
                         val srcFile = File(srcPath)
                         if (srcFile.exists()) {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                                val values = ContentValues().apply {
+                                    put(MediaStore.Audio.Media.DISPLAY_NAME, fileName)
+                                    put(MediaStore.Audio.Media.MIME_TYPE, "audio/mp4")
+                                    put(MediaStore.Audio.Media.RELATIVE_PATH, Environment.DIRECTORY_MUSIC + "/AbhiSuno")
+                                    put(MediaStore.Audio.Media.IS_PENDING, 1)
+                                }
+                                val uri = contentResolver.insert(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, values)
+                                if (uri != null) {
+                                    contentResolver.openOutputStream(uri)?.use { out ->
+                                        srcFile.inputStream().use { inp -> inp.copyTo(out) }
+                                    }
+                                    values.clear()
+                                    values.put(MediaStore.Audio.Media.IS_PENDING, 0)
+                                    contentResolver.update(uri, values, null, null)
+                                    result.success(uri.toString())
+                                    return@setMethodCallHandler
+                                }
+                            }
                             val musicDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC)
                             if (!musicDir.exists()) musicDir.mkdirs()
                             val destFile = File(musicDir, fileName)
@@ -193,6 +232,18 @@ class MainActivity: AudioServiceActivity() {
                     } catch (e: Exception) {
                         result.error("EXPORT_ERROR", e.message, null)
                     }
+                }
+                "updateDownloadNotification" -> {
+                    val title = call.argument<String>("title") ?: "Song"
+                    val progress = call.argument<Double>("progress") ?: 0.0
+                    val isDone = call.argument<Boolean>("isDone") ?: false
+                    showDownloadNotification(title, (progress * 100).toInt(), isDone)
+                    result.success(true)
+                }
+                "dismissDownloadNotification" -> {
+                    val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+                    notificationManager.cancel(1099)
+                    result.success(true)
                 }
                 "shareAudio" -> {
                     val srcPath = call.argument<String>("srcPath") ?: ""

@@ -37,6 +37,10 @@ class DesHelper {
         decryptedString = decryptedString.replaceAll('_160.mp4', '_320.mp4');
       }
 
+      if (decryptedString.startsWith('http://')) {
+        decryptedString = decryptedString.replaceFirst('http://', 'https://');
+      }
+
       return decryptedString;
     } catch (_) {
       return null;

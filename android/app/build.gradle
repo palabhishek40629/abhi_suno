@@ -50,11 +50,25 @@ android {
             v1SigningEnabled true
             v2SigningEnabled true
         }
+        release {
+            if (file("release.jks").exists()) {
+                keyAlias 'abhisuno'
+                keyPassword 'abhisuno123'
+                storeFile file("release.jks")
+                storePassword 'abhisuno123'
+                v1SigningEnabled true
+                v2SigningEnabled true
+            }
+        }
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.debug
+            if (file("release.jks").exists()) {
+                signingConfig signingConfigs.release
+            } else {
+                signingConfig signingConfigs.debug
+            }
             minifyEnabled false
             shrinkResources false
         }

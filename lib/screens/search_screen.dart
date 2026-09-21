@@ -1,4 +1,5 @@
 import 'now_playing_screen.dart';
+import 'playlist_detail_screen.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audio_service/audio_service.dart';
@@ -161,41 +162,17 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  void _playPlaylist(JioSaavnPlaylist pl) async {
-    final isHindi = _lang.isHindi;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        duration: const Duration(seconds: 2),
-        backgroundColor: const Color(0xFF00E5FF),
-        content: Text(
-          isHindi ? '"${pl.title}" के गाने लोड हो रहे हैं...' : 'Loading "${pl.title}" playlist...',
-          style: const TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+  void _playPlaylist(JioSaavnPlaylist pl) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PlaylistDetailScreen(
+          playlistId: pl.id,
+          playlistTitle: pl.title,
+          playlistImageUrl: pl.imageUrl,
+          audioHandler: widget.audioHandler,
         ),
       ),
     );
-
-    try {
-      final songs = await _musicService.getPlaylistSongs(pl.id);
-      if (songs.isNotEmpty) {
-        widget.audioHandler.playSong(songs.first, queue: songs);
-        if (mounted) {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => NowPlayingScreen(audioHandler: widget.audioHandler),
-            ),
-          );
-        }
-      } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              backgroundColor: Colors.redAccent,
-              content: Text(isHindi ? 'प्लेलिस्ट में कोई गाना नहीं मिला।' : 'No tracks found in this playlist.'),
-            ),
-          );
-        }
-      }
-    } catch (_) {}
   }
 
 

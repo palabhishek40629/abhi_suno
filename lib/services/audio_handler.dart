@@ -218,8 +218,8 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   Future<void> playSong(SongModel song, {List<SongModel>? queue}) async {
     final gen = ++_playGeneration;
     try {
-      // 1. Non-blocking pause/stop so UI thread never freezes
-      _player.pause();
+      // 1. Immediately stop previous track audio synchronously
+      _player.stop();
 
       _hasPreloadedNext = false;
       _applyVolumeNormalization(song);
@@ -304,6 +304,9 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
           }
 
           if (audioUrl != null && audioUrl.isNotEmpty) {
+            if (audioUrl.startsWith('http://')) {
+              audioUrl = audioUrl.replaceFirst('http://', 'https://');
+            }
             final streamHeaders = {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
               'Accept': '*/*',
@@ -318,11 +321,10 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (gen != _playGeneration) return;
 
       if (source != null) {
-        // 4. CRITICAL: Always start every track from 0:00! Never resume previous song's position!
+        // 4. CRITICAL: Always start every track from 0:00 without double-buffering latency!
         await _player.setAudioSource(source, initialPosition: Duration.zero);
-        await _player.seek(Duration.zero);
         if (gen != _playGeneration) return;
-        await _player.play();
+        _player.play();
       }
     } catch (_) {}
   }

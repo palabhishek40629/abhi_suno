@@ -56,7 +56,7 @@ class SongModel {
       title: json['title'] as String? ?? 'Unknown Title',
       artist: json['artist'] as String? ?? 'Unknown Artist',
       album: json['album'] as String? ?? 'Abhi Suno Music',
-      duration: Duration(milliseconds: json['durationMs'] as int? ?? 0),
+      duration: Duration(milliseconds: int.tryParse(json['durationMs']?.toString() ?? '0') ?? 0),
       thumbnailUrl: json['thumbnailUrl'] as String? ?? '',
       streamUrl: json['streamUrl'] as String?,
       permaUrl: json['permaUrl'] as String?,

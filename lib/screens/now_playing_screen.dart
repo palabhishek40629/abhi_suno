@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:audio_service/audio_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
@@ -81,9 +82,13 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   }
 
   void _triggerDownload(SongModel song) async {
+    final isHindi = LanguageService().isHindi;
     if (_isDownloaded) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Yeh gaana pehle se hi app me downloaded hai!')),
+        SnackBar(
+          content: Text(isHindi ? 'यह गाना पहले से ही डाउनलोड है।' : 'This song is already downloaded!'),
+          backgroundColor: const Color(0xFF00E5FF),
+        ),
       );
       return;
     }
@@ -112,8 +117,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
         SnackBar(
           content: Text(
             success
-                ? 'Gaana app me download ho gaya! Offline sun sakte hain.'
-                : 'Download nahi ho paya, kripya dobara koshish karein.',
+                ? (isHindi ? 'गाना डाउनलोड हो गया! ऑफ़लाइन सुन सकते हैं।' : 'Song downloaded! You can now listen offline.')
+                : (isHindi ? 'डाउनलोड विफल रहा, कृपया पुनः प्रयास करें।' : 'Download failed, please try again.'),
           ),
           backgroundColor: success ? const Color(0xFF00E5FF) : Colors.redAccent,
         ),
@@ -1025,54 +1030,96 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                             ),
                           ),
                         ),
-                        // Big Play / Pause Button with Radiant Cyan & Magenta Gradient
-                        StreamBuilder<bool>(
-                          stream: widget.audioHandler.player.playingStream,
-                          builder: (context, playSnapshot) {
-                            final isPlaying = playSnapshot.data ?? widget.audioHandler.player.playing;
-                            return Tactile3DWrapper(
-                              scaleElevation: 1.18,
-                              isCircle: true,
-                              glowColor: const Color(0xFF00E5FF),
-                              onTap: () {
-                                if (isPlaying) {
-                                  widget.audioHandler.pause();
-                                } else {
-                                  widget.audioHandler.play();
-                                }
-                              },
-                              child: Container(
-                                width: 70,
-                                height: 70,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: const LinearGradient(
-                                    colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF00E5FF).withOpacity(0.55),
-                                      blurRadius: 24,
-                                      spreadRadius: 2.0,
-                                      offset: const Offset(0, 6),
+                        // Big Play / Pause Button with Radiant Cyan & Magenta Gradient & Weak Network Buffering Neon Ring
+                        StreamBuilder<PlaybackState>(
+                          stream: widget.audioHandler.playbackState,
+                          builder: (context, pbSnapshot) {
+                            final pb = pbSnapshot.data;
+                            final isBuffering = pb?.processingState == AudioProcessingState.buffering ||
+                                pb?.processingState == AudioProcessingState.loading;
+                            final isPlaying = pb?.playing ?? widget.audioHandler.player.playing;
+
+                            return Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                if (isBuffering)
+                                  Container(
+                                    width: 84,
+                                    height: 84,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF2FC0DB).withOpacity(0.6),
+                                          blurRadius: 20,
+                                          spreadRadius: 3,
+                                        ),
+                                        BoxShadow(
+                                          color: const Color(0xFFD34C8C).withOpacity(0.4),
+                                          blurRadius: 16,
+                                          spreadRadius: 2,
+                                        ),
+                                      ],
                                     ),
-                                    BoxShadow(
-                                      color: const Color(0xFFFF2A6D).withOpacity(0.4),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 3),
+                                    child: const CircularProgressIndicator(
+                                      strokeWidth: 3.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2FC0DB)),
                                     ),
-                                  ],
-                                ),
-                                child: Center(
-                                  child: Icon(
-                                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                    color: Colors.white,
-                                    size: 40,
+                                  ),
+                                Tactile3DWrapper(
+                                  scaleElevation: 1.18,
+                                  isCircle: true,
+                                  glowColor: const Color(0xFF00E5FF),
+                                  onTap: () {
+                                    if (isPlaying) {
+                                      widget.audioHandler.pause();
+                                    } else {
+                                      widget.audioHandler.play();
+                                    }
+                                  },
+                                  child: Container(
+                                    width: 70,
+                                    height: 70,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF00E5FF), Color(0xFFFF2A6D)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: const Color(0xFF00E5FF).withOpacity(0.55),
+                                          blurRadius: 24,
+                                          spreadRadius: 2.0,
+                                          offset: const Offset(0, 6),
+                                        ),
+                                        BoxShadow(
+                                          color: const Color(0xFFFF2A6D).withOpacity(0.4),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: isBuffering
+                                          ? const SizedBox(
+                                              width: 32,
+                                              height: 32,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 3,
+                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                              ),
+                                            )
+                                          : Icon(
+                                              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                              color: Colors.white,
+                                              size: 40,
+                                            ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
                             );
                           },
                         ),

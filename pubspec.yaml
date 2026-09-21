@@ -1,8 +1,7 @@
 name: abhi_suno
 description: "Abhi Suno - Open Source Ad-Free Hybrid Music Streaming & In-App Offline Player by Abhishek Pal"
 publish_to: 'none'
-version: 4.1.0+12
-
+version: 4.1.0+13
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -31,4 +30,10 @@ flutter:
   assets:
     - assets/images/
     - assets/animations/
+    - assets/fonts/
+
+  fonts:
+    - family: AmsSudha
+      fonts:
+        - asset: assets/fonts/AmsSudha.ttf
 

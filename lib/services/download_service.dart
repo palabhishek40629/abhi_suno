@@ -121,11 +121,34 @@ class DownloadService extends ChangeNotifier {
             _downloadProgress[song.id] = progress;
             notifyListeners();
             if (onProgress != null) onProgress(progress);
+            try {
+              _nativeChannel.invokeMethod('updateDownloadNotification', {
+                'title': song.title,
+                'progress': (progress * 100).toInt(),
+                'isDone': false,
+              });
+            } catch (_) {}
           }
         },
       );
 
       _downloadProgress.remove(song.id);
+
+      final audioFile = File(filePath);
+      if (!audioFile.existsSync() || audioFile.lengthSync() < 50000) {
+        try { if (audioFile.existsSync()) audioFile.deleteSync(); } catch (_) {}
+        try { _nativeChannel.invokeMethod('dismissDownloadNotification'); } catch (_) {}
+        notifyListeners();
+        return false;
+      }
+
+      try {
+        _nativeChannel.invokeMethod('updateDownloadNotification', {
+          'title': song.title,
+          'progress': 100,
+          'isDone': true,
+        });
+      } catch (_) {}
 
       song.localFilePath = filePath;
       song.isDownloaded = true;
@@ -165,6 +188,7 @@ class DownloadService extends ChangeNotifier {
       await _saveOfflineTrack(song);
       return true;
     } catch (e) {
+      try { _nativeChannel.invokeMethod('dismissDownloadNotification'); } catch (_) {}
       _downloadProgress.remove(song.id);
       notifyListeners();
       return false;
