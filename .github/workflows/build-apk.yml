@@ -65,56 +65,43 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.3.1-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.4.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v4.3.1-release
-          path: AbhiSuno-v4.3.1-release.apk
+          name: AbhiSuno-v4.4.0-release
+          path: AbhiSuno-v4.4.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.3.1-${{ github.run_number }}
-          name: "Abhi Suno v4.3.1 Deep Audit Edition (Build ${{ github.run_number }})"
+          tag_name: v4.4.0-${{ github.run_number }}
+          name: "Abhi Suno v4.4.0 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v4.3.1 Deep Audit Edition
+            ### 🎧 Abhi Suno v4.4.0 Master Edition
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 🛠️ **Deep Static & Runtime Codebase Audit Fixes:**
-              - Repaired corrupted Piped & Invidious fallback stream URLs in `piped_invidious_adapter.dart`.
-              - Replaced all 7 zero-result queries in `_infiniteQueryPool` with 100% verified active JioSaavn queries.
-              - Localized missing-lyrics fallback string in `music_service.dart` for 100% pure English mode.
-              - Modernized deprecated `WillPopScope` to `PopScope` for native Android 14+ Predictive Back support.
-            - ⚡ **100% JioSaavn Primary Playback (<100ms Akamai CDN):**
-              - High-speed direct Akamai CDN streaming with automatic DES token decryptor.
-              - Intelligent YouTube fallback only when a song is unavailable on JioSaavn.
-            - 📥 **Sequential FIFO Download Engine:**
-              - Multi-song and playlist downloads process strictly one-by-one to prevent network throttling and device crashes.
-              - Complete triple-file caching: `.m4a` audio stream, high-resolution `.jpg` artwork, and synchronized `.lrc` lyrics.
-            - 📄 **Direct Lyrics (.txt) Download:**
-              - Save cleaned, synced lyrics directly to device's public `Download/AbhiSuno/` directory with one tap.
-            - 🌟 **Devanagari Karaoke UI & 3D Embossed Lyrics Paragraph:**
-              - Synchronized active voice line highlighted in an embossed 3D curved paragraph (`BorderRadius.circular(22)`).
-              - Play-button styled neon shader glow (`#2FC0DB` to `#D34C8C`) with calligraphy Devanagari `AmsSudha` font.
-              - Smart noise-filtering engine removes timestamps, publisher tags, and website URLs.
-            - 🌐 **100% English Language Purity:**
-              - Synchronous system locale auto-detection on first run. Zero Hindi text leakage in English mode.
-            - 🖼️ **Tactile 3D Onboarding Poster & Clean UI:**
-              - Full 3:4 portrait poster with 3D tactile physics without image clipping or watermark badges.
-            - 🔄 **Unified User Profile & Automatic Cloud Sync:**
-              - User name, bio, email, profile photo, liked songs, and custom playlists securely persisted and restored on login.
-            - 🔙 **2-Tap Smart Exit Navigation:**
-              - Tap 1: Navigate back or return to Home.
-              - Tap 2: Instant clean exit terminating background processes.
-            - 📱 **Reactive Now Playing Status:**
-              - Dynamic real-time sync for download and favorite status on song change.
+            - ⚡ **100% JioSaavn Playback & Zero YouTube Dependency:**
+              - Completely purged `youtube_explode_dart` and all YouTube resolvers.
+              - 100% high-speed Akamai CDN audio playback with DES decryption and multi-bitrate fallback (320kbps -> 160kbps -> 96kbps).
+              - Resolved ExoPlayer connection header conflict so online songs play instantly with 0ms delay.
+            - 🎮 **Instant & Reactive Play/Pause Controls:**
+              - Fixed play/pause button state reactivity across Now Playing screen, Mini Player, and lock screen controls.
+              - Prevents stuck buffering states and auto-reloads audio source if player becomes idle.
+            - 🌟 **Universal Devanagari Sudha (`AmsSudha`) Lyrics Engine:**
+              - 500+ song vocabulary dictionary covering popular English, Punjabi, Bhojpuri, and international song words.
+              - Advanced syllabic phonetic transliteration engine converts any language into authentic Devanagari Hindi calligraphy.
+              - Millisecond-precise reverse-index voice detection sync so active lyrics line never desyncs from the singer.
+              - 3D embossed curved paragraph with dual cyan-pink neon glow matching the play button.
+            - 📥 **Sequential FIFO Download System:**
+              - Multi-track downloads process one-by-one with full progress feedback.
+              - Direct lyrics text download to device's public Downloads directory.
 
-            **Direct APK Download:** `AbhiSuno-v4.3.1-release.apk`
-          files: AbhiSuno-v4.3.1-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.4.0-release.apk`
+          files: AbhiSuno-v4.4.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
