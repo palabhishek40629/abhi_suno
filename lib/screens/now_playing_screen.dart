@@ -33,6 +33,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
   bool _isDownloading = false;
   double _downloadPercent = 0.0;
   bool _isDownloaded = false;
+  double? _dragPosition;
 
   late AnimationController _lottieController;
   StreamSubscription<SongModel?>? _songSub;
@@ -239,6 +240,156 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showSleepTimerSheet(BuildContext context) {
+    final isHindi = LanguageService().isHindi;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF141414),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StreamBuilder<Duration?>(
+          stream: widget.audioHandler.sleepTimerStream,
+          initialData: widget.audioHandler.sleepTimerRemaining,
+          builder: (context, snapshot) {
+            final activeDuration = snapshot.data;
+            final isEndOfTrack = widget.audioHandler.isSleepAtEndOfTrack;
+
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: const Color(0xFF7C4DFF).withOpacity(0.15),
+                          ),
+                          child: const Icon(Icons.bedtime_rounded, color: Color(0xFF7C4DFF), size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isHindi ? 'स्लीप टाइमर (Sleep Timer)' : 'Sleep Timer',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                activeDuration != null && activeDuration > Duration.zero
+                                    ? (isHindi
+                                        ? '${activeDuration.inMinutes} मिनट ${activeDuration.inSeconds % 60} सेकंड बचे हैं'
+                                        : '${activeDuration.inMinutes}m ${activeDuration.inSeconds % 60}s remaining')
+                                    : (isEndOfTrack
+                                        ? (isHindi ? 'गाना खत्म होने पर संगीत बंद होगा' : 'Will pause at end of song')
+                                        : (isHindi ? 'टाइमर सेट करें' : 'Set auto-pause timer')),
+                                style: const TextStyle(color: Color(0xFF7C4DFF), fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if ((activeDuration != null && activeDuration > Duration.zero) || isEndOfTrack)
+                          TextButton(
+                            onPressed: () {
+                              widget.audioHandler.setSleepTimer(null);
+                              Navigator.pop(ctx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  backgroundColor: const Color(0xFFFF2A6D),
+                                  content: Text(isHindi ? 'स्लीप टाइमर बंद कर दिया गया।' : 'Sleep timer turned off.'),
+                                ),
+                              );
+                            },
+                            child: Text(
+                              isHindi ? 'बंद करें' : 'Turn Off',
+                              style: const TextStyle(color: Color(0xFFFF2A6D), fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(color: Colors.white12, height: 1),
+                    const SizedBox(height: 8),
+                    _buildSleepTimerOption(ctx, 15, isHindi ? '15 मिनट' : '15 Minutes', activeDuration?.inMinutes == 15),
+                    _buildSleepTimerOption(ctx, 30, isHindi ? '30 मिनट' : '30 Minutes', activeDuration?.inMinutes == 30),
+                    _buildSleepTimerOption(ctx, 45, isHindi ? '45 मिनट' : '45 Minutes', activeDuration?.inMinutes == 45),
+                    _buildSleepTimerOption(ctx, 60, isHindi ? '60 मिनट (1 घंटा)' : '60 Minutes (1 Hour)', activeDuration?.inMinutes == 60),
+                    ListTile(
+                      leading: Icon(Icons.music_note_rounded, color: isEndOfTrack ? const Color(0xFF7C4DFF) : Colors.white70),
+                      title: Text(
+                        isHindi ? 'गाने के अंत में बंद करें' : 'End of Current Track',
+                        style: TextStyle(
+                          color: isEndOfTrack ? const Color(0xFF7C4DFF) : Colors.white,
+                          fontWeight: isEndOfTrack ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      trailing: isEndOfTrack ? const Icon(Icons.check_circle_rounded, color: Color(0xFF7C4DFF)) : null,
+                      onTap: () {
+                        widget.audioHandler.setSleepTimer(null, endOfTrack: true);
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: const Color(0xFF7C4DFF),
+                            content: Text(isHindi ? 'गाना खत्म होने पर संगीत बंद हो जाएगा।' : 'Music will pause when song finishes.'),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSleepTimerOption(BuildContext ctx, int minutes, String label, bool isSelected) {
+    final isHindi = LanguageService().isHindi;
+    return ListTile(
+      leading: Icon(Icons.timer_outlined, color: isSelected ? const Color(0xFF7C4DFF) : Colors.white70),
+      title: Text(
+        label,
+        style: TextStyle(
+          color: isSelected ? const Color(0xFF7C4DFF) : Colors.white,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+      ),
+      trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFF7C4DFF)) : null,
+      onTap: () {
+        widget.audioHandler.setSleepTimer(Duration(minutes: minutes));
+        Navigator.pop(ctx);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            backgroundColor: const Color(0xFF7C4DFF),
+            content: Text(isHindi ? '$minutes मिनट का स्लीप टाइमर सेट किया गया।' : 'Sleep timer set for $minutes minutes.'),
+          ),
         );
       },
     );
@@ -908,14 +1059,18 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
 
                   const SizedBox(height: 16),
 
-                  // Progress Scrubber (Seekbar)
+                  // Progress Scrubber (Seekbar with buttery smooth drag & exact duration)
                   StreamBuilder<Duration>(
                     stream: widget.audioHandler.player.positionStream,
                     builder: (context, posSnapshot) {
                       final pos = posSnapshot.data ?? Duration.zero;
-                      final total = song.duration.inMilliseconds > 0
-                          ? song.duration
-                          : const Duration(minutes: 3);
+                      final liveDur = widget.audioHandler.player.duration;
+                      final total = (liveDur != null && liveDur > Duration.zero)
+                          ? liveDur
+                          : (song.duration.inMilliseconds > 0 ? song.duration : const Duration(minutes: 3));
+
+                      final displayMs = _dragPosition ?? pos.inMilliseconds.toDouble();
+                      final clampedVal = displayMs.clamp(0.0, total.inMilliseconds.toDouble());
 
                       return Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -931,11 +1086,19 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                 thumbColor: Colors.white,
                               ),
                               child: Slider(
-                                value: pos.inMilliseconds.toDouble().clamp(0.0, total.inMilliseconds.toDouble()),
+                                value: clampedVal,
                                 min: 0.0,
                                 max: total.inMilliseconds.toDouble(),
                                 onChanged: (val) {
+                                  setState(() {
+                                    _dragPosition = val;
+                                  });
+                                },
+                                onChangeEnd: (val) {
                                   widget.audioHandler.seek(Duration(milliseconds: val.toInt()));
+                                  setState(() {
+                                    _dragPosition = null;
+                                  });
                                 },
                               ),
                             ),
@@ -945,7 +1108,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
                                   Text(
-                                    _formatDuration(pos),
+                                    _formatDuration(Duration(milliseconds: clampedVal.toInt())),
                                     style: const TextStyle(color: Colors.white54, fontSize: 12),
                                   ),
                                   Text(
@@ -1360,6 +1523,70 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                               ),
                             ),
                           ),
+                        ),
+                        const SizedBox(width: 8),
+
+                        // 4. Sleep Timer with Live Countdown Indicator
+                        StreamBuilder<Duration?>(
+                          stream: widget.audioHandler.sleepTimerStream,
+                          initialData: widget.audioHandler.sleepTimerRemaining,
+                          builder: (context, timerSnap) {
+                            final remaining = timerSnap.data;
+                            final isEndOfSong = widget.audioHandler.isSleepAtEndOfTrack;
+                            final isTimerActive = (remaining != null && remaining > Duration.zero) || isEndOfSong;
+                            const timerColor = Color(0xFF7C4DFF);
+
+                            return Expanded(
+                              child: Tactile3DWrapper(
+                                onTap: () => _showSleepTimerSheet(context),
+                                scaleElevation: 1.10,
+                                glowColor: timerColor,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      colors: isTimerActive
+                                          ? [timerColor.withOpacity(0.45), const Color(0xFF536DFE).withOpacity(0.35)]
+                                          : [timerColor.withOpacity(0.20), const Color(0xFF536DFE).withOpacity(0.08)],
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: isTimerActive ? timerColor : timerColor.withOpacity(0.5),
+                                      width: isTimerActive ? 1.5 : 1.1,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: timerColor.withOpacity(isTimerActive ? 0.45 : 0.15),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        isTimerActive ? Icons.bedtime_rounded : Icons.timer_outlined,
+                                        size: 15,
+                                        color: timerColor,
+                                      ),
+                                      const SizedBox(width: 3),
+                                      Flexible(
+                                        child: Text(
+                                          isTimerActive
+                                              ? (isEndOfSong ? 'End' : '${remaining!.inMinutes}m')
+                                              : (LanguageService().isHindi ? 'टाइमर' : 'Timer'),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(color: timerColor, fontSize: 11, fontWeight: FontWeight.bold),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

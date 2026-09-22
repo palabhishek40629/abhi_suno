@@ -772,11 +772,48 @@ class _SearchScreenState extends State<SearchScreen> {
                                                    trailing: Row(
                                                      mainAxisSize: MainAxisSize.min,
                                                      children: [
-                                                       IconButton(
-                                                         icon: Icon(Icons.download_rounded, color: subtextColor, size: 22),
-                                                         tooltip: _lang.t('download'),
-                                                         onPressed: () => _downloadSong(song),
-                                                       ),
+                                                        AnimatedBuilder(
+                                                          animation: _downloadService,
+                                                          builder: (context, _) {
+                                                            final isDownloaded = _downloadService.isSongDownloaded(song.id);
+                                                            final isDownloading = _downloadService.currentlyDownloadingSong?.id == song.id;
+                                                            final isQueued = _downloadService.isSongInQueue(song.id) && !isDownloading;
+                                                            final progress = _downloadService.downloadProgress[song.id] ?? 0.0;
+
+                                                            if (isDownloaded) {
+                                                              return IconButton(
+                                                                icon: const Icon(Icons.check_circle_rounded, color: Color(0xFF00E676), size: 22),
+                                                                tooltip: isHindi ? 'डाउनलोड पूरा हुआ' : 'Downloaded',
+                                                                onPressed: () {},
+                                                              );
+                                                            } else if (isDownloading) {
+                                                              return Padding(
+                                                                padding: const EdgeInsets.all(12.0),
+                                                                child: SizedBox(
+                                                                  width: 20,
+                                                                  height: 20,
+                                                                  child: CircularProgressIndicator(
+                                                                    value: progress > 0 ? progress : null,
+                                                                    strokeWidth: 2.2,
+                                                                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF00E5FF)),
+                                                                  ),
+                                                                ),
+                                                              );
+                                                            } else if (isQueued) {
+                                                              return IconButton(
+                                                                icon: const Icon(Icons.hourglass_top_rounded, color: Color(0xFFFFB300), size: 20),
+                                                                tooltip: isHindi ? 'कतार में है' : 'Queued',
+                                                                onPressed: () {},
+                                                              );
+                                                            } else {
+                                                              return IconButton(
+                                                                icon: Icon(Icons.download_rounded, color: subtextColor, size: 22),
+                                                                tooltip: _lang.t('download'),
+                                                                onPressed: () => _downloadSong(song),
+                                                              );
+                                                            }
+                                                          },
+                                                        ),
                                                        IconButton(
                                                          icon: Icon(
                                                            isPlaying

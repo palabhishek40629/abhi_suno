@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/audio_handler.dart';
 import '../services/language_service.dart';
 import '../services/theme_service.dart';
@@ -44,6 +45,35 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
     super.initState();
     _volume = widget.audioHandler.player.volume;
     _bandValues = List<double>.from(_presetBands['Normal']!);
+    _loadSavedEQ();
+  }
+
+  Future<void> _loadSavedEQ() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedPreset = prefs.getString('saved_eq_preset');
+      final savedBass = prefs.getDouble('saved_eq_bass');
+      final savedSurround = prefs.getDouble('saved_eq_surround');
+      if (mounted) {
+        setState(() {
+          if (savedPreset != null && _presetBands.containsKey(savedPreset)) {
+            _selectedPreset = savedPreset;
+            _bandValues = List<double>.from(_presetBands[savedPreset]!);
+          }
+          if (savedBass != null) _bass = savedBass;
+          if (savedSurround != null) _surround3D = savedSurround;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _persistEQ() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('saved_eq_preset', _selectedPreset);
+      await prefs.setDouble('saved_eq_bass', _bass);
+      await prefs.setDouble('saved_eq_surround', _surround3D);
+    } catch (_) {}
   }
 
   void _applyPreset(String preset) {
@@ -78,6 +108,7 @@ class _EqualizerSheetState extends State<EqualizerSheet> {
         widget.audioHandler.setPitch(1.0);
       }
     });
+    _persistEQ();
   }
 
   @override

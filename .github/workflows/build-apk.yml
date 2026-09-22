@@ -34,12 +34,24 @@ jobs:
       - name: Get Flutter Dependencies
         run: flutter pub get
 
-      - name: Generate Production Release Keystore
+      - name: Restore or Generate Permanent Release Keystore
         run: |
-          keytool -genkey -v -keystore android/app/release.jks \
-            -alias abhisuno -keyalg RSA -keysize 2048 -validity 10000 \
-            -storepass abhisuno123 -keypass abhisuno123 \
-            -dname "CN=Abhishek Pal, OU=AbhiSuno, O=AbhiSuno Inc, L=Varanasi, S=UP, C=IN"
+          if [ -f android/app/release.keystore.base64 ]; then
+            echo "Restoring permanent release keystore from repository..."
+            base64 -d android/app/release.keystore.base64 > android/app/release.jks
+          else
+            echo "Generating permanent release keystore..."
+            keytool -genkey -v -keystore android/app/release.jks \
+              -alias abhisuno -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass abhisuno123 -keypass abhisuno123 \
+              -dname "CN=Abhishek Pal, OU=AbhiSuno, O=AbhiSuno Inc, L=Varanasi, S=UP, C=IN"
+            base64 -w 0 android/app/release.jks > android/app/release.keystore.base64
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add android/app/release.keystore.base64
+            git commit -m "chore: persist permanent release keystore for seamless updates [skip ci]" || true
+            git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" HEAD:${{ github.ref_name }} || true
+          fi
 
       - name: Build Android APK (Fat Release APK)
         run: |
@@ -65,44 +77,46 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.4.3-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.5.0-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v4.4.3-release
-          path: AbhiSuno-v4.4.3-release.apk
+          name: AbhiSuno-v4.5.0-release
+          path: AbhiSuno-v4.5.0-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.4.3-${{ github.run_number }}
-          name: "Abhi Suno v4.4.3 Ultimate Edition (Build ${{ github.run_number }})"
+          tag_name: v4.5.0-${{ github.run_number }}
+          name: "Abhi Suno v4.5.0 Grand Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v4.4.3 Ultimate Edition
+            ### 🎧 Abhi Suno v4.5.0 Grand Master Edition
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - 📥 **Comprehensive Download Buttons & Batch "Download All":**
-              - Added quick download buttons on all song tiles in Home Screen (horizontal cards and infinite feed).
-              - Added "सभी डाउनलोड" (Download All) button in Explore category/playlist detail screens.
-            - 🛡️ **Sequential & Resilient Resumable Downloads:**
-              - Strict one-by-one sequential download worker (never hammers parallel connections).
-              - HTTP Range support (`Range: bytes=$offset-`): partially downloaded files are **never deleted**, even on network failure or abrupt disconnection.
-              - Auto-resumes from the exact downloaded byte offset when internet reconnects.
-            - 📊 **Immediate Downloads Tab & Live Notification Bar Progress:**
-              - Songs immediately appear in Downloads tab with live percentage, animated progress bar, and queued position pills.
-              - Live notification in top Android notification bar showing track title and progress %.
-            - 🔤 **Punjabi Gurmukhi to Hindi Devanagari Transliteration:**
-              - Automatic transliteration of Gurmukhi script into authentic Devanagari Hindi so songs render flawlessly in `AmsSudha` font without missing glyphs.
-              - 100+ expanded Punjabi & Bollywood vocabulary terms for 100% grammatically correct lyrics.
-            - 🎤 **Refined Centered 3D Karaoke:**
-              - Active karaoke line anchored at screen center throughout playback with end-of-song balance.
-              - Sleek 1.02 scale and thin 1.0 neon border without jarring zoom.
+            - 🔐 **Permanent Keystore & In-App Auto-Updates Without Uninstalling:**
+              - Permanent cryptographic keystore ensures every build uses the exact same signature.
+              - In-app updates and manual APK downloads now update in-place seamlessly without ever uninstalling!
+            - 📱 **6 Stylish Android Home Screen Widgets:**
+              - Radiant Studio (4x2), Classic Player (4x1), Retro Vinyl (3x3), Minimalist Pill (2x1), Live Karaoke Lyrics (4x2), and Music Hub (4x2).
+              - Play, Pause, Next, Previous, Like, and Download buttons directly from your phone's home screen!
+            - 🎤 **Lyrics Scroller Fixed Center Anchor & Edge Perfection:**
+              - `Scrollable.ensureVisible` locks the active singing line to the exact 50% vertical center from line 0 to the end of the song.
+              - Eliminates accumulation drift; lyrics never scroll off the top or clip edges.
+            - 🌐 **Universal Lyrics Translation & Multi-Script Support:**
+              - Automatically translates any foreign/English lyrics into authentic Devanagari Hindi in `AmsSudha` font.
+              - Transliterates Telugu, Tamil, Bengali, Kannada, Gujarati, and Gurmukhi scripts into pure Hindi.
+            - 🎛️ **Audio Engine & Seekbar Polish:**
+              - Buttery smooth seekbar drag (zero audio stutter/jitter, seeks on release).
+              - Real audio adjustments in 10-Band Equalizer & Bass Boost.
+              - Sleep Timer (15m, 30m, 45m, 60m, End of Song) with live countdown.
+              - Resilient connectivity check (no flickering offline banner).
+              - Native Android 11+ MediaStore phone storage scanner.
 
-            **Direct APK Download:** `AbhiSuno-v4.4.3-release.apk`
-          files: AbhiSuno-v4.4.3-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.5.0-release.apk`
+          files: AbhiSuno-v4.5.0-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

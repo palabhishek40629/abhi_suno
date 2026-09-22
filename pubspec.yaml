@@ -1,7 +1,7 @@
 name: abhi_suno
 description: "Abhi Suno - Open Source Ad-Free Hybrid Music Streaming & In-App Offline Player by Abhishek Pal"
 publish_to: 'none'
-version: 4.4.3+20
+version: 4.5.0+21
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

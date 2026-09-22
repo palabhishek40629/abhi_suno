@@ -14,9 +14,23 @@ class MusicService {
   final JioSaavnAdapter _saavnAdapter = JioSaavnAdapter();
   final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
 
-  // In-Memory Fast Cache to make home & category scrolling instant
+  // In-Memory Fast Cache to make home & category scrolling instant (bounded to 60 items max)
   final Map<String, List<SongModel>> _queryCache = {};
   final Map<String, String> _lyricsCache = {};
+
+  void _cacheQuery(String key, List<SongModel> songs) {
+    if (_queryCache.length >= 60) {
+      _queryCache.remove(_queryCache.keys.first);
+    }
+    _queryCache[key] = songs;
+  }
+
+  void _cacheLyrics(String key, String lyrics) {
+    if (_lyricsCache.length >= 60) {
+      _lyricsCache.remove(_lyricsCache.keys.first);
+    }
+    _lyricsCache[key] = lyrics;
+  }
 
   /// Search music catalog using 100% JioSaavn CDN direct open-source API with in-memory caching
   Future<List<SongModel>> searchSongs(String query, {bool forceRefresh = false}) async {
@@ -36,7 +50,7 @@ class MusicService {
             _audioRepo.cacheStreamUrl(song.id, song.streamUrl!);
           }
         }
-        _queryCache[cacheKey] = saavnResults;
+        _cacheQuery(cacheKey, saavnResults);
         return saavnResults;
       }
     } catch (_) {}
@@ -52,7 +66,7 @@ class MusicService {
               _audioRepo.cacheStreamUrl(song.id, song.streamUrl!);
             }
           }
-          _queryCache[cacheKey] = strippedResults;
+          _cacheQuery(cacheKey, strippedResults);
           return strippedResults;
         }
       } catch (_) {}
@@ -64,7 +78,7 @@ class MusicService {
       try {
         final keywordResults = await _saavnAdapter.searchSongs(primaryKeyword, limit: 25);
         if (keywordResults.isNotEmpty) {
-          _queryCache[cacheKey] = keywordResults;
+          _cacheQuery(cacheKey, keywordResults);
           return keywordResults;
         }
       } catch (_) {}
@@ -134,13 +148,13 @@ class MusicService {
 
     // Priority 1: High-precision millisecond synced lyrics (singing voice detection)
     if (lrclibSynced != null && lrclibSynced!.trim().isNotEmpty) {
-      _lyricsCache[cacheKey] = lrclibSynced!;
+      _cacheLyrics(cacheKey, lrclibSynced!);
       return lrclibSynced!;
     }
 
     // Priority 2: Official JioSaavn verified lyrics
     if (saavnLyrics != null && saavnLyrics!.trim().isNotEmpty) {
-      _lyricsCache[cacheKey] = saavnLyrics!;
+      _cacheLyrics(cacheKey, saavnLyrics!);
       return saavnLyrics!;
     }
 
@@ -160,7 +174,7 @@ class MusicService {
           for (final item in list) {
             if (item['syncedLyrics'] != null && item['syncedLyrics'].toString().trim().isNotEmpty) {
               final lyrics = item['syncedLyrics'].toString();
-              _lyricsCache[cacheKey] = lyrics;
+              _cacheLyrics(cacheKey, lyrics);
               return lyrics;
             }
             if (lrclibPlain == null && item['plainLyrics'] != null && item['plainLyrics'].toString().trim().isNotEmpty) {
@@ -173,7 +187,7 @@ class MusicService {
 
     // Priority 4: LRCLIB plaintext fallback
     if (lrclibPlain != null && lrclibPlain!.trim().isNotEmpty) {
-      _lyricsCache[cacheKey] = lrclibPlain!;
+      _cacheLyrics(cacheKey, lrclibPlain!);
       return lrclibPlain!;
     }
 
@@ -188,7 +202,7 @@ class MusicService {
           final data = json.decode(res.body);
           if (data['lyrics'] != null && data['lyrics'].toString().trim().isNotEmpty) {
             final lyrics = data['lyrics'].toString().trim();
-            _lyricsCache[cacheKey] = lyrics;
+            _cacheLyrics(cacheKey, lyrics);
             return lyrics;
           }
         }
@@ -200,7 +214,7 @@ class MusicService {
     final fallback = isHindi
         ? 'गीत के बोल उपलब्ध नहीं हैं।\n\nअभी सुनो - शुद्ध भारतीय संगीत प्लेयर'
         : 'Lyrics not available for this song.\n\nAbhi Suno - Ad-Free Music Player';
-    _lyricsCache[cacheKey] = fallback;
+    _cacheLyrics(cacheKey, fallback);
     return fallback;
   }
 

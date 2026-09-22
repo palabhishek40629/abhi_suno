@@ -6,6 +6,7 @@ class DevanagariConverter {
   static final RegExp _timestampRegExp = RegExp(r'^(\[\d{2}:\d{2}\.\d{2,3}\])\s*(.*)$');
   static final RegExp _devanagariRange = RegExp(r'[\u0900-\u097F]');
   static final RegExp _gurmukhiRange = RegExp(r'[\u0A00-\u0A7F]');
+  static final RegExp _indicScriptRange = RegExp(r'[\u0980-\u0D7F]');
 
   // Gurmukhi (Punjabi script) to authentic Devanagari Hindi character mapping
   static const Map<String, String> _gurmukhiToDevanagariMap = {
@@ -997,13 +998,47 @@ class DevanagariConverter {
     return buffer.toString();
   }
 
+  static String _transliterateIndicToDevanagari(String text) {
+    final sb = StringBuffer();
+    for (final rune in text.runes) {
+      if (rune >= 0x0A00 && rune <= 0x0A7F) {
+        final char = String.fromCharCode(rune);
+        sb.write(_gurmukhiToDevanagariMap[char] ?? char);
+      } else if (rune >= 0x0980 && rune <= 0x0D7F) {
+        int base = 0;
+        if (rune <= 0x09FF) base = 0x0980; // Bengali & Assamese
+        else if (rune >= 0x0A80 && rune <= 0x0AFF) base = 0x0A80; // Gujarati
+        else if (rune >= 0x0B00 && rune <= 0x0B7F) base = 0x0B00; // Odia
+        else if (rune >= 0x0B80 && rune <= 0x0BFF) base = 0x0B80; // Tamil
+        else if (rune >= 0x0C00 && rune <= 0x0C7F) base = 0x0C00; // Telugu
+        else if (rune >= 0x0C80 && rune <= 0x0CFF) base = 0x0C80; // Kannada
+        else if (rune >= 0x0D00 && rune <= 0x0D7F) base = 0x0D00; // Malayalam
+
+        if (base > 0) {
+          final offset = rune - base;
+          final devanagariRune = 0x0900 + offset;
+          if (devanagariRune >= 0x0901 && devanagariRune <= 0x097F) {
+            sb.write(String.fromCharCode(devanagariRune));
+          } else {
+            sb.write(String.fromCharCode(rune));
+          }
+        } else {
+          sb.write(String.fromCharCode(rune));
+        }
+      } else {
+        sb.write(String.fromCharCode(rune));
+      }
+    }
+    return sb.toString();
+  }
+
   static String _convertContent(String content) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return content;
 
-    // If text contains Gurmukhi characters, transliterate directly to Devanagari
-    if (_gurmukhiRange.hasMatch(trimmed)) {
-      return _transliterateGurmukhi(content);
+    // If text contains Gurmukhi or other Indic script characters, transliterate directly to Devanagari
+    if (_indicScriptRange.hasMatch(trimmed) || _gurmukhiRange.hasMatch(trimmed)) {
+      return _transliterateIndicToDevanagari(content);
     }
 
     // If text already has substantial Devanagari characters (>30%), leave it natural

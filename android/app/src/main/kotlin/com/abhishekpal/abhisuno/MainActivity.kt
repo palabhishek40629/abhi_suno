@@ -225,6 +225,8 @@ class MainActivity: AudioServiceActivity() {
                                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                                     }
                                     startActivity(settingsIntent)
+                                    result.success(false)
+                                    return@setMethodCallHandler
                                 }
                             }
                             val uri = FileProvider.getUriForFile(
@@ -245,6 +247,73 @@ class MainActivity: AudioServiceActivity() {
                     } catch (e: Exception) {
                         result.error("INSTALL_ERROR", e.message, null)
                     }
+                }
+                "getDeviceAudioTracks" -> {
+                    try {
+                        val trackList = ArrayList<HashMap<String, Any>>()
+                        val projection = arrayOf(
+                            MediaStore.Audio.Media._ID,
+                            MediaStore.Audio.Media.TITLE,
+                            MediaStore.Audio.Media.ARTIST,
+                            MediaStore.Audio.Media.ALBUM,
+                            MediaStore.Audio.Media.DURATION,
+                            MediaStore.Audio.Media.DATA,
+                            MediaStore.Audio.Media.SIZE
+                        )
+                        val selection = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+                        val sortOrder = "${MediaStore.Audio.Media.TITLE} ASC"
+                        val cursor = contentResolver.query(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                            projection,
+                            selection,
+                            null,
+                            sortOrder
+                        )
+                        cursor?.use { c ->
+                            val idCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                            val titleCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+                            val artistCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+                            val albumCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+                            val durCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+                            val dataCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                            val sizeCol = c.getColumnIndexOrThrow(MediaStore.Audio.Media.SIZE)
+
+                            while (c.moveToNext()) {
+                                val dataPath = c.getString(dataCol) ?: ""
+                                val size = c.getLong(sizeCol)
+                                if (size > 102400 && File(dataPath).exists()) {
+                                    val map = HashMap<String, Any>()
+                                    map["id"] = "device_${c.getLong(idCol)}"
+                                    map["title"] = c.getString(titleCol) ?: "Unknown Track"
+                                    map["artist"] = c.getString(artistCol) ?: "Phone Storage"
+                                    map["album"] = c.getString(albumCol) ?: "Device Audio"
+                                    map["durationMs"] = c.getLong(durCol)
+                                    map["path"] = dataPath
+                                    map["sizeBytes"] = size
+                                    trackList.add(map)
+                                }
+                            }
+                        }
+                        result.success(trackList)
+                    } catch (e: Exception) {
+                        result.error("MEDIA_STORE_ERROR", e.message, null)
+                    }
+                }
+                "updateWidgets" -> {
+                    val title = call.argument<String>("title")
+                    val artist = call.argument<String>("artist")
+                    val isPlaying = call.argument<Boolean>("isPlaying")
+                    val lyricsLine = call.argument<String>("lyricsLine")
+                    val artPath = call.argument<String>("artPath")
+                    com.abhishekpal.abhisuno.widgets.BaseMusicWidgetProvider.updateAllWidgets(
+                        this,
+                        title,
+                        artist,
+                        isPlaying,
+                        lyricsLine,
+                        artPath
+                    )
+                    result.success(true)
                 }
                 "exportAudio" -> {
                     val srcPath = call.argument<String>("srcPath") ?: ""

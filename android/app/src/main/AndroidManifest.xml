@@ -74,6 +74,91 @@
             </intent-filter>
         </receiver>
 
+        <!-- 6 Stylish Android Home Screen Widgets -->
+        <receiver
+            android:name=".widgets.RadiantStudioWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PLAY_PAUSE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_NEXT" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PREV" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_LIKE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_DOWNLOAD" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_radiant_studio_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.ClassicPlayerWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PLAY_PAUSE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_NEXT" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PREV" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_LIKE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_classic_player_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.RetroVinylWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PLAY_PAUSE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_NEXT" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PREV" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_retro_vinyl_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.MinimalPillWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PLAY_PAUSE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_NEXT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_minimal_pill_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.KaraokeLyricsWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PLAY_PAUSE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_NEXT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_karaoke_lyrics_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widgets.MusicHubWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_PLAY_PAUSE" />
+                <action android:name="com.abhishekpal.abhisuno.ACTION_NEXT" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_music_hub_info" />
+        </receiver>
+
         <!-- FileProvider for APK In-App Updates and Audio Sharing/Export -->
         <provider
             android:name="androidx.core.content.FileProvider"

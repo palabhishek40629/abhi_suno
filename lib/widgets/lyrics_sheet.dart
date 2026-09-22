@@ -28,6 +28,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
 
   late SongModel _currentSong;
   List<_KaraokeLine> _karaokeLines = [];
+  List<GlobalKey> _lineKeys = [];
   String _plainLyrics = '';
   String _rawLyrics = '';
   bool _isKaraoke = false;
@@ -55,6 +56,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
             _currentSong = newSong;
             _isLoading = true;
             _karaokeLines.clear();
+            _lineKeys.clear();
             _plainLyrics = '';
             _rawLyrics = '';
             _activeLineIndex = -1;
@@ -142,6 +144,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
       parsed.sort((a, b) => a.time.compareTo(b.time));
       _isKaraoke = true;
       _karaokeLines = parsed;
+      _lineKeys = List.generate(parsed.length, (_) => GlobalKey());
     } else {
       final clean = DevanagariConverter.cleanLyricsText(raw);
       _plainLyrics = clean;
@@ -166,8 +169,10 @@ class _LyricsSheetState extends State<LyricsSheet> {
 
         _isKaraoke = true;
         _karaokeLines = parsed;
+        _lineKeys = List.generate(parsed.length, (_) => GlobalKey());
       } else {
         _isKaraoke = false;
+        _lineKeys.clear();
       }
     }
   }
@@ -187,24 +192,34 @@ class _LyricsSheetState extends State<LyricsSheet> {
     if (activeIdx != _activeLineIndex && mounted) {
       setState(() => _activeLineIndex = activeIdx);
 
-      // Auto-scroll active line to center smoothly without jitter
-      if (_scrollController.hasClients) {
-        if (activeIdx >= 0) {
-          const itemEstimatedHeight = 58.0;
-          final targetOffset = activeIdx * itemEstimatedHeight;
-          _scrollController.animateTo(
-            targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-          );
-        } else {
-          // Seeking before first line (intro instrumental): smoothly scroll to top
-          _scrollController.animateTo(
-            0.0,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeOut,
-          );
-        }
+      // Smooth center scrolling with zero drift using Scrollable.ensureVisible
+      if (activeIdx >= 0 && activeIdx < _lineKeys.length) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          final keyContext = _lineKeys[activeIdx].currentContext;
+          if (keyContext != null) {
+            Scrollable.ensureVisible(
+              keyContext,
+              alignment: 0.5,
+              duration: const Duration(milliseconds: 350),
+              curve: Curves.easeOutCubic,
+            );
+          }
+        });
+
+        // Broadcast active lyrics line to home screen widgets
+        try {
+          const MethodChannel('com.abhishekpal.abhisuno/native').invokeMethod('updateWidgets', {
+            'lyricsLine': _karaokeLines[activeIdx].text,
+          });
+        } catch (_) {}
+      } else if (activeIdx < 0 && _scrollController.hasClients) {
+        // Seeking before first line (intro instrumental): smoothly scroll to top
+        _scrollController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
       }
     }
   }
@@ -423,8 +438,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
                             ? LayoutBuilder(
                                 builder: (context, constraints) {
                                   final viewportHeight = constraints.maxHeight;
-                                  const itemHeight = 58.0;
-                                  final verticalPadding = ((viewportHeight - itemHeight) / 2).clamp(32.0, 350.0);
+                                  final verticalPadding = (viewportHeight / 2).clamp(40.0, 450.0);
 
                                   return ListView.builder(
                                     controller: _scrollController,
@@ -436,6 +450,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                       final isActive = i == _activeLineIndex;
 
                                       return GestureDetector(
+                                        key: i < _lineKeys.length ? _lineKeys[i] : null,
                                         onTap: () {
                                           widget.audioHandler?.seek(line.time);
                                         },

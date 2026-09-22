@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:math';
 import 'package:audio_service/audio_service.dart';
 export 'package:audio_service/audio_service.dart';
+import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
@@ -12,6 +13,7 @@ import 'audio_providers/unified_audio_repository.dart';
 import 'audio_providers/jiosaavn_adapter.dart';
 import 'party_room_service.dart';
 import 'connectivity_service.dart';
+import 'download_service.dart';
 
 class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
@@ -53,6 +55,29 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final StreamController<bool> _repeatSubject = StreamController<bool>.broadcast();
   Stream<bool> get repeatStream => _repeatSubject.stream;
 
+  Timer? _sleepTimer;
+  DateTime? _sleepTimerEndTime;
+  bool _sleepAtEndOfTrack = false;
+  final StreamController<Duration?> _sleepTimerSubject = StreamController<Duration?>.broadcast();
+  Stream<Duration?> get sleepTimerStream => _sleepTimerSubject.stream;
+  Duration? get sleepTimerRemaining {
+    if (_sleepTimerEndTime == null) return null;
+    final diff = _sleepTimerEndTime!.difference(DateTime.now());
+    return diff.isNegative ? Duration.zero : diff;
+  }
+  bool get isSleepAtEndOfTrack => _sleepAtEndOfTrack;
+
+  void _syncWidgets({bool? isPlayingOverride}) {
+    try {
+      const MethodChannel('com.abhishekpal.abhisuno/native').invokeMethod('updateWidgets', {
+        'title': _currentSong?.title ?? 'Abhi Suno',
+        'artist': _currentSong?.artist ?? 'Select a song to play',
+        'isPlaying': isPlayingOverride ?? _player.playing,
+        'artPath': _currentSong?.localThumbnailPath,
+      });
+    } catch (_) {}
+  }
+
   AbhiAudioHandler() {
     _init();
   }
@@ -89,6 +114,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         speed: _player.speed,
         queueIndex: _currentIndex >= 0 ? _currentIndex : null,
       ));
+      _syncWidgets(isPlayingOverride: playing);
     });
 
     _player.positionStream.listen((pos) {
@@ -139,8 +165,15 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         speed: _player.speed,
         queueIndex: _currentIndex >= 0 ? _currentIndex : null,
       ));
+      _syncWidgets(isPlayingOverride: playing);
 
       if (state.processingState == ProcessingState.completed) {
+        if (_sleepAtEndOfTrack) {
+          _sleepAtEndOfTrack = false;
+          _sleepTimerSubject.add(null);
+          pause();
+          return;
+        }
         if (_isRepeat) {
           _player.seek(Duration.zero);
           _player.play();
@@ -267,6 +300,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       _historyService.recordSongPlay(song);
       _historyService.updatePosition(Duration.zero);
       PartyRoomService().onLocalSongChanged(song);
+      _syncWidgets(isPlayingOverride: true);
 
       final item = MediaItem(
         id: song.id,
@@ -280,7 +314,18 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       );
       mediaItem.add(item);
 
-      // 3. Resolve audio source
+      // 3. Resolve audio source (prioritize local offline file if downloaded)
+      if (song.localFilePath == null || !File(song.localFilePath!).existsSync()) {
+        try {
+          final dlSongs = DownloadService().downloadedSongs;
+          final match = dlSongs.firstWhere((s) => s.id == song.id);
+          if (match.localFilePath != null && File(match.localFilePath!).existsSync()) {
+            song.localFilePath = match.localFilePath;
+            song.isDownloaded = true;
+          }
+        } catch (_) {}
+      }
+
       AudioSource? source;
       if (song.localFilePath != null && File(song.localFilePath!).existsSync()) {
         source = AudioSource.file(song.localFilePath!);
@@ -433,17 +478,22 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       return;
     }
     await _player.play();
+    _syncWidgets(isPlayingOverride: true);
     PartyRoomService().onLocalResume();
   }
 
   @override
   Future<void> pause() async {
     await _player.pause();
+    _syncWidgets(isPlayingOverride: false);
     PartyRoomService().onLocalPause();
   }
 
   @override
-  Future<void> stop() async => await _player.stop();
+  Future<void> stop() async {
+    _syncWidgets(isPlayingOverride: false);
+    await _player.stop();
+  }
 
   @override
   Future<void> seek(Duration position) async => await _player.seek(position);
@@ -572,6 +622,52 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       }
     }
     _playlistSubject.add(List.unmodifiable(_playlist));
+  }
+
+  void setSleepTimer(Duration? duration, {bool endOfTrack = false}) {
+    _sleepTimer?.cancel();
+    _sleepTimer = null;
+    _sleepTimerEndTime = null;
+    _sleepAtEndOfTrack = endOfTrack;
+
+    if (endOfTrack) {
+      _sleepTimerSubject.add(Duration.zero);
+      return;
+    }
+
+    if (duration == null || duration <= Duration.zero) {
+      _sleepTimerSubject.add(null);
+      return;
+    }
+
+    _sleepTimerEndTime = DateTime.now().add(duration);
+    _sleepTimerSubject.add(duration);
+
+    _sleepTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      final remaining = sleepTimerRemaining;
+      if (remaining == null || remaining <= Duration.zero) {
+        timer.cancel();
+        _sleepTimer = null;
+        _sleepTimerEndTime = null;
+        _sleepTimerSubject.add(null);
+        _executeSleepPause();
+      } else {
+        _sleepTimerSubject.add(remaining);
+      }
+    });
+  }
+
+  Future<void> _executeSleepPause() async {
+    try {
+      for (double v = 1.0; v >= 0.1; v -= 0.2) {
+        await _player.setVolume(v);
+        await Future.delayed(const Duration(milliseconds: 150));
+      }
+      await pause();
+      await _player.setVolume(1.0);
+    } catch (_) {
+      await pause();
+    }
   }
 }
 
