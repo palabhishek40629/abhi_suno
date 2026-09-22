@@ -190,9 +190,8 @@ class _LyricsSheetState extends State<LyricsSheet> {
       // Auto-scroll active line to center smoothly without jitter
       if (_scrollController.hasClients) {
         if (activeIdx >= 0) {
-          const itemEstimatedHeight = 66.0;
-          final viewportHeight = MediaQuery.of(context).size.height * 0.58;
-          final targetOffset = (activeIdx * itemEstimatedHeight) - (viewportHeight / 2) + (itemEstimatedHeight / 2);
+          const itemEstimatedHeight = 58.0;
+          final targetOffset = activeIdx * itemEstimatedHeight;
           _scrollController.animateTo(
             targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
             duration: const Duration(milliseconds: 320),
@@ -421,126 +420,134 @@ class _LyricsSheetState extends State<LyricsSheet> {
                             ),
                           )
                         : _isKaraoke
-                            ? ListView.builder(
-                                controller: _scrollController,
-                                physics: const BouncingScrollPhysics(),
-                                padding: const EdgeInsets.symmetric(vertical: 24),
-                                itemCount: _karaokeLines.length,
-                                itemBuilder: (context, i) {
-                                  final line = _karaokeLines[i];
-                                  final isActive = i == _activeLineIndex;
+                            ? LayoutBuilder(
+                                builder: (context, constraints) {
+                                  final viewportHeight = constraints.maxHeight;
+                                  const itemHeight = 58.0;
+                                  final verticalPadding = ((viewportHeight - itemHeight) / 2).clamp(32.0, 350.0);
 
-                                  return GestureDetector(
-                                    onTap: () {
-                                      widget.audioHandler?.seek(line.time);
+                                  return ListView.builder(
+                                    controller: _scrollController,
+                                    physics: const BouncingScrollPhysics(),
+                                    padding: EdgeInsets.symmetric(vertical: verticalPadding),
+                                    itemCount: _karaokeLines.length,
+                                    itemBuilder: (context, i) {
+                                      final line = _karaokeLines[i];
+                                      final isActive = i == _activeLineIndex;
+
+                                      return GestureDetector(
+                                        onTap: () {
+                                          widget.audioHandler?.seek(line.time);
+                                        },
+                                        child: AnimatedScale(
+                                          scale: isActive ? 1.02 : 1.0, // Sleek, non-jarring 1.02 scale
+                                          duration: const Duration(milliseconds: 260),
+                                          curve: Curves.easeOutCubic,
+                                          child: AnimatedContainer(
+                                            duration: const Duration(milliseconds: 240),
+                                            margin: EdgeInsets.symmetric(
+                                              vertical: isActive ? 4 : 2,
+                                              horizontal: isActive ? 4 : 8,
+                                            ),
+                                            padding: EdgeInsets.symmetric(
+                                              vertical: isActive ? 10 : 6,
+                                              horizontal: isActive ? 14 : 10,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              borderRadius: BorderRadius.circular(22),
+                                              gradient: isActive
+                                                  ? const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFF131D36),
+                                                        Color(0xFF1B112D),
+                                                        Color(0xFF0E1626),
+                                                      ],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment.bottomRight,
+                                                    )
+                                                  : null,
+                                              color: isActive ? null : Colors.transparent,
+                                              border: isActive
+                                                  ? Border.all(
+                                                      color: cyanNeon.withOpacity(0.85),
+                                                      width: 1.0, // Sleek, thinner 1.0 border
+                                                    )
+                                                  : null,
+                                              boxShadow: isActive
+                                                  ? [
+                                                      // 3D Top-left light reflection highlight
+                                                      BoxShadow(
+                                                        color: Colors.white.withOpacity(0.10),
+                                                        blurRadius: 5,
+                                                        offset: const Offset(-2, -2),
+                                                      ),
+                                                      // 3D Bottom-right deep ambient drop shadow
+                                                      BoxShadow(
+                                                        color: Colors.black.withOpacity(0.60),
+                                                        blurRadius: 10,
+                                                        offset: const Offset(2, 4),
+                                                      ),
+                                                      // Neon cyan glow
+                                                      BoxShadow(
+                                                        color: cyanNeon.withOpacity(0.30),
+                                                        blurRadius: 16,
+                                                        spreadRadius: 0.5,
+                                                        offset: const Offset(0, 2),
+                                                      ),
+                                                      // Neon pink subtle secondary glow
+                                                      BoxShadow(
+                                                        color: pinkNeon.withOpacity(0.18),
+                                                        blurRadius: 12,
+                                                        offset: const Offset(0, -1),
+                                                      ),
+                                                    ]
+                                                  : null,
+                                            ),
+                                            child: isActive
+                                                ? ShaderMask(
+                                                    shaderCallback: (bounds) => const LinearGradient(
+                                                      colors: [
+                                                        Color(0xFF2FC0DB),
+                                                        Color(0xFF00E5FF),
+                                                        Colors.white,
+                                                        Color(0xFFD34C8C),
+                                                      ],
+                                                      stops: [0.0, 0.35, 0.70, 1.0],
+                                                      begin: Alignment.topLeft,
+                                                      end: Alignment.bottomRight,
+                                                    ).createShader(bounds),
+                                                    child: Text(
+                                                      line.text,
+                                                      textAlign: TextAlign.center,
+                                                      style: const TextStyle(
+                                                        fontFamily: 'AmsSudha',
+                                                        color: Colors.white,
+                                                        fontSize: 19, // Crisp, centered & balanced
+                                                        fontWeight: FontWeight.w900,
+                                                        letterSpacing: 0.5,
+                                                        shadows: [
+                                                          Shadow(color: cyanNeon, blurRadius: 16),
+                                                          Shadow(color: Color(0xFF00E5FF), blurRadius: 8),
+                                                          Shadow(color: pinkNeon, blurRadius: 12),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                  )
+                                                : Text(
+                                                    line.text,
+                                                    textAlign: TextAlign.center,
+                                                    style: TextStyle(
+                                                      fontFamily: 'AmsSudha',
+                                                      color: textColor.withOpacity(i < _activeLineIndex ? 0.35 : 0.70),
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w600,
+                                                      letterSpacing: 0.4,
+                                                    ),
+                                                  ),
+                                          ),
+                                        ),
+                                      );
                                     },
-                                    child: AnimatedScale(
-                                      scale: isActive ? 1.04 : 1.0, // Refined, elegant non-jarring scale
-                                      duration: const Duration(milliseconds: 260),
-                                      curve: Curves.easeOutCubic,
-                                      child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 240),
-                                        margin: EdgeInsets.symmetric(
-                                          vertical: isActive ? 6 : 3,
-                                          horizontal: isActive ? 4 : 8,
-                                        ),
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: isActive ? 12 : 7,
-                                          horizontal: isActive ? 16 : 10,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(24),
-                                          gradient: isActive
-                                              ? const LinearGradient(
-                                                  colors: [
-                                                    Color(0xFF131D36),
-                                                    Color(0xFF1B112D),
-                                                    Color(0xFF0E1626),
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                )
-                                              : null,
-                                          color: isActive ? null : Colors.transparent,
-                                          border: isActive
-                                              ? Border.all(
-                                                  color: cyanNeon.withOpacity(0.85),
-                                                  width: 1.5,
-                                                )
-                                              : null,
-                                          boxShadow: isActive
-                                              ? [
-                                                  // 3D Top-left light reflection highlight
-                                                  BoxShadow(
-                                                    color: Colors.white.withOpacity(0.12),
-                                                    blurRadius: 6,
-                                                    offset: const Offset(-2, -2),
-                                                  ),
-                                                  // 3D Bottom-right deep ambient drop shadow
-                                                  BoxShadow(
-                                                    color: Colors.black.withOpacity(0.65),
-                                                    blurRadius: 12,
-                                                    offset: const Offset(3, 5),
-                                                  ),
-                                                  // Neon cyan glow
-                                                  BoxShadow(
-                                                    color: cyanNeon.withOpacity(0.35),
-                                                    blurRadius: 18,
-                                                    spreadRadius: 0.5,
-                                                    offset: const Offset(0, 2),
-                                                  ),
-                                                  // Neon pink subtle secondary glow
-                                                  BoxShadow(
-                                                    color: pinkNeon.withOpacity(0.20),
-                                                    blurRadius: 14,
-                                                    offset: const Offset(0, -1),
-                                                  ),
-                                                ]
-                                              : null,
-                                        ),
-                                        child: isActive
-                                            ? ShaderMask(
-                                                shaderCallback: (bounds) => const LinearGradient(
-                                                  colors: [
-                                                    Color(0xFF2FC0DB),
-                                                    Color(0xFF00E5FF),
-                                                    Colors.white,
-                                                    Color(0xFFD34C8C),
-                                                  ],
-                                                  stops: [0.0, 0.35, 0.70, 1.0],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ).createShader(bounds),
-                                                child: Text(
-                                                  line.text,
-                                                  textAlign: TextAlign.center,
-                                                  style: const TextStyle(
-                                                    fontFamily: 'AmsSudha',
-                                                    color: Colors.white,
-                                                    fontSize: 20, // Crisp & readable without oversized overflow
-                                                    fontWeight: FontWeight.w900,
-                                                    letterSpacing: 0.6,
-                                                    shadows: [
-                                                      Shadow(color: cyanNeon, blurRadius: 18),
-                                                      Shadow(color: Color(0xFF00E5FF), blurRadius: 10),
-                                                      Shadow(color: pinkNeon, blurRadius: 14),
-                                                    ],
-                                                  ),
-                                                ),
-                                              )
-                                            : Text(
-                                                line.text,
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontFamily: 'AmsSudha',
-                                                  color: textColor.withOpacity(i < _activeLineIndex ? 0.35 : 0.70),
-                                                  fontSize: 16,
-                                                  fontWeight: FontWeight.w600,
-                                                  letterSpacing: 0.4,
-                                                ),
-                                              ),
-                                      ),
-                                    ),
                                   );
                                 },
                               )

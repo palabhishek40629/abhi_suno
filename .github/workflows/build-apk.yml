@@ -65,41 +65,44 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.4.2-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.4.3-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v4.4.2-release
-          path: AbhiSuno-v4.4.2-release.apk
+          name: AbhiSuno-v4.4.3-release
+          path: AbhiSuno-v4.4.3-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.4.2-${{ github.run_number }}
-          name: "Abhi Suno v4.4.2 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v4.4.3-${{ github.run_number }}
+          name: "Abhi Suno v4.4.3 Ultimate Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v4.4.2 Master Edition
+            ### 🎧 Abhi Suno v4.4.3 Ultimate Edition
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - ⚡ **100% Instant Playback & Offline Gate Removal:**
-              - Completely removed the false-negative `ConnectivityService.isOnline` blocking check inside `audio_handler.dart` which caused startup stream aborts.
-              - 100% JioSaavn Akamai CDN direct streaming with automatic multi-bitrate fallback (320kbps -> 160kbps -> 96kbps).
-              - Play / Pause state synchronization and immediate buffering reset on errors.
-            - 🌟 **Subtle 3D Curved Paragraph Karaoke with Exact Voice Tracking:**
-              - Fast concurrent lyrics engine querying LRCLIB synced lyrics (real millisecond singer-voice timestamps) and JioSaavn official lyrics in parallel (<2.5s).
-              - Auto-timeline karaoke generator when lyrics lack timestamps so 100% of songs feature live 3D neon voice tracking.
-              - Active singer lyrics line styled as a subtle 3D curved plate (`scale: 1.04`, no oversized zoom, dual cyan/pink neon ambient glow).
-              - Rendered in authentic Devanagari Hindi calligraphy using `AmsSudha` font.
-              - Expanded song vocabulary dictionary with 100% accurate Hindi grammar.
-            - 📱 **Performance & Offline Stability:**
-              - Direct lyrics download (.txt) option in the lyrics sheet.
-              - Error-resilient caching and fast local playback.
+            - 📥 **Comprehensive Download Buttons & Batch "Download All":**
+              - Added quick download buttons on all song tiles in Home Screen (horizontal cards and infinite feed).
+              - Added "सभी डाउनलोड" (Download All) button in Explore category/playlist detail screens.
+            - 🛡️ **Sequential & Resilient Resumable Downloads:**
+              - Strict one-by-one sequential download worker (never hammers parallel connections).
+              - HTTP Range support (`Range: bytes=$offset-`): partially downloaded files are **never deleted**, even on network failure or abrupt disconnection.
+              - Auto-resumes from the exact downloaded byte offset when internet reconnects.
+            - 📊 **Immediate Downloads Tab & Live Notification Bar Progress:**
+              - Songs immediately appear in Downloads tab with live percentage, animated progress bar, and queued position pills.
+              - Live notification in top Android notification bar showing track title and progress %.
+            - 🔤 **Punjabi Gurmukhi to Hindi Devanagari Transliteration:**
+              - Automatic transliteration of Gurmukhi script into authentic Devanagari Hindi so songs render flawlessly in `AmsSudha` font without missing glyphs.
+              - 100+ expanded Punjabi & Bollywood vocabulary terms for 100% grammatically correct lyrics.
+            - 🎤 **Refined Centered 3D Karaoke:**
+              - Active karaoke line anchored at screen center throughout playback with end-of-song balance.
+              - Sleek 1.02 scale and thin 1.0 neon border without jarring zoom.
 
-            **Direct APK Download:** `AbhiSuno-v4.4.2-release.apk`
-          files: AbhiSuno-v4.4.2-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.4.3-release.apk`
+          files: AbhiSuno-v4.4.3-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

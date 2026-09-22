@@ -56,6 +56,7 @@ class MainActivity: AudioServiceActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         handleSendIntent(intent)
+        checkNotificationPermission()
 
         // Legacy Share Channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SHARE_CHANNEL).setMethodCallHandler { call, result ->
@@ -101,7 +102,7 @@ class MainActivity: AudioServiceActivity() {
                         val pInfo = packageManager.getPackageInfo(packageName, 0)
                         result.success(pInfo.versionName)
                     } catch (e: Exception) {
-                        result.success("4.4.1")
+                        result.success("4.4.3")
                     }
 
                 }
@@ -347,6 +348,14 @@ class MainActivity: AudioServiceActivity() {
         }
     }
 
+    private fun checkNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1002)
+            }
+        }
+    }
+
     private fun showDownloadNotification(title: String, progress: Int, isDone: Boolean) {
         try {
             val channelId = "abhisuno_downloads"
@@ -369,6 +378,8 @@ class MainActivity: AudioServiceActivity() {
                     .setContentTitle(title)
                     .setContentText("Download Complete")
                     .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                    .setOnlyAlertOnce(true)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
                     .setAutoCancel(true)
                 notificationManager.notify(1099, builder.build())
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
@@ -381,6 +392,8 @@ class MainActivity: AudioServiceActivity() {
                     .setProgress(100, progress, false)
                     .setSmallIcon(android.R.drawable.stat_sys_download)
                     .setOngoing(true)
+                    .setOnlyAlertOnce(true)
+                    .setPriority(NotificationCompat.PRIORITY_LOW)
                 notificationManager.notify(1099, builder.build())
             }
         } catch (e: Exception) {}

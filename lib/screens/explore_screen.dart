@@ -998,6 +998,34 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
     }
   }
 
+  void _downloadAll() {
+    final isHindi = _lang.isHindi;
+    final toDownload = _songs.where((s) => !_downloadService.isSongDownloaded(s.id)).toList();
+    if (toDownload.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: const Color(0xFF00E676),
+          content: Text(
+            isHindi ? 'सभी गाने पहले से डाउनलोड हैं!' : 'All songs are already downloaded!',
+            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+          ),
+        ),
+      );
+      return;
+    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        backgroundColor: const Color(0xFF00E5FF),
+        content: Text(
+          isHindi
+              ? '${toDownload.length} गाने डाउनलोड कतार में जोड़े गए (एक-एक करके डाउनलोड होंगे)'
+              : '${toDownload.length} songs added to queue (sequential download)',
+          style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+        ),
+      ),
+    );
+    _downloadService.downloadSongsSequentially(toDownload);
+  }
 
   String _getCategoryImageUrl(Map<String, dynamic> cat) {
     final key = (cat['key'] ?? '').toString().toLowerCase();
@@ -1068,7 +1096,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
             ),
           ),
 
-          // Action Buttons Bar (Play All / Shuffle All)
+          // Action Buttons Bar (Play All / Shuffle / Download All)
           if (!_isLoading && _songs.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -1076,6 +1104,7 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                 child: Row(
                   children: [
                     Expanded(
+                      flex: 4,
                       child: ElevatedButton.icon(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: primaryColor,
@@ -1083,28 +1112,48 @@ class _CategoryDetailScreenState extends State<CategoryDetailScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        icon: const Icon(Icons.play_arrow_rounded, size: 22),
+                        icon: const Icon(Icons.play_arrow_rounded, size: 20),
                         label: Text(
                           isHindi ? 'सभी बजाएं' : 'Play All',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                         onPressed: _playAll,
                       ),
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(width: 8),
                     Expanded(
+                      flex: 3,
                       child: OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(color: primaryColor),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                           padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        icon: Icon(Icons.shuffle_rounded, size: 20, color: primaryColor),
+                        icon: Icon(Icons.shuffle_rounded, size: 18, color: primaryColor),
                         label: Text(
-                          isHindi ? 'शफ़ल प्ले' : 'Shuffle',
-                          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13),
+                          isHindi ? 'शफ़ल' : 'Shuffle',
+                          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
                         ),
                         onPressed: _shuffleAll,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 4,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF131726),
+                          foregroundColor: const Color(0xFF00E5FF),
+                          side: const BorderSide(color: Color(0xFF00E5FF), width: 1.2),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: const Icon(Icons.download_rounded, size: 18, color: Color(0xFF00E5FF)),
+                        label: Text(
+                          isHindi ? 'सभी डाउनलोड' : 'Download All',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF00E5FF)),
+                        ),
+                        onPressed: _downloadAll,
                       ),
                     ),
                   ],

@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import 'cache_manager.dart';
 import 'audio_providers/unified_audio_repository.dart';
+import 'connectivity_service.dart';
 import 'music_service.dart';
 
 class DownloadService extends ChangeNotifier {
@@ -64,7 +65,16 @@ class DownloadService extends ChangeNotifier {
       }
     } catch (_) {}
     _isInitialized = true;
+    ConnectivityService().addListener(_onConnectivityChanged);
     notifyListeners();
+  }
+
+  void _onConnectivityChanged() {
+    if (ConnectivityService().isOnline) {
+      if ((_downloadQueue.isNotEmpty || _currentlyDownloadingSong != null) && !_isWorkerRunning) {
+        _startSequentialWorker();
+      }
+    }
   }
 
   bool isSongInQueue(String songId) {
@@ -95,6 +105,7 @@ class DownloadService extends ChangeNotifier {
     }
 
     _downloadQueue.add(song);
+    _downloadProgress[song.id] = 0.0;
     notifyListeners();
 
     _startSequentialWorker();
@@ -108,10 +119,29 @@ class DownloadService extends ChangeNotifier {
         final completer = Completer<bool>();
         _taskCompleters[song.id] = completer;
         _downloadQueue.add(song);
+        _downloadProgress[song.id] = 0.0;
       }
     }
     notifyListeners();
     _startSequentialWorker();
+  }
+
+  /// Cancel and delete a specific active or queued download
+  Future<void> cancelDownload(String songId) async {
+    _downloadQueue.removeWhere((s) => s.id == songId);
+    _downloadProgress.remove(songId);
+    if (_currentlyDownloadingSong?.id == songId) {
+      _currentlyDownloadingSong = null;
+    }
+    try {
+      final permDir = await _cacheManager.permanentDir;
+      final cleanId = songId.replaceAll(RegExp(r'[^\w]+'), '_');
+      final partFile = File('${permDir.path}/$cleanId.part');
+      if (await partFile.exists()) {
+        await partFile.delete();
+      }
+    } catch (_) {}
+    notifyListeners();
   }
 
   /// Single-Worker Sequential Processor (Strictly One Song At A Time)
@@ -131,31 +161,48 @@ class DownloadService extends ChangeNotifier {
         success = false;
       }
 
+      if (!success) {
+        // If download failed due to network disconnection:
+        // NEVER DELETE partial file! Keep song at head of queue to resume when online!
+        if (!ConnectivityService().isOnline) {
+          _downloadQueue.insert(0, song);
+          _currentlyDownloadingSong = null;
+          notifyListeners();
+          break; // Stop worker until network reconnects
+        }
+      }
+
       final completer = _taskCompleters.remove(song.id);
       if (completer != null && !completer.isCompleted) {
         completer.complete(success);
       }
       _taskProgressCallbacks.remove(song.id);
-      _downloadProgress.remove(song.id);
+      if (success) {
+        _downloadProgress.remove(song.id);
+      }
 
       _currentlyDownloadingSong = null;
       notifyListeners();
     }
 
     _isWorkerRunning = false;
-    try {
-      _nativeChannel.invokeMethod('dismissDownloadNotification');
-    } catch (_) {}
+    if (_downloadQueue.isEmpty && _currentlyDownloadingSong == null) {
+      try {
+        _nativeChannel.invokeMethod('dismissDownloadNotification');
+      } catch (_) {}
+    }
     notifyListeners();
   }
 
-  /// Internal Worker Method to download Audio + High-Res Banner + Synced Lyrics
+  /// Internal Worker Method with HTTP Range Resume (Never Deletes Partial Bytes)
   Future<bool> _executeSingleDownload(SongModel song) async {
+    IOSink? sink;
     try {
       final permDir = await _cacheManager.permanentDir;
       final cleanId = song.id.replaceAll(RegExp(r'[^\w]+'), '_');
       final safeName = cleanId.isEmpty ? 'song_${DateTime.now().millisecondsSinceEpoch}' : cleanId;
       final filePath = '${permDir.path}/$safeName.m4a';
+      final partFilePath = '${permDir.path}/$safeName.part';
 
       final existingFile = File(filePath);
       if (existingFile.existsSync() && existingFile.lengthSync() > 1024) {
@@ -194,44 +241,69 @@ class DownloadService extends ChangeNotifier {
         return false;
       }
 
-      _downloadProgress[song.id] = 0.0;
-      notifyListeners();
-      _taskProgressCallbacks[song.id]?.call(0.0);
+      final partFile = File(partFilePath);
+      int existingBytes = 0;
+      if (partFile.existsSync()) {
+        existingBytes = partFile.lengthSync();
+      }
 
-      final downloadOptions = Options(
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'Accept': '*/*',
-        },
-      );
+      // Setup HTTP stream request with resume support
+      final request = await HttpClient().getUrl(Uri.parse(streamUrl));
+      request.headers.set('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36');
+      request.headers.set('Accept', '*/*');
+      if (existingBytes > 0) {
+        request.headers.set('Range', 'bytes=$existingBytes-');
+      }
 
-      // 3. Download Audio Stream Sequentially
-      await _dio.download(
-        streamUrl,
-        filePath,
-        options: downloadOptions,
-        onReceiveProgress: (received, total) {
-          if (total > 0) {
-            final progress = received / total;
-            _downloadProgress[song.id] = progress;
-            notifyListeners();
-            _taskProgressCallbacks[song.id]?.call(progress);
-            try {
-              final remaining = _downloadQueue.length;
-              final statusTitle = remaining > 0 ? '${song.title} (+$remaining in queue)' : song.title;
-              _nativeChannel.invokeMethod('updateDownloadNotification', {
-                'title': statusTitle,
-                'progress': (progress * 100).toInt(),
-                'isDone': false,
-              });
-            } catch (_) {}
-          }
-        },
-      );
+      final response = await request.close();
+      final isPartial = response.statusCode == 206;
+      final isSuccess = response.statusCode == 200 || isPartial;
 
-      final audioFile = File(filePath);
-      if (!audioFile.existsSync() || audioFile.lengthSync() < 50000) {
-        try { if (audioFile.existsSync()) audioFile.deleteSync(); } catch (_) {}
+      if (!isSuccess) {
+        return false;
+      }
+
+      // If server does not support range (returns 200), restart from 0; if 206, append!
+      if (!isPartial && existingBytes > 0) {
+        existingBytes = 0;
+        sink = partFile.openWrite(mode: FileMode.write);
+      } else {
+        sink = partFile.openWrite(mode: FileMode.append);
+      }
+
+      final contentLength = response.contentLength;
+      final totalBytes = (contentLength > 0) ? (existingBytes + contentLength) : 0;
+      int receivedBytes = existingBytes;
+
+      await for (final chunk in response) {
+        sink.add(chunk);
+        receivedBytes += chunk.length;
+        if (totalBytes > 0) {
+          final progress = (receivedBytes / totalBytes).clamp(0.0, 1.0);
+          _downloadProgress[song.id] = progress;
+          notifyListeners();
+          _taskProgressCallbacks[song.id]?.call(progress);
+
+          try {
+            final remaining = _downloadQueue.length;
+            final statusTitle = remaining > 0 ? '${song.title} (+$remaining in queue)' : song.title;
+            _nativeChannel.invokeMethod('updateDownloadNotification', {
+              'title': statusTitle,
+              'progress': (progress * 100).toInt(),
+              'isDone': false,
+            });
+          } catch (_) {}
+        }
+      }
+
+      await sink.flush();
+      await sink.close();
+      sink = null;
+
+      if (partFile.existsSync() && partFile.lengthSync() > 10000) {
+        if (existingFile.existsSync()) existingFile.deleteSync();
+        await partFile.rename(filePath);
+      } else {
         return false;
       }
 
@@ -280,6 +352,11 @@ class DownloadService extends ChangeNotifier {
       await _saveOfflineTrack(song);
       return true;
     } catch (e) {
+      // NEVER DELETE partFile! Keep whatever bytes were downloaded!
+      try {
+        await sink?.flush();
+        await sink?.close();
+      } catch (_) {}
       return false;
     }
   }

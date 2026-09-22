@@ -3,6 +3,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/song_model.dart';
 import '../services/audio_handler.dart';
+import '../services/download_service.dart';
 import '../services/language_service.dart';
 import '../services/music_service.dart';
 import '../services/performance_guard.dart';
@@ -24,6 +25,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final MusicService _musicService = MusicService();
+  final DownloadService _downloadService = DownloadService();
   final ThemeService _theme = ThemeService();
   final LanguageService _lang = LanguageService();
   final PlaybackHistoryService _historyService = PlaybackHistoryService();
@@ -771,6 +773,53 @@ class _HomeScreenState extends State<HomeScreen> {
                                         );
                                       },
                                     ),
+                                    // Quick Download Button
+                                    AnimatedBuilder(
+                                      animation: _downloadService,
+                                      builder: (context, _) {
+                                        final isDownloaded = _downloadService.isSongDownloaded(song.id);
+                                        final isQueued = _downloadService.isSongInQueue(song.id);
+                                        return IconButton(
+                                          icon: Icon(
+                                            isDownloaded
+                                                ? Icons.download_done_rounded
+                                                : (isQueued ? Icons.hourglass_top_rounded : Icons.download_rounded),
+                                            color: isDownloaded
+                                                ? const Color(0xFF00E676)
+                                                : (isQueued ? const Color(0xFF00E5FF) : Colors.white60),
+                                            size: 20,
+                                          ),
+                                          tooltip: isHindi ? 'डाउनलोड करें' : 'Download',
+                                          onPressed: () {
+                                            if (isDownloaded) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  backgroundColor: const Color(0xFF00E676),
+                                                  duration: const Duration(seconds: 2),
+                                                  content: Text(
+                                                    isHindi ? 'यह गाना पहले से डाउनलोड है!' : 'Song already downloaded!',
+                                                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                                                  ),
+                                                ),
+                                              );
+                                              return;
+                                            }
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: const Color(0xFF00E5FF),
+                                                duration: const Duration(seconds: 2),
+                                                content: Text(
+                                                  isHindi ? '"${song.title}" डाउनलोड में जोड़ा गया!' : '"${song.title}" added to downloads!',
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                                                ),
+                                              ),
+                                            );
+                                            _downloadService.downloadSong(song);
+                                          },
+                                        );
+                                      },
+                                    ),
+                                    const SizedBox(width: 4),
                                     // Radiant Play Button (Always shows Play Logo with active playing aura)
                                     GestureDetector(
                                       onTap: () => _playSongOnly(song, _infiniteFeedSongs),
@@ -922,6 +971,57 @@ class _HomeScreenState extends State<HomeScreen> {
                                         ),
                                       ),
                                     ),
+                                  // Top-Right Download Button
+                                  Positioned(
+                                    top: 6,
+                                    right: 6,
+                                    child: AnimatedBuilder(
+                                      animation: _downloadService,
+                                      builder: (context, _) {
+                                        final isDownloaded = _downloadService.isSongDownloaded(song.id);
+                                        final isQueued = _downloadService.isSongInQueue(song.id);
+                                        return GestureDetector(
+                                          onTap: () {
+                                            if (isDownloaded) return;
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                backgroundColor: const Color(0xFF00E5FF),
+                                                duration: const Duration(seconds: 2),
+                                                content: Text(
+                                                  _lang.isHindi
+                                                      ? '"${song.title}" डाउनलोड में जोड़ा गया!'
+                                                      : '"${song.title}" queued for download!',
+                                                  style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                                                ),
+                                              ),
+                                            );
+                                            _downloadService.downloadSong(song);
+                                          },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(5),
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: Colors.black.withOpacity(0.65),
+                                              border: Border.all(
+                                                color: isDownloaded
+                                                    ? const Color(0xFF00E676)
+                                                    : (isQueued ? const Color(0xFF00E5FF) : Colors.white30),
+                                              ),
+                                            ),
+                                            child: Icon(
+                                              isDownloaded
+                                                  ? Icons.download_done_rounded
+                                                  : (isQueued ? Icons.hourglass_top_rounded : Icons.download_rounded),
+                                              color: isDownloaded
+                                                  ? const Color(0xFF00E676)
+                                                  : (isQueued ? const Color(0xFF00E5FF) : Colors.white70),
+                                              size: 14,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ),
                                   // Corner Play Button (Shows Play Logo with active aura)
                                   Positioned(
                                     bottom: 6,

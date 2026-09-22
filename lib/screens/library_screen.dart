@@ -969,6 +969,199 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
               ),
             ),
 
+            // Active & Queued Downloads Section (Instant Live Percentage & Queue Position)
+            if (_downloadService.currentlyDownloadingSong != null || _downloadService.downloadQueue.isNotEmpty)
+              Container(
+                margin: const EdgeInsets.fromLTRB(16, 2, 16, 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF05D9E8).withOpacity(0.5), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF05D9E8).withOpacity(0.12),
+                      blurRadius: 12,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const SizedBox(
+                              width: 14,
+                              height: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF05D9E8)),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              isHindi ? 'डाउनलोडिंग एवं कतार' : 'Downloading & Queue',
+                              style: const TextStyle(color: Color(0xFF05D9E8), fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF05D9E8).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${_downloadService.queueCount} ${isHindi ? "बाकी" : "remaining"}',
+                            style: const TextStyle(color: Color(0xFF05D9E8), fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Currently Downloading Active Song with Live Progress
+                    if (_downloadService.currentlyDownloadingSong != null) ...[
+                      Builder(
+                        builder: (context) {
+                          final song = _downloadService.currentlyDownloadingSong!;
+                          final progress = _downloadService.downloadProgress[song.id] ?? 0.0;
+                          final pct = (progress * 100).toInt();
+
+                          return Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.04),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              children: [
+                                Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: song.thumbnailUrl.isNotEmpty
+                                          ? Image.network(
+                                              song.thumbnailUrl,
+                                              width: 38,
+                                              height: 38,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (_, __, ___) => Container(
+                                                width: 38,
+                                                height: 38,
+                                                color: Colors.white12,
+                                                child: const Icon(Icons.music_note, size: 18, color: Colors.white54),
+                                              ),
+                                            )
+                                          : Container(
+                                              width: 38,
+                                              height: 38,
+                                              color: Colors.white12,
+                                              child: const Icon(Icons.music_note, size: 18, color: Colors.white54),
+                                            ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            song.title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                                          ),
+                                          Text(
+                                            '$pct% ${isHindi ? "डाउनलोड हो रहा है..." : "downloading..."}',
+                                            style: const TextStyle(color: Color(0xFF05D9E8), fontSize: 11, fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(Icons.close_rounded, size: 18, color: Colors.white54),
+                                      tooltip: isHindi ? 'रद्द करें' : 'Cancel',
+                                      onPressed: () => _downloadService.cancelDownload(song.id),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(4),
+                                  child: LinearProgressIndicator(
+                                    value: progress > 0 ? progress : null,
+                                    minHeight: 4,
+                                    backgroundColor: Colors.white12,
+                                    valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF05D9E8)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+
+                    // Queued Songs
+                    if (_downloadService.downloadQueue.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      ..._downloadService.downloadQueue.take(3).toList().asMap().entries.map((entry) {
+                        final i = entry.key;
+                        final qSong = entry.value;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 3, horizontal: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '#${i + 1}',
+                                  style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  qSong.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                ),
+                              ),
+                              Text(
+                                isHindi ? 'प्रतीक्षारत' : 'Queued',
+                                style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10),
+                              ),
+                              const SizedBox(width: 4),
+                              GestureDetector(
+                                onTap: () => _downloadService.cancelDownload(qSong.id),
+                                child: const Icon(Icons.close_rounded, size: 14, color: Colors.white38),
+                              ),
+                            ],
+                          ),
+                        );
+                      }),
+                      if (_downloadService.downloadQueue.length > 3)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, left: 4),
+                          child: Text(
+                            '+${_downloadService.downloadQueue.length - 3} ${isHindi ? "अन्य गाने कतार में..." : "more in queue..."}',
+                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 10, fontStyle: FontStyle.italic),
+                          ),
+                        ),
+                    ],
+                  ],
+                ),
+              ),
+
             // Downloads List
             Expanded(
               child: filteredDownloads.isEmpty
@@ -979,7 +1172,9 @@ class _LibraryScreenState extends State<LibraryScreen> with SingleTickerProvider
                           Icon(Icons.cloud_download_outlined, size: 64, color: Colors.white.withOpacity(0.2)),
                           const SizedBox(height: 16),
                           Text(
-                            isHindi ? 'कोई गाना नहीं मिला' : 'No matching songs found',
+                            (_downloadService.currentlyDownloadingSong != null || _downloadService.downloadQueue.isNotEmpty)
+                                ? (isHindi ? 'डाउनलोड प्रगति पर है... ऊपर देखें' : 'Downloads in progress... see above')
+                                : (isHindi ? 'कोई गाना नहीं मिला' : 'No matching songs found'),
                             style: const TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w600),
                           ),
                           const SizedBox(height: 6),

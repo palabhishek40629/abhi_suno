@@ -5,6 +5,78 @@
 class DevanagariConverter {
   static final RegExp _timestampRegExp = RegExp(r'^(\[\d{2}:\d{2}\.\d{2,3}\])\s*(.*)$');
   static final RegExp _devanagariRange = RegExp(r'[\u0900-\u097F]');
+  static final RegExp _gurmukhiRange = RegExp(r'[\u0A00-\u0A7F]');
+
+  // Gurmukhi (Punjabi script) to authentic Devanagari Hindi character mapping
+  static const Map<String, String> _gurmukhiToDevanagariMap = {
+    '\u0A01': '\u0901', // Adak bindi -> Chandrabindu
+    '\u0A02': '\u0902', // Bindi -> Anusvara
+    '\u0A03': '\u0903', // Visarga
+    '\u0A05': '\u0905', // ਅ -> अ
+    '\u0A06': '\u0906', // ਆ -> आ
+    '\u0A07': '\u0907', // ਇ -> इ
+    '\u0A08': '\u0908', // ਈ -> ई
+    '\u0A09': '\u0909', // ਉ -> उ
+    '\u0A0A': '\u090A', // ਊ -> ऊ
+    '\u0A0F': '\u090F', // ਏ -> ए
+    '\u0A10': '\u0910', // ਐ -> ऐ
+    '\u0A13': '\u0913', // ਓ -> ओ
+    '\u0A14': '\u0914', // ਔ -> औ
+    '\u0A15': '\u0915', // ਕ -> क
+    '\u0A16': '\u0916', // ਖ -> ख
+    '\u0A17': '\u0917', // ਗ -> ग
+    '\u0A18': '\u0918', // ਘ -> घ
+    '\u0A19': '\u0919', // ਙ -> ङ
+    '\u0A1A': '\u091A', // ਚ -> च
+    '\u0A1B': '\u091B', // ਛ -> छ
+    '\u0A1C': '\u091C', // ਜ -> ज
+    '\u0A1D': '\u091D', // ਝ -> झ
+    '\u0A1E': '\u091E', // ਞ -> ञ
+    '\u0A1F': '\u091F', // ਟ -> ट
+    '\u0A20': '\u0920', // ਠ -> ठ
+    '\u0A21': '\u0921', // ਡ -> ड
+    '\u0A22': '\u0922', // ਢ -> ढ
+    '\u0A23': '\u0923', // ਣ -> ण
+    '\u0A24': '\u0924', // ਤ -> त
+    '\u0A25': '\u0925', // ਥ -> थ
+    '\u0A26': '\u0926', // ਦ -> द
+    '\u0A27': '\u0927', // ਧ -> ध
+    '\u0A28': '\u0928', // ਨ -> न
+    '\u0A2A': '\u092A', // ਪ -> प
+    '\u0A2B': '\u092B', // ਫ -> फ
+    '\u0A2C': '\u092C', // ਬ -> ब
+    '\u0A2D': '\u092D', // ਭ -> भ
+    '\u0A2E': '\u092E', // ਮ -> म
+    '\u0A2F': '\u092F', // ਯ -> य
+    '\u0A30': '\u0930', // ਰ -> र
+    '\u0A32': '\u0932', // ਲ -> ल
+    '\u0A33': '\u0933', // ਲ਼ -> ळ
+    '\u0A35': '\u0935', // ਵ -> व
+    '\u0A36': '\u0936', // ਸ਼ -> श
+    '\u0A38': '\u0938', // ਸ -> स
+    '\u0A39': '\u0939', // ਹ -> ह
+    '\u0A3C': '\u093C', // Nukta
+    '\u0A3E': '\u093E', // ਾ -> ा
+    '\u0A3F': '\u093F', // ਿ -> ि
+    '\u0A40': '\u0940', // ੀ -> ी
+    '\u0A41': '\u0941', // ੁ -> ु
+    '\u0A42': '\u0942', // ੂ -> ू
+    '\u0A47': '\u0947', // ੇ -> े
+    '\u0A48': '\u0948', // ੈ -> ै
+    '\u0A4B': '\u094B', // ੋ -> ो
+    '\u0A4C': '\u094C', // ੌ -> ौ
+    '\u0A4D': '\u094D', // ੍ -> ् Virama
+    '\u0A59': '\u0959', // ਖ਼ -> ख़
+    '\u0A5A': '\u095A', // ਗ਼ -> ग़
+    '\u0A5B': '\u095B', // ਜ਼ -> ज़
+    '\u0A5C': '\u095C', // ੜ -> ड़
+    '\u0A5E': '\u095E', // ਫ਼ -> फ़
+    '\u0A70': '\u0902', // ੰ Tippi -> Anusvara
+    '\u0A71': '\u094D', // ੱ Addak
+    '\u0A72': '\u0907', // ੲ
+    '\u0A73': '\u0909', // ੳ
+    '\u0A75': '\u094D\u092F', // ੵ -> ्य
+  };
 
   // Comprehensive Song Vocabulary Dictionary (Top Hindi, Urdu, Punjabi, English & Global Tracks)
   // Formatted with 100% precise Hindi grammar, standard matras, anusvara, and chandrabindu
@@ -800,7 +872,103 @@ class DevanagariConverter {
     'kun': 'कुन',
     'faya': 'फ़या',
     'fayaa': 'फ़या',
+    'kudiye': 'कुड़िए',
+    'mundeya': 'मुंडेया',
+    'maahi': 'माही',
+    'sohniye': 'सोहणिये',
+    'sohniya': 'सोहणिया',
+    'sohna': 'सोहणा',
+    'sohni': 'सोहणी',
+    'sohne': 'सोहणे',
+    'vich': 'विच',
+    'te': 'ते',
+    'naal': 'नाल',
+    'kol': 'कोल',
+    'kolo': 'कोलों',
+    'chhad': 'छड्ड',
+    'chhadke': 'छड्डके',
+    'kiven': 'किंवें',
+    'kive': 'किंवें',
+    'jiven': 'जिंवें',
+    'jive': 'जिंवें',
+    'hor': 'होर',
+    'dass': 'दस्स',
+    'das': 'दस्स',
+    'aavega': 'आवेगा',
+    'dilan': 'दिलां',
+    'nachdi': 'नचदी',
+    'nachda': 'नचदा',
+    'nachde': 'नचदे',
+    'bhangra': 'भांगड़ा',
+    'gidha': 'गिद्धा',
+    'hauli': 'हौली',
+    'haulie': 'हौली',
+    'khair': 'ख़ैर',
+    'sukhan': 'सुखां',
+    'chan': 'चन',
+    'chann': 'चन्न',
+    'mitti': 'मिट्टी',
+    'sajjan': 'सज्जन',
+    'yaariyan': 'यारियां',
+    'yariyan': 'यारियां',
+    'marjaani': 'मरजाणी',
+    'kamli': 'कमली',
+    'kamla': 'कमला',
+    'billo': 'बिल्लो',
+    'bagge': 'बग्गे',
+    'patiala': 'पटियाला',
+    'suit': 'सूट',
+    'jhumke': 'झुमके',
+    'kangna': 'कंगना',
+    'kangan': 'कंगन',
+    'payal': 'पायल',
+    'jhanjhar': 'झांझर',
+    'panjeban': 'पंजेबां',
+    'surma': 'सुरमा',
+    'koka': 'कोका',
+    'chhalla': 'छल्ला',
+    'gaddi': 'गड्डी',
+    'bullet': 'बुलेट',
+    'yaaran': 'यारां',
+    'velly': 'वैली',
+    'sidhu': 'सिद्धू',
+    'moosewala': 'मूसेवाला',
+    'karan': 'करण',
+    'aujla': 'औजला',
+    'diljit': 'दिलजीत',
+    'dosanjh': 'दोसांझ',
+    'badshah': 'बादशाह',
+    'raftaar': 'रफ़्तार',
+    'emiway': 'एमिवे',
+    'bantai': 'बंटाई',
+    'machayenge': 'मचाएंगे',
   };
+
+  /// Transliterates text written in Gurmukhi script into authentic Devanagari Hindi
+  static String _transliterateGurmukhi(String input) {
+    if (input.isEmpty) return input;
+    final buffer = StringBuffer();
+    final runes = input.runes.toList();
+    final n = runes.length;
+    for (int i = 0; i < n; i++) {
+      final code = runes[i];
+      // Addak (ੱ, 0x0A71) indicates doubling/gemination of next consonant in Devanagari
+      if (code == 0x0A71 && i + 1 < n) {
+        final nextChar = String.fromCharCode(runes[i + 1]);
+        final mappedNext = _gurmukhiToDevanagariMap[nextChar] ?? nextChar;
+        buffer.write('$mappedNext\u094D');
+        continue;
+      }
+      final char = String.fromCharCode(code);
+      final mapped = _gurmukhiToDevanagariMap[char];
+      if (mapped != null) {
+        buffer.write(mapped);
+      } else {
+        buffer.write(char);
+      }
+    }
+    return buffer.toString();
+  }
 
   /// Main method: Converts any single line into authentic Devanagari Hindi
   static String toDevanagari(String text) {
@@ -832,6 +1000,11 @@ class DevanagariConverter {
   static String _convertContent(String content) {
     final trimmed = content.trim();
     if (trimmed.isEmpty) return content;
+
+    // If text contains Gurmukhi characters, transliterate directly to Devanagari
+    if (_gurmukhiRange.hasMatch(trimmed)) {
+      return _transliterateGurmukhi(content);
+    }
 
     // If text already has substantial Devanagari characters (>30%), leave it natural
     final devanagariCount = _devanagariRange.allMatches(trimmed).length;
