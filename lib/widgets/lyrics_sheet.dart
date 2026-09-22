@@ -143,8 +143,32 @@ class _LyricsSheetState extends State<LyricsSheet> {
       _isKaraoke = true;
       _karaokeLines = parsed;
     } else {
-      _isKaraoke = false;
-      _plainLyrics = DevanagariConverter.cleanLyricsText(raw);
+      final clean = DevanagariConverter.cleanLyricsText(raw);
+      _plainLyrics = clean;
+      final rawLines = clean
+          .split('\n')
+          .map((l) => l.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+
+      if (rawLines.isNotEmpty &&
+          !clean.contains('गीत के बोल उपलब्ध नहीं हैं') &&
+          !clean.contains('Lyrics not available')) {
+        final totalSec = _currentSong.duration.inSeconds > 30 ? _currentSong.duration.inSeconds : 180;
+        final startSec = 10.0;
+        final endSec = (totalSec - 12.0).clamp(startSec + 15.0, totalSec.toDouble());
+        final step = (endSec - startSec) / rawLines.length;
+
+        for (int i = 0; i < rawLines.length; i++) {
+          final lineTimeMs = ((startSec + (i * step)) * 1000).toInt();
+          parsed.add(_KaraokeLine(time: Duration(milliseconds: lineTimeMs), text: rawLines[i]));
+        }
+
+        _isKaraoke = true;
+        _karaokeLines = parsed;
+      } else {
+        _isKaraoke = false;
+      }
     }
   }
 

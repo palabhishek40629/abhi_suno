@@ -289,15 +289,6 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 10000) {
           source = AudioSource.file(cachedFile.path);
         } else {
-          // Fast check: If offline and not cached or downloaded, avoid lengthy 12-second network timeout hang
-          if (!ConnectivityService().isOnline) {
-            playbackState.add(playbackState.value.copyWith(
-              processingState: AudioProcessingState.idle,
-              playing: false,
-            ));
-            return;
-          }
-
           String? audioUrl = song.streamUrl;
           if (audioUrl == null || audioUrl.isEmpty) {
             final songQuery = '${song.title} ${song.artist}'.trim();

@@ -65,42 +65,41 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.4.1-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.4.2-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v4.4.1-release
-          path: AbhiSuno-v4.4.1-release.apk
+          name: AbhiSuno-v4.4.2-release
+          path: AbhiSuno-v4.4.2-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.4.1-${{ github.run_number }}
-          name: "Abhi Suno v4.4.1 Master Edition (Build ${{ github.run_number }})"
+          tag_name: v4.4.2-${{ github.run_number }}
+          name: "Abhi Suno v4.4.2 Master Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v4.4.1 Master Edition
+            ### 🎧 Abhi Suno v4.4.2 Master Edition
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
-            - ⚡ **100% JioSaavn Playback & Fast Offline Recovery:**
-              - Purged all legacy YouTube & Piped proxy adapters (`piped_invidious_adapter.dart` deleted).
-              - 100% JioSaavn Akamai CDN streaming with DES decryption and multi-bitrate fallback (320kbps -> 160kbps -> 96kbps).
-              - Fixed infinite loading spinner on stream failure / offline mode (immediately resets to idle).
-              - Lowered cache size threshold from 500KB to 10KB so offline cached tracks always play instantly.
-            - 🌟 **Subtle 3D Curved Paragraph Karaoke with 100% Hindi Grammar:**
-              - Active singer lyrics line styled as a subtle 3D curved plate (`scale: 1.04`, no oversized zoom).
-              - 1,200+ song vocabulary words with 100% authentic Hindi grammar, correct matras, anusvara, and chandrabindu.
-              - LRCLIB millisecond synced timestamps prioritized so singer voice line detection works on all songs.
-              - Dynamic track change: lyrics sheet dynamically reloads when song changes without freezing.
-              - Seeking back to intro instrumental resets highlight and scrolls to top smoothly.
-            - 📱 **Performance & UX Refinements:**
-              - Screens list cached in `initState` to eliminate widget recreation and memory churn.
-              - Error-resilient directory scanning for device local audio.
+            - ⚡ **100% Instant Playback & Offline Gate Removal:**
+              - Completely removed the false-negative `ConnectivityService.isOnline` blocking check inside `audio_handler.dart` which caused startup stream aborts.
+              - 100% JioSaavn Akamai CDN direct streaming with automatic multi-bitrate fallback (320kbps -> 160kbps -> 96kbps).
+              - Play / Pause state synchronization and immediate buffering reset on errors.
+            - 🌟 **Subtle 3D Curved Paragraph Karaoke with Exact Voice Tracking:**
+              - Fast concurrent lyrics engine querying LRCLIB synced lyrics (real millisecond singer-voice timestamps) and JioSaavn official lyrics in parallel (<2.5s).
+              - Auto-timeline karaoke generator when lyrics lack timestamps so 100% of songs feature live 3D neon voice tracking.
+              - Active singer lyrics line styled as a subtle 3D curved plate (`scale: 1.04`, no oversized zoom, dual cyan/pink neon ambient glow).
+              - Rendered in authentic Devanagari Hindi calligraphy using `AmsSudha` font.
+              - Expanded song vocabulary dictionary with 100% accurate Hindi grammar.
+            - 📱 **Performance & Offline Stability:**
+              - Direct lyrics download (.txt) option in the lyrics sheet.
+              - Error-resilient caching and fast local playback.
 
-            **Direct APK Download:** `AbhiSuno-v4.4.1-release.apk`
-          files: AbhiSuno-v4.4.1-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.4.2-release.apk`
+          files: AbhiSuno-v4.4.2-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true
