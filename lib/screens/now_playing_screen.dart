@@ -1116,20 +1116,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> with SingleTickerPr
                                       ],
                                     ),
                                     child: Center(
-                                      child: isBuffering
-                                          ? const SizedBox(
-                                              width: 32,
-                                              height: 32,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 3,
-                                                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                              ),
-                                            )
-                                          : Icon(
-                                              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                              color: Colors.white,
-                                              size: 40,
-                                            ),
+                                      child: Icon(
+                                        isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                        color: Colors.white,
+                                        size: 40,
+                                      ),
                                     ),
                                   ),
                                 ),

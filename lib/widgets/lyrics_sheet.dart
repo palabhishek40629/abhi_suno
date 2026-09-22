@@ -115,6 +115,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
     }
 
     if (parsed.isNotEmpty) {
+      parsed.sort((a, b) => a.time.compareTo(b.time));
       _isKaraoke = true;
       _karaokeLines = parsed;
     } else {
@@ -128,13 +129,10 @@ class _LyricsSheetState extends State<LyricsSheet> {
     if (_karaokeLines.isEmpty) return;
 
     int activeIdx = -1;
-    for (int i = 0; i < _karaokeLines.length; i++) {
-      final isLast = i == _karaokeLines.length - 1;
+    for (int i = _karaokeLines.length - 1; i >= 0; i--) {
       if (currentPos >= _karaokeLines[i].time) {
-        if (isLast || currentPos < _karaokeLines[i + 1].time) {
-          activeIdx = i;
-          break;
-        }
+        activeIdx = i;
+        break;
       }
     }
 

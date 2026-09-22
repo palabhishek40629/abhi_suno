@@ -1,23 +1,236 @@
 /// Devanagari Transliteration Engine
 /// Transforms Romanized/Hinglish/English lyrics into 100% authentic Devanagari Hindi script
+/// so that the Sudha (AmsSudha) font renders every character with elegance and precision,
 /// while preserving Karaoke timestamps [mm:ss.xx] exactly.
 class DevanagariConverter {
   static final RegExp _timestampRegExp = RegExp(r'^(\[\d{2}:\d{2}\.\d{2,3}\])\s*(.*)$');
   static final RegExp _devanagariRange = RegExp(r'[\u0900-\u097F]');
 
-  // Common song lyrics vocabulary mapping (Top Indian & Bollywood hits)
+  // Comprehensive Song Vocabulary Dictionary (Top Hindi, Punjabi, English & Global Tracks)
   static final Map<String, String> _dictionary = {
-    // Pronouns & Basics
+    // English Basics & Pronouns
+    'i': 'आई',
+    'you': 'यू',
+    'he': 'ही',
+    'she': 'शी',
+    'we': 'वी',
+    'they': 'दे',
+    'me': 'मी',
+    'my': 'माई',
+    'your': 'योर',
+    'his': 'हिज',
+    'her': 'हर',
+    'our': 'अवर',
+    'us': 'अस',
+    'them': 'देम',
+    'it': 'इट',
+    'this': 'दिस',
+    'that': 'दैट',
+    'these': 'दीज',
+    'those': 'दोज',
+    'who': 'हू',
+    'what': 'व्हाट',
+    'when': 'व्हेन',
+    'where': 'व्हेर',
+    'why': 'व्हाई',
+    'how': 'हाउ',
+    'a': 'अ',
+    'an': 'एन',
+    'the': 'द',
+    'am': 'एम',
+    'in': 'इन',
+    'on': 'ऑन',
+    'at': 'एट',
+    'to': 'टू',
+    'is': 'इज',
+    'are': 'आर',
+    'was': 'वाज',
+    'were': 'वर',
+    'be': 'बी',
+    'been': 'बीन',
+    'being': 'बीइंग',
+    'have': 'हैव',
+    'has': 'हैज',
+    'had': 'हैड',
+    'made': 'मेड',
+    'make': 'मेक',
+    'making': 'मेकिंग',
+    'can': 'कैन',
+    'could': 'कुड',
+    'will': 'विल',
+    'would': 'वुड',
+    'shall': 'शैल',
+    'should': 'शुड',
+    'must': 'मस्ट',
+
+    // English Song Keywords & Romance
+    'love': 'लव',
+    'baby': 'बेबी',
+    'babe': 'बेब',
+    'heart': 'हार्ट',
+    'tonight': 'टुनाइट',
+    'never': 'नेवर',
+    'forever': 'फॉरएवर',
+    'always': 'ऑलवेज',
+    'let': 'लेट',
+    'go': 'गो',
+    'gone': 'गॉन',
+    'yeah': 'येह',
+    'yes': 'यस',
+    'no': 'नो',
+    'oh': 'ओह',
+    'girl': 'गर्ल',
+    'boy': 'बॉय',
+    'man': 'मैन',
+    'woman': 'वुमन',
+    'one': 'वन',
+    'two': 'टू',
+    'three': 'थ्री',
+    'time': 'टाइम',
+    'night': 'नाइट',
+    'day': 'डे',
+    'life': 'लाइफ',
+    'feel': 'फील',
+    'feeling': 'फीलिंग',
+    'world': 'वर्ल्ड',
+    'need': 'नीड',
+    'want': 'वांट',
+    'say': 'से',
+    'tell': 'टेल',
+    'speak': 'स्पीक',
+    'talk': 'टॉक',
+    'with': 'विद',
+    'without': 'विदाउट',
+    'for': 'फॉर',
+    'all': 'ऑल',
+    'so': 'सो',
+    'just': 'जस्ट',
+    'like': 'लाइक',
+    'know': 'नो',
+    'think': 'थिंक',
+    'see': 'सी',
+    'look': 'लुक',
+    'come': 'कम',
+    'came': 'केम',
+    'good': 'गुड',
+    'bad': 'बैड',
+    'give': 'गिव',
+    'take': 'टेक',
+    'back': 'बैक',
+    'find': 'फाइंड',
+    'here': 'हियर',
+    'there': 'देयर',
+    'thing': 'थिंग',
+    'way': 'वे',
+    'well': 'वेल',
+    'down': 'डाउन',
+    'up': 'अप',
+    'right': 'राइट',
+    'too': 'टू',
+    'any': 'एनी',
+    'please': 'प्लीज',
+    'sorry': 'सॉरी',
+    'hello': 'हैलो',
+    'hey': 'हे',
+    'hi': 'हाय',
+    'dj': 'डीजे',
+    'party': 'पार्टी',
+    'music': 'म्यूजिक',
+    'dance': 'डांस',
+    'beat': 'बीट',
+    'bass': 'बास',
+    'remix': 'रीमिक्स',
+    'song': 'सॉन्ग',
+    'rock': 'रॉक',
+    'pop': 'पॉप',
+    'rap': 'रैप',
+    'kiss': 'किस',
+    'hug': 'हग',
+    'smile': 'स्माइल',
+    'tears': 'टियर्स',
+    'cry': 'क्राई',
+    'crying': 'क्राइंग',
+    'crazy': 'क्रेजी',
+    'beautiful': 'ब्यूटीफुल',
+    'pretty': 'प्रिटी',
+    'eyes': 'आइज',
+    'face': 'फेस',
+    'body': 'बॉडी',
+    'touch': 'टच',
+    'hold': 'होल्ड',
+    'close': 'क्लोज',
+    'away': 'अवे',
+    'stay': 'स्टे',
+    'dream': 'ड्रीम',
+    'sweet': 'स्वीट',
+    'honey': 'हनी',
+    'darling': 'डार्लिंग',
+    'friend': 'फ्रेंड',
+    'together': 'टुगेदर',
+    'alone': 'अलोन',
+    'shape': 'शेप',
+    'of': 'ऑफ',
+    'do': 'डू',
+    'did': 'डिड',
+    'done': 'डन',
+    'believer': 'बिलीवर',
+    'faded': 'फेडेड',
+    'perfect': 'परफेक्ट',
+    'closer': 'क्लोज़र',
+    'senorita': 'सेनोरिटा',
+    'dandelions': 'डैंडेलिओन्स',
+    'memories': 'मेमोरीज',
+    'someone': 'समवन',
+    'liar': 'लायर',
+    'thunder': 'थंडर',
+    'shallow': 'शैलो',
+    'attention': 'अटेंशन',
+    'blinding': 'ब्लाइंडिंग',
+    'lights': 'लाइट्स',
+    'levitating': 'लेविटेटिंग',
+    'peaches': 'पीचेस',
+    'butter': 'बटर',
+    'dynamite': 'डायनामाइट',
+    'light': 'लाइट',
+    'dark': 'डार्क',
+    'fall': 'फॉल',
+    'falling': 'फॉलिंग',
+    'rise': 'राइज',
+    'high': 'हाई',
+    'low': 'लो',
+    'shine': 'शाइन',
+    'star': 'स्टार',
+    'stars': 'स्टार्स',
+    'moon': 'मून',
+    'sky': 'स्काई',
+    'sun': 'सन',
+    'rain': 'रेन',
+    'fire': 'फायर',
+    'burn': 'बर्न',
+    'cold': 'कोल्ड',
+    'hot': 'हॉट',
+    'broken': 'ब्रोकन',
+    'heal': 'हील',
+    'hope': 'होप',
+    'pray': 'प्रे',
+    'wish': 'विश',
+    'believe': 'बिलीव',
+    'breath': 'ब्रेथ',
+    'breathe': 'ब्रीद',
+
+    // Hindi & Bollywood Pronouns & Particles
     'tum': 'तुम',
     'hum': 'हम',
     'ham': 'हम',
     'main': 'मैं',
     'mujhe': 'मुझे',
+    'mujhko': 'मुझको',
     'mera': 'मेरा',
     'meri': 'मेरी',
     'mere': 'मेरे',
     'tu': 'तू',
     'tujhe': 'तुझे',
+    'tujhko': 'तुझको',
     'tera': 'तेरा',
     'teri': 'तेरी',
     'tere': 'तेरे',
@@ -44,6 +257,7 @@ class DevanagariConverter {
     'tab': 'तब',
     'ab': 'अब',
     'sab': 'सब',
+    'sabka': 'सबका',
     'hai': 'है',
     'hain': 'हैं',
     'ho': 'हो',
@@ -81,7 +295,7 @@ class DevanagariConverter {
     'dur': 'दूर',
     'door': 'दूर',
 
-    // Romance & Emotions
+    // Hindi Romance, Emotions & Lyrics Verbs
     'dil': 'दिल',
     'pyaar': 'प्यार',
     'pyar': 'प्यार',
@@ -153,7 +367,6 @@ class DevanagariConverter {
     'marna': 'मरना',
     'duniya': 'दुनिया',
     'zamana': 'ज़माना',
-    'jahan': 'जहाँ',
     'aasmaan': 'आसमान',
     'aasman': 'आसमान',
     'zameen': 'ज़मीन',
@@ -175,8 +388,6 @@ class DevanagariConverter {
     'baar': 'बार',
     'pehle': 'पहले',
     'baad': 'बाद',
-
-    // Verbs
     'dekh': 'देख',
     'dekha': 'देखा',
     'dekho': 'देखो',
@@ -201,7 +412,6 @@ class DevanagariConverter {
     'gaya': 'गया',
     'gaye': 'गए',
     'gayi': 'गई',
-    'jaana': 'जाना',
     'jaao': 'जाओ',
     'raha': 'रहा',
     'rahe': 'रहे',
@@ -234,28 +444,56 @@ class DevanagariConverter {
     'chhod': 'छोड़',
     'chale': 'चले',
     'chala': 'चला',
-    'manwa': 'मनवा',
+    'chali': 'चली',
+    'jo': 'जो',
+    'ja': 'जा',
+    'zara': 'ज़रा',
+    'jara': 'ज़रा',
+    'sambhal': 'संभल',
+    'haath': 'हाथ',
+    'hath': 'हाथ',
+    'lagaun': 'लगाऊं',
+    'lagau': 'लगाऊं',
+    'jaaun': 'जाऊं',
+    'jaau': 'जाऊं',
+    'karne': 'करने',
+    'kare': 'करे',
+    'karenge': 'करेंगे',
+    'bhula': 'भुला',
+    'bhul': 'भूल',
+    'bhule': 'भूले',
+    're': 'रे',
     'kesariya': 'केसरिया',
     'rang': 'रंग',
-    'tera': 'तेरा',
-    'ishq': 'इश्क़',
     'piya': 'पिया',
     'mora': 'मोरा',
     'man': 'मन',
+    'manwa': 'मनवा',
     'bawra': 'बावरा',
-    'channa': 'चन्ना',
-    'mereya': 'मेरेया',
+    'bana': 'बना',
+    'chaleya': 'चलेया',
+    'heeriye': 'हीरिये',
     'raatan': 'रातां',
     'lambiyan': 'लम्बियां',
     'kade': 'कदे',
     'avega': 'आवेगा',
+    'channa': 'चन्ना',
+    'mereya': 'मेरेया',
+    'lagda': 'लगदा',
+    'sohneya': 'सोहणेया',
+    'wakhra': 'वखरा',
+    'swag': 'स्वैग',
+    'brown': 'ब्राउन',
+    'munde': 'मुंडे',
+    'winning': 'विनिंग',
+    'speech': 'स्पीच',
   };
 
-  /// Main method: Converts any line into Devanagari
+  /// Main method: Converts any single line into authentic Devanagari Hindi
   static String toDevanagari(String text) {
     if (text.trim().isEmpty) return text;
 
-    // Check if line contains timestamp [mm:ss.xx]
+    // Check if line contains Karaoke timestamp [mm:ss.xx]
     final match = _timestampRegExp.firstMatch(text.trim());
     if (match != null) {
       final timestamp = match.group(1)!;
@@ -288,11 +526,7 @@ class DevanagariConverter {
       return content;
     }
 
-    // Process word by word preserving spaces and punctuation
-    final words = content.split(RegExp(r'(\s+|[.,!?";:—–\(\)\[\]{}])'));
     final buffer = StringBuffer();
-    int searchIdx = 0;
-
     for (final token in content.split(' ')) {
       if (token.isEmpty) {
         buffer.write(' ');
@@ -320,72 +554,115 @@ class DevanagariConverter {
     return buffer.toString().trimRight();
   }
 
-  /// Rule-based phonetic transliterator for Indian & English words
+  /// Advanced syllabic phonetic transliterator for Indian & English words
   static String _phoneticTransliterate(String input) {
     if (input.isEmpty) return '';
-    final s = input.toLowerCase();
+    final w = input.toLowerCase();
 
-    // Sound clusters replacement in order of length
-    final clusters = [
-      {'from': 'shh', 'to': 'ष'},
-      {'from': 'chh', 'to': 'छ'},
-      {'from': 'kh', 'to': 'ख'},
-      {'from': 'gh', 'to': 'घ'},
-      {'from': 'ch', 'to': 'च'},
-      {'from': 'jh', 'to': 'झ'},
-      {'from': 'th', 'to': 'थ'},
-      {'from': 'dh', 'to': 'ध'},
-      {'from': 'ph', 'to': 'फ'},
-      {'from': 'bh', 'to': 'भ'},
-      {'from': 'sh', 'to': 'श'},
-      {'from': 'aa', 'to': 'ा'},
-      {'from': 'ee', 'to': 'ी'},
-      {'from': 'oo', 'to': 'ू'},
-      {'from': 'ai', 'to': 'ै'},
-      {'from': 'au', 'to': 'ौ'},
-      {'from': 'k', 'to': 'क'},
-      {'from': 'g', 'to': 'ग'},
-      {'from': 'c', 'to': 'क'},
-      {'from': 'j', 'to': 'ज'},
-      {'from': 't', 'to': 'त'},
-      {'from': 'd', 'to': 'द'},
-      {'from': 'n', 'to': 'न'},
-      {'from': 'p', 'to': 'प'},
-      {'from': 'b', 'to': 'ब'},
-      {'from': 'm', 'to': 'म'},
-      {'from': 'y', 'to': 'य'},
-      {'from': 'r', 'to': 'र'},
-      {'from': 'l', 'to': 'ल'},
-      {'from': 'v', 'to': 'व'},
-      {'from': 'w', 'to': 'व'},
-      {'from': 's', 'to': 'स'},
-      {'from': 'h', 'to': 'ह'},
-      {'from': 'z', 'to': 'ज़'},
-      {'from': 'f', 'to': 'फ़'},
-      {'from': 'q', 'to': 'क़'},
-      {'from': 'a', 'to': ''},
-      {'from': 'i', 'to': 'ि'},
-      {'from': 'u', 'to': 'ु'},
-      {'from': 'e', 'to': 'े'},
-      {'from': 'o', 'to': 'ो'},
+    // Independent vowels (at word start or after vowel)
+    const leadVowels = [
+      ('aaa', 'आ'), ('aa', 'आ'), ('ai', 'ऐ'), ('au', 'औ'), ('ay', 'ए'),
+      ('ee', 'ई'), ('oo', 'ऊ'), ('ii', 'ई'), ('uu', 'ऊ'),
+      ('a', 'अ'), ('i', 'इ'), ('u', 'उ'), ('e', 'ए'), ('o', 'ओ')
     ];
 
-    String result = s;
-    for (final c in clusters) {
-      result = result.replaceAll(c['from']!, c['to']!);
+    // Dependent matras (after consonant)
+    const matras = [
+      ('aaa', 'ा'), ('aa', 'ा'), ('ai', 'ै'), ('au', 'ौ'), ('ay', 'े'),
+      ('ee', 'ी'), ('oo', 'ू'), ('ii', 'ी'), ('uu', 'ू'),
+      ('e', 'े'), ('o', 'ो'), ('i', 'ि'), ('u', 'ु'), ('a', 'ा')
+    ];
+
+    // Consonants & clusters
+    const consonants = [
+      ('shh', 'ष'), ('chh', 'छ'), ('kh', 'ख'), ('gh', 'घ'), ('ch', 'च'),
+      ('jh', 'झ'), ('th', 'थ'), ('dh', 'ध'), ('ph', 'फ़'), ('bh', 'भ'),
+      ('sh', 'श'), ('rh', 'ढ़'), ('zh', 'ज़'), ('wh', 'व'),
+      ('kk', 'क्क'), ('gg', 'ग्ग'), ('cc', 'च्च'), ('jj', 'ज्ज'),
+      ('tt', 'त्त'), ('dd', 'द्द'), ('nn', 'न्न'), ('pp', 'प्प'),
+      ('bb', 'ब्ब'), ('mm', 'म्म'), ('yy', 'य्य'), ('rr', 'र्र'),
+      ('ll', 'ल्ल'), ('ss', 'स्स'),
+      ('k', 'क'), ('g', 'ग'), ('c', 'क'), ('j', 'ज'), ('t', 'त'),
+      ('d', 'द'), ('n', 'न'), ('p', 'प'), ('b', 'ब'), ('m', 'म'),
+      ('y', 'य'), ('r', 'र'), ('l', 'ल'), ('v', 'व'), ('w', 'व'),
+      ('s', 'स'), ('h', 'ह'), ('z', 'ज़'), ('f', 'फ़'), ('q', 'क़'), ('x', 'क्स')
+    ];
+
+    final buffer = StringBuffer();
+    int i = 0;
+    final n = w.length;
+
+    while (i < n) {
+      // 1. Check if leading or standalone vowel
+      if (i == 0 || buffer.isEmpty) {
+        bool vMatch = false;
+        for (final v in leadVowels) {
+          if (w.startsWith(v.$1, i)) {
+            buffer.write(v.$2);
+            i += v.$1.length;
+            vMatch = true;
+            break;
+          }
+        }
+        if (vMatch) continue;
+      }
+
+      // 2. Check consonant
+      bool cMatch = false;
+      for (final c in consonants) {
+        if (w.startsWith(c.$1, i)) {
+          buffer.write(c.$2);
+          i += c.$1.length;
+          cMatch = true;
+
+          // Now check if a vowel follows this consonant to apply matra
+          for (final m in matras) {
+            if (w.startsWith(m.$1, i)) {
+              if (m.$1 == 'a') {
+                // 'a' at the end of a word attaches 'ा', e.g. apna -> अपना, kesariya -> केसरिया
+                if (i + 1 == n) {
+                  buffer.write('ा');
+                }
+              } else {
+                buffer.write(m.$2);
+              }
+              i += m.$1.length;
+              break;
+            }
+          }
+          break;
+        }
+      }
+
+      // 3. Standalone vowel in the middle
+      if (!cMatch) {
+        bool vMatch = false;
+        for (final v in leadVowels) {
+          if (w.startsWith(v.$1, i)) {
+            for (final m in matras) {
+              if (m.$1 == v.$1) {
+                buffer.write(m.$2);
+                vMatch = true;
+                i += v.$1.length;
+                break;
+              }
+            }
+            if (!vMatch) {
+              buffer.write(v.$2);
+              vMatch = true;
+              i += v.$1.length;
+            }
+            break;
+          }
+        }
+        if (!vMatch) {
+          buffer.write(w[i]);
+          i++;
+        }
+      }
     }
 
-    // If starting with a matra, convert to full vowel
-    if (result.startsWith('ा')) result = 'आ' + result.substring(1);
-    if (result.startsWith('ि')) result = 'इ' + result.substring(1);
-    if (result.startsWith('ी')) result = 'ई' + result.substring(1);
-    if (result.startsWith('ु')) result = 'उ' + result.substring(1);
-    if (result.startsWith('ू')) result = 'ऊ' + result.substring(1);
-    if (result.startsWith('े')) result = 'ए' + result.substring(1);
-    if (result.startsWith('ै')) result = 'ऐ' + result.substring(1);
-    if (result.startsWith('ो')) result = 'ओ' + result.substring(1);
-    if (result.startsWith('ौ')) result = 'औ' + result.substring(1);
-
+    final result = buffer.toString();
     return result.isEmpty ? input : result;
   }
 

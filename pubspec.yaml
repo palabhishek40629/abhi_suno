@@ -1,7 +1,7 @@
 name: abhi_suno
 description: "Abhi Suno - Open Source Ad-Free Hybrid Music Streaming & In-App Offline Player by Abhishek Pal"
 publish_to: 'none'
-version: 4.3.1+16
+version: 4.4.0+17
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -12,7 +12,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   just_audio: ^0.9.44
   audio_service: ^0.18.17
-  youtube_explode_dart: ^2.3.6
   path_provider: ^2.1.5
   dio: ^5.7.0
   shared_preferences: ^2.3.5

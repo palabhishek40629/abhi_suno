@@ -15,19 +15,16 @@ class ShareHelper {
       final saavnLink = (permaUrl != null && permaUrl.trim().isNotEmpty)
           ? permaUrl.trim()
           : 'https://www.jiosaavn.com/search/${Uri.encodeComponent('$title $artist')}';
-      final universalPlayLink = 'https://music.youtube.com/search?q=${Uri.encodeComponent('$title $artist')}';
       final deepLink = 'abhisuno://play?title=${Uri.encodeComponent(title)}&artist=${Uri.encodeComponent(artist)}';
 
       final text = isHindi
           ? '🎧 सुनिए "$title" by $artist on Abhi Suno!\n\n'
-              '▶️ वेब पर तुरंत बजाएं (Instant Web Play):\n$universalPlayLink\n\n'
               '🔗 JioSaavn लिंक:\n$saavnLink\n\n'
               '🚀 Abhi Suno ऐप में खोलें (Deep Link):\n$deepLink\n\n'
               '✨ बिना किसी विज्ञापन और रुकावट के 320kbps लॉसलेस म्यूज़िक!\n'
               '📲 Abhi Suno ऐप डाउनलोड करें: https://github.com/palabhishek40629/abhi_suno/releases\n'
               'Dev: Abhishek Pal'
           : '🎧 Listen to "$title" by $artist on Abhi Suno!\n\n'
-              '▶️ Instant Web Play:\n$universalPlayLink\n\n'
               '🔗 JioSaavn Link:\n$saavnLink\n\n'
               '🚀 Open in Abhi Suno App:\n$deepLink\n\n'
               '✨ 100% Ad-Free 320kbps Lossless Music Streaming & Downloads!\n'

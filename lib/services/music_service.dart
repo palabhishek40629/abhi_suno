@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/song_model.dart';
 import 'audio_providers/jiosaavn_adapter.dart';
 import 'audio_providers/unified_audio_repository.dart';
@@ -12,7 +11,6 @@ class MusicService {
   factory MusicService() => _instance;
   MusicService._internal();
 
-  final YoutubeExplode _yt = YoutubeExplode();
   final JioSaavnAdapter _saavnAdapter = JioSaavnAdapter();
   final UnifiedAudioRepository _audioRepo = UnifiedAudioRepository();
 
@@ -20,7 +18,7 @@ class MusicService {
   final Map<String, List<SongModel>> _queryCache = {};
   final Map<String, String> _lyricsCache = {};
 
-  /// Search music catalog using JioSaavn CDN primary with in-memory caching
+  /// Search music catalog using 100% JioSaavn CDN direct open-source API with in-memory caching
   Future<List<SongModel>> searchSongs(String query, {bool forceRefresh = false}) async {
     final cleanQuery = query.trim().isEmpty ? 'Top Hindi Songs Bollywood' : query.trim();
     final cacheKey = cleanQuery.toLowerCase();
@@ -29,7 +27,7 @@ class MusicService {
       return _queryCache[cacheKey]!;
     }
 
-    // 1. Primary fast search on JioSaavn (<150ms)
+    // 1. Primary fast search on JioSaavn (<120ms)
     try {
       final saavnResults = await _saavnAdapter.searchSongs(cleanQuery, limit: 35);
       if (saavnResults.isNotEmpty) {
@@ -43,34 +41,34 @@ class MusicService {
       }
     } catch (_) {}
 
-    // 2. Secondary fallback search on YouTube Explode
-    try {
-      final searchResults = await _yt.search.search(cleanQuery);
-      final List<SongModel> songs = [];
+    // 2. Secondary fallback: Cleaned query (removes brackets, feat, video, etc.)
+    final stripped = _cleanTitle(cleanQuery);
+    if (stripped.isNotEmpty && stripped.toLowerCase() != cleanQuery.toLowerCase()) {
+      try {
+        final strippedResults = await _saavnAdapter.searchSongs(stripped, limit: 35);
+        if (strippedResults.isNotEmpty) {
+          for (final song in strippedResults) {
+            if (song.streamUrl != null && song.streamUrl!.isNotEmpty) {
+              _audioRepo.cacheStreamUrl(song.id, song.streamUrl!);
+            }
+          }
+          _queryCache[cacheKey] = strippedResults;
+          return strippedResults;
+        }
+      } catch (_) {}
+    }
 
-      for (final video in searchResults) {
-        if (video.duration != null && video.duration!.inMinutes > 15) continue;
-
-        final cleanTitle = _cleanTitle(video.title);
-        final song = SongModel(
-          id: video.id.value,
-          title: cleanTitle,
-          artist: video.author,
-          album: 'Single',
-          duration: video.duration ?? const Duration(minutes: 3),
-          thumbnailUrl: video.thumbnails.highResUrl.isNotEmpty
-              ? video.thumbnails.highResUrl
-              : video.thumbnails.standardResUrl,
-        );
-        songs.add(song);
-        if (songs.length >= 25) break;
-      }
-
-      if (songs.isNotEmpty) {
-        _queryCache[cacheKey] = songs;
-        return songs;
-      }
-    } catch (_) {}
+    // 3. Tertiary fallback: First keyword or primary title token
+    final primaryKeyword = cleanQuery.split(' ').first.trim();
+    if (primaryKeyword.length >= 3 && primaryKeyword.toLowerCase() != cleanQuery.toLowerCase()) {
+      try {
+        final keywordResults = await _saavnAdapter.searchSongs(primaryKeyword, limit: 25);
+        if (keywordResults.isNotEmpty) {
+          _queryCache[cacheKey] = keywordResults;
+          return keywordResults;
+        }
+      } catch (_) {}
+    }
 
     return [];
   }
@@ -220,31 +218,6 @@ class MusicService {
   Future<List<SongModel>> getPunjabiHits() => searchSongs('Punjabi Superhit Songs Karan Aujla Sidhu');
   Future<List<SongModel>> getHindiLofi() => searchSongs('Hindi Lo-Fi Slowed Reverb Aesthetic Chill');
 
-  Future<List<SongModel>> importYouTubePlaylist(String playlistUrl) async {
-    try {
-      final playlist = await _yt.playlists.get(playlistUrl);
-      final List<SongModel> songs = [];
-      await for (final video in _yt.playlists.getVideos(playlist.id)) {
-        songs.add(
-          SongModel(
-            id: video.id.value,
-            title: _cleanTitle(video.title),
-            artist: video.author,
-            album: playlist.title,
-            duration: video.duration ?? const Duration(minutes: 3),
-            thumbnailUrl: video.thumbnails.highResUrl.isNotEmpty
-                ? video.thumbnails.highResUrl
-                : video.thumbnails.standardResUrl,
-          ),
-        );
-        if (songs.length >= 100) break;
-      }
-      return songs;
-    } catch (_) {
-      return [];
-    }
-  }
-
   String _cleanTitle(String title) {
     return title
         .replaceAll(RegExp(r'\(.*?\)|\[.*?\]'), '')
@@ -263,10 +236,6 @@ class MusicService {
 
   Future<List<SongModel>> getPlaylistSongs(String playlistId) async {
     return await _saavnAdapter.getPlaylistSongs(playlistId);
-  }
-
-  void dispose() {
-    _yt.close();
   }
 }
 

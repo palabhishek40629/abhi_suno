@@ -309,12 +309,7 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
             if (audioUrl.startsWith('http://')) {
               audioUrl = audioUrl.replaceFirst('http://', 'https://');
             }
-            final streamHeaders = {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-              'Accept': '*/*',
-              'Connection': 'keep-alive',
-            };
-            source = AudioSource.uri(Uri.parse(audioUrl), headers: streamHeaders);
+            source = AudioSource.uri(Uri.parse(audioUrl));
           }
         }
       }
@@ -323,12 +318,66 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
       if (gen != _playGeneration) return;
 
       if (source != null) {
-        // 4. CRITICAL: Always start every track from 0:00 without double-buffering latency!
-        await _player.setAudioSource(source, initialPosition: Duration.zero);
-        if (gen != _playGeneration) return;
-        _player.play();
+        try {
+          // 4. CRITICAL: Always start every track from 0:00 without double-buffering latency!
+          await _player.setAudioSource(source, initialPosition: Duration.zero);
+          if (gen != _playGeneration) return;
+          await _player.play();
+        } catch (e) {
+          // Automatic 160kbps & 96kbps stream fallback if 320kbps encounters network/CDN error
+          bool fallbackSuccess = false;
+          final currentUrl = song.streamUrl;
+          if (currentUrl != null && currentUrl.contains('_320.mp4')) {
+            try {
+              final url160 = currentUrl.replaceAll('_320.mp4', '_160.mp4');
+              song.streamUrl = url160;
+              await _player.setAudioSource(AudioSource.uri(Uri.parse(url160)), initialPosition: Duration.zero);
+              if (gen != _playGeneration) return;
+              await _player.play();
+              fallbackSuccess = true;
+            } catch (_) {
+              try {
+                final url96 = currentUrl.replaceAll('_320.mp4', '_96.mp4');
+                song.streamUrl = url96;
+                await _player.setAudioSource(AudioSource.uri(Uri.parse(url96)), initialPosition: Duration.zero);
+                if (gen != _playGeneration) return;
+                await _player.play();
+                fallbackSuccess = true;
+              } catch (_) {}
+            }
+          }
+
+          if (!fallbackSuccess) {
+            // Fresh search match on JioSaavn as ultimate safety net
+            try {
+              final freshMatches = await JioSaavnAdapter().searchSongs('${song.title} ${song.artist}', limit: 2);
+              if (freshMatches.isNotEmpty && freshMatches.first.streamUrl != null && freshMatches.first.streamUrl!.isNotEmpty) {
+                final freshUrl = freshMatches.first.streamUrl!;
+                song.streamUrl = freshUrl;
+                _audioRepo.cacheStreamUrl(song.id, freshUrl);
+                await _player.setAudioSource(AudioSource.uri(Uri.parse(freshUrl)), initialPosition: Duration.zero);
+                if (gen != _playGeneration) return;
+                await _player.play();
+                fallbackSuccess = true;
+              }
+            } catch (_) {}
+          }
+
+          if (!fallbackSuccess) {
+            // Gracefully reset processing state so UI is never frozen in infinite buffering
+            playbackState.add(playbackState.value.copyWith(
+              processingState: AudioProcessingState.idle,
+              playing: false,
+            ));
+          }
+        }
       }
-    } catch (_) {}
+    } catch (_) {
+      playbackState.add(playbackState.value.copyWith(
+        processingState: AudioProcessingState.idle,
+        playing: false,
+      ));
+    }
   }
 
   void _applyShuffleQueue(SongModel current) {
@@ -368,6 +417,10 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> play() async {
+    if (_currentSong != null && (_player.audioSource == null || _player.processingState == ProcessingState.idle)) {
+      await playSong(_currentSong!);
+      return;
+    }
     await _player.play();
     PartyRoomService().onLocalResume();
   }

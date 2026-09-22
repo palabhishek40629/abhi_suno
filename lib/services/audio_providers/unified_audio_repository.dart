@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'audio_provider_adapter.dart';
 import 'jiosaavn_adapter.dart';
-import 'youtube_explode_adapter.dart';
 
 class UnifiedAudioRepository {
   static final UnifiedAudioRepository _instance = UnifiedAudioRepository._internal();
@@ -9,7 +8,6 @@ class UnifiedAudioRepository {
   UnifiedAudioRepository._internal();
 
   final JioSaavnAdapter _primaryJioSaavn = JioSaavnAdapter();
-  final YouTubeExplodeAdapter _secondaryYouTube = YouTubeExplodeAdapter();
 
   // In-memory stream cache
   final Map<String, String> _streamCache = {};
@@ -63,7 +61,7 @@ class UnifiedAudioRepository {
       }
     } catch (_) {}
 
-    // 2. JioSaavn Match by Song Title / Query (Resolves 99.9% of Hindi & Bollywood Tracks in <120ms)
+    // 2. JioSaavn Match by Song Title / Full Query (<100ms response)
     if (query != null && query.trim().isNotEmpty) {
       try {
         final cleanQ = query.replaceAll(RegExp(r'\(.*?\)'), '').replaceAll(RegExp(r'\[.*?\]'), '').trim();
@@ -82,22 +80,25 @@ class UnifiedAudioRepository {
           }
         }
       } catch (_) {}
-    }
 
-    // 3. Secondary Fallback: YouTube Explode ONLY if JioSaavn has no stream
-    final isYouTubeId = RegExp(r'^[a-zA-Z0-9_-]{11}$').hasMatch(trackId);
-    if (isYouTubeId) {
+      // 3. Fallback: Search by song title alone (strips secondary artist names)
       try {
-        final ytUrl = await _secondaryYouTube.resolveAudioStreamUrl(trackId).timeout(const Duration(seconds: 6));
-        if (ytUrl != null && ytUrl.isNotEmpty) return ytUrl;
-      } catch (_) {}
-    }
-
-    if (query != null && query.trim().isNotEmpty && !isYouTubeId) {
-      try {
-        final ytFallback = await _secondaryYouTube.resolveAudioStreamUrl(query).timeout(const Duration(seconds: 6));
-        if (ytFallback != null && ytFallback.isNotEmpty) {
-          return ytFallback;
+        final titleOnly = query.split('-').first.split('|').first.replaceAll(RegExp(r'\(.*?\)'), '').trim();
+        if (titleOnly.isNotEmpty && titleOnly != query.trim()) {
+          final titleMatches = await _primaryJioSaavn.searchSongs(titleOnly, limit: 3);
+          if (titleMatches.isNotEmpty) {
+            for (final match in titleMatches) {
+              if (match.streamUrl != null && match.streamUrl!.isNotEmpty) {
+                return match.streamUrl;
+              }
+              if (match.id.isNotEmpty) {
+                final resolved = await _primaryJioSaavn.resolveAudioStreamUrl(match.id, quality: quality);
+                if (resolved != null && resolved.isNotEmpty) {
+                  return resolved;
+                }
+              }
+            }
+          }
         }
       } catch (_) {}
     }
