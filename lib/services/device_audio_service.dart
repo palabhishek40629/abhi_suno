@@ -29,7 +29,7 @@ class DeviceAudioService {
       try {
         final dir = Directory(dirPath);
         if (await dir.exists()) {
-          await for (final entity in dir.list(recursive: true, followLinks: false)) {
+          await for (final entity in dir.list(recursive: true, followLinks: false).handleError((_) {})) {
             if (entity is File) {
               final path = entity.path;
               final lower = path.toLowerCase();

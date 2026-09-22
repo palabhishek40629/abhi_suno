@@ -73,14 +73,98 @@ class MusicService {
     return [];
   }
 
-  /// Multi-Source Lyrics Engine (JioSaavn Official Lyrics + LRCLIB Synced LRC + OVH Fallback)
+  /// Multi-Source Lyrics Engine (Prioritizes Millisecond Synced LRC, with JioSaavn & Plaintext Fallbacks)
   Future<String> fetchLyrics(String title, String artist, {String? songId}) async {
     final cacheKey = '$title-$artist'.toLowerCase();
     if (_lyricsCache.containsKey(cacheKey)) {
       return _lyricsCache[cacheKey]!;
     }
 
-    // 1. First Priority: Direct Official JioSaavn Lyrics
+    final cleanT = _cleanTitle(title);
+    final cleanA = artist
+        .replaceAll(RegExp(r'(VEVO|Official|Topic|Music|Zee Music|T-Series)', caseSensitive: false), '')
+        .split(',')
+        .first
+        .trim();
+
+    String? plainLyricsFallback;
+
+    // 1. First Priority: LRCLIB Search with Clean Title + Artist (Instant Millisecond Synced Lyrics)
+    try {
+      final searchUrl = Uri.parse(
+        'https://lrclib.net/api/search?q=${Uri.encodeComponent("$cleanT $cleanA")}',
+      );
+      final res = await http.get(
+        searchUrl,
+        headers: {'User-Agent': 'AbhiSuno/4.4.1 (palabhishek40629@gmail.com)'},
+      ).timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final List<dynamic> list = json.decode(res.body);
+        for (final item in list) {
+          if (item['syncedLyrics'] != null && item['syncedLyrics'].toString().trim().isNotEmpty) {
+            final lyrics = item['syncedLyrics'].toString();
+            _lyricsCache[cacheKey] = lyrics;
+            return lyrics;
+          }
+          if (plainLyricsFallback == null && item['plainLyrics'] != null && item['plainLyrics'].toString().trim().isNotEmpty) {
+            plainLyricsFallback = item['plainLyrics'].toString();
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Second Priority: LRCLIB Search with Clean Title Alone (Captures Indian Chartbusters Regardless of Artist Variations)
+    try {
+      if (cleanT.isNotEmpty && cleanT != title) {
+        final titleOnlyUrl = Uri.parse(
+          'https://lrclib.net/api/search?q=${Uri.encodeComponent(cleanT)}',
+        );
+        final res = await http.get(
+          titleOnlyUrl,
+          headers: {'User-Agent': 'AbhiSuno/4.4.1 (palabhishek40629@gmail.com)'},
+        ).timeout(const Duration(seconds: 5));
+
+        if (res.statusCode == 200) {
+          final List<dynamic> list = json.decode(res.body);
+          for (final item in list) {
+            if (item['syncedLyrics'] != null && item['syncedLyrics'].toString().trim().isNotEmpty) {
+              final lyrics = item['syncedLyrics'].toString();
+              _lyricsCache[cacheKey] = lyrics;
+              return lyrics;
+            }
+            if (plainLyricsFallback == null && item['plainLyrics'] != null && item['plainLyrics'].toString().trim().isNotEmpty) {
+              plainLyricsFallback = item['plainLyrics'].toString();
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Third Priority: LRCLIB Exact Match Endpoint
+    try {
+      final exactUrl = Uri.parse(
+        'https://lrclib.net/api/get?track_name=${Uri.encodeComponent(cleanT)}&artist_name=${Uri.encodeComponent(cleanA)}',
+      );
+      final res = await http.get(
+        exactUrl,
+        headers: {'User-Agent': 'AbhiSuno/4.4.1 (palabhishek40629@gmail.com)'},
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final data = json.decode(res.body);
+        if (data['syncedLyrics'] != null && data['syncedLyrics'].toString().trim().isNotEmpty) {
+          final lyrics = data['syncedLyrics'].toString();
+          _lyricsCache[cacheKey] = lyrics;
+          return lyrics;
+        }
+        if (plainLyricsFallback == null && data['plainLyrics'] != null && data['plainLyrics'].toString().trim().isNotEmpty) {
+          plainLyricsFallback = data['plainLyrics'].toString();
+        }
+      }
+    } catch (_) {}
+
+    // 4. Fourth Priority: Direct Official JioSaavn Lyrics (Plaintext)
     if (songId != null && songId.isNotEmpty) {
       try {
         final saavnLyrics = await _saavnAdapter.fetchLyrics(songId);
@@ -91,95 +175,13 @@ class MusicService {
       } catch (_) {}
     }
 
-    final cleanT = _cleanTitle(title);
-    final cleanA = artist
-        .replaceAll(RegExp(r'(VEVO|Official|Topic|Music|Zee Music|T-Series)', caseSensitive: false), '')
-        .split(',')
-        .first
-        .trim();
+    // 5. Use cached LRCLIB plaintext if available
+    if (plainLyricsFallback != null && plainLyricsFallback.trim().isNotEmpty) {
+      _lyricsCache[cacheKey] = plainLyricsFallback;
+      return plainLyricsFallback;
+    }
 
-    // 2. LRCLIB Search with Title + Artist (7-second timeout)
-    try {
-      final searchUrl = Uri.parse(
-        'https://lrclib.net/api/search?q=${Uri.encodeComponent("$cleanT $cleanA")}',
-      );
-      final res = await http.get(
-        searchUrl,
-        headers: {'User-Agent': 'AbhiSuno/4.2.0 (palabhishek40629@gmail.com)'},
-      ).timeout(const Duration(seconds: 7));
-
-      if (res.statusCode == 200) {
-        final List<dynamic> list = json.decode(res.body);
-        for (final item in list) {
-          if (item['syncedLyrics'] != null && item['syncedLyrics'].toString().trim().isNotEmpty) {
-            final lyrics = item['syncedLyrics'].toString();
-            _lyricsCache[cacheKey] = lyrics;
-            return lyrics;
-          }
-          if (item['plainLyrics'] != null && item['plainLyrics'].toString().trim().isNotEmpty) {
-            final lyrics = item['plainLyrics'].toString();
-            _lyricsCache[cacheKey] = lyrics;
-            return lyrics;
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 3. LRCLIB Search with Clean Title Alone (Matches 100% chartbusters regardless of artist formatting)
-    try {
-      if (cleanT.isNotEmpty && cleanT != title) {
-        final titleOnlyUrl = Uri.parse(
-          'https://lrclib.net/api/search?q=${Uri.encodeComponent(cleanT)}',
-        );
-        final res = await http.get(
-          titleOnlyUrl,
-          headers: {'User-Agent': 'AbhiSuno/4.2.0 (palabhishek40629@gmail.com)'},
-        ).timeout(const Duration(seconds: 6));
-
-        if (res.statusCode == 200) {
-          final List<dynamic> list = json.decode(res.body);
-          for (final item in list) {
-            if (item['syncedLyrics'] != null && item['syncedLyrics'].toString().trim().isNotEmpty) {
-              final lyrics = item['syncedLyrics'].toString();
-              _lyricsCache[cacheKey] = lyrics;
-              return lyrics;
-            }
-            if (item['plainLyrics'] != null && item['plainLyrics'].toString().trim().isNotEmpty) {
-              final lyrics = item['plainLyrics'].toString();
-              _lyricsCache[cacheKey] = lyrics;
-              return lyrics;
-            }
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 4. LRCLIB Exact Get endpoint
-    try {
-      final exactUrl = Uri.parse(
-        'https://lrclib.net/api/get?track_name=${Uri.encodeComponent(cleanT)}&artist_name=${Uri.encodeComponent(cleanA)}',
-      );
-      final res = await http.get(
-        exactUrl,
-        headers: {'User-Agent': 'AbhiSuno/4.2.0 (palabhishek40629@gmail.com)'},
-      ).timeout(const Duration(seconds: 4));
-
-      if (res.statusCode == 200) {
-        final data = json.decode(res.body);
-        if (data['syncedLyrics'] != null && data['syncedLyrics'].toString().trim().isNotEmpty) {
-          final lyrics = data['syncedLyrics'].toString();
-          _lyricsCache[cacheKey] = lyrics;
-          return lyrics;
-        }
-        if (data['plainLyrics'] != null && data['plainLyrics'].toString().trim().isNotEmpty) {
-          final lyrics = data['plainLyrics'].toString();
-          _lyricsCache[cacheKey] = lyrics;
-          return lyrics;
-        }
-      }
-    } catch (_) {}
-
-    // 5. Lyrics.ovh Public Fallback API
+    // 6. Lyrics.ovh Public Fallback API
     try {
       if (cleanA.isNotEmpty && cleanT.isNotEmpty) {
         final ovhUrl = Uri.parse(
@@ -197,7 +199,7 @@ class MusicService {
       }
     } catch (_) {}
 
-    // 6. Graceful Fallback
+    // 7. Graceful Fallback
     final isHindi = LanguageService().isHindi;
     final fallback = isHindi
         ? 'गीत के बोल उपलब्ध नहीं हैं।\n\nअभी सुनो - शुद्ध भारतीय संगीत प्लेयर'

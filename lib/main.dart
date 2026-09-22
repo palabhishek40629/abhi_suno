@@ -167,10 +167,17 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
   // Multi-tap back navigation tracking (2-Tap Smart Exit)
   int _backPressCount = 0;
   Timer? _backResetTimer;
+  late final List<Widget> _screens;
 
   @override
   void initState() {
     super.initState();
+    _screens = [
+      HomeScreen(audioHandler: widget.audioHandler),
+      ExploreScreen(audioHandler: widget.audioHandler),
+      SearchScreen(audioHandler: widget.audioHandler),
+      LibraryScreen(audioHandler: widget.audioHandler),
+    ];
     WidgetsBinding.instance.addObserver(this);
     _checkExternalShareIntent();
   }
@@ -237,13 +244,6 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
 
   @override
   Widget build(BuildContext context) {
-    final screens = [
-      HomeScreen(audioHandler: widget.audioHandler),
-      ExploreScreen(audioHandler: widget.audioHandler),
-      SearchScreen(audioHandler: widget.audioHandler),
-      LibraryScreen(audioHandler: widget.audioHandler),
-    ];
-
     return PopScope(
       canPop: false,
       onPopInvoked: (didPop) {
@@ -330,7 +330,7 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
                         Expanded(
                           child: IndexedStack(
                             index: _currentIndex,
-                            children: screens,
+                            children: _screens,
                           ),
                         ),
 

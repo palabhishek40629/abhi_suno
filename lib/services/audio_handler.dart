@@ -285,9 +285,18 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
         source = AudioSource.file(song.localFilePath!);
       } else {
         final cachedFile = await _cacheManager.getCachedSongFile(song.id);
-        if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 500000) {
+        if (cachedFile != null && await cachedFile.exists() && await cachedFile.length() > 10000) {
           source = AudioSource.file(cachedFile.path);
         } else {
+          // Fast check: If offline and not cached or downloaded, avoid lengthy 12-second network timeout hang
+          if (!ConnectivityService().isOnline) {
+            playbackState.add(playbackState.value.copyWith(
+              processingState: AudioProcessingState.idle,
+              playing: false,
+            ));
+            return;
+          }
+
           String? audioUrl = song.streamUrl;
           if (audioUrl == null || audioUrl.isEmpty) {
             final songQuery = '${song.title} ${song.artist}'.trim();
@@ -371,6 +380,12 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
             ));
           }
         }
+      } else {
+        // CRITICAL FIX: If audio source could not be resolved, reset loading state immediately!
+        playbackState.add(playbackState.value.copyWith(
+          processingState: AudioProcessingState.idle,
+          playing: false,
+        ));
       }
     } catch (_) {
       playbackState.add(playbackState.value.copyWith(
@@ -417,6 +432,10 @@ class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
 
   @override
   Future<void> play() async {
+    if (_currentSong == null && _playlist.isNotEmpty) {
+      await playSong(_playlist.first);
+      return;
+    }
     if (_currentSong != null && (_player.audioSource == null || _player.processingState == ProcessingState.idle)) {
       await playSong(_currentSong!);
       return;

@@ -26,13 +26,16 @@ class _LyricsSheetState extends State<LyricsSheet> {
   final LanguageService _lang = LanguageService();
   final ScrollController _scrollController = ScrollController();
 
+  late SongModel _currentSong;
   List<_KaraokeLine> _karaokeLines = [];
   String _plainLyrics = '';
   String _rawLyrics = '';
   bool _isKaraoke = false;
   bool _isLoading = true;
   int _activeLineIndex = -1;
+
   StreamSubscription? _posSub;
+  StreamSubscription? _songSub;
 
   static const Color cyanNeon = Color(0xFF2FC0DB);
   static const Color pinkNeon = Color(0xFFD34C8C);
@@ -41,23 +44,43 @@ class _LyricsSheetState extends State<LyricsSheet> {
   @override
   void initState() {
     super.initState();
-    _loadLyrics();
+    _currentSong = widget.song;
+    _loadLyricsForSong(_currentSong);
+
+    // Dynamically react to track changes (Next / Previous / Autoplay) while lyrics sheet is open
+    if (widget.audioHandler != null) {
+      _songSub = widget.audioHandler!.currentSongStream.listen((newSong) {
+        if (newSong != null && newSong.id != _currentSong.id && mounted) {
+          setState(() {
+            _currentSong = newSong;
+            _isLoading = true;
+            _karaokeLines.clear();
+            _plainLyrics = '';
+            _rawLyrics = '';
+            _activeLineIndex = -1;
+          });
+          _posSub?.cancel();
+          _loadLyricsForSong(newSong);
+        }
+      });
+    }
   }
 
   @override
   void dispose() {
+    _songSub?.cancel();
     _posSub?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadLyrics() async {
+  Future<void> _loadLyricsForSong(SongModel song) async {
     String rawLyrics = '';
 
     // 1. Check local offline lyrics file
-    if (widget.song.localLyricsPath != null) {
+    if (song.localLyricsPath != null) {
       try {
-        final lrcFile = File(widget.song.localLyricsPath!);
+        final lrcFile = File(song.localLyricsPath!);
         if (lrcFile.existsSync()) {
           rawLyrics = await lrcFile.readAsString();
         }
@@ -65,16 +88,16 @@ class _LyricsSheetState extends State<LyricsSheet> {
     }
 
     // 2. Check song.lyrics property
-    if (rawLyrics.isEmpty && widget.song.lyrics != null && widget.song.lyrics!.isNotEmpty) {
-      rawLyrics = widget.song.lyrics!;
+    if (rawLyrics.isEmpty && song.lyrics != null && song.lyrics!.isNotEmpty) {
+      rawLyrics = song.lyrics!;
     }
 
-    // 3. Fallback to online multi-source query (JioSaavn + LRCLIB)
+    // 3. Fallback to online multi-source query (LRCLIB synced first, then JioSaavn)
     if (rawLyrics.isEmpty) {
       rawLyrics = await _musicService.fetchLyrics(
-        widget.song.title,
-        widget.song.artist,
-        songId: widget.song.id,
+        song.title,
+        song.artist,
+        songId: song.id,
       );
     }
 
@@ -85,6 +108,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
     }
 
     if (widget.audioHandler != null && _isKaraoke) {
+      _posSub?.cancel();
       _posSub = widget.audioHandler!.player.positionStream.listen((pos) {
         _syncActiveLine(pos);
       });
@@ -136,19 +160,28 @@ class _LyricsSheetState extends State<LyricsSheet> {
       }
     }
 
-    if (activeIdx != -1 && activeIdx != _activeLineIndex && mounted) {
+    if (activeIdx != _activeLineIndex && mounted) {
       setState(() => _activeLineIndex = activeIdx);
 
       // Auto-scroll active line to center smoothly without jitter
       if (_scrollController.hasClients) {
-        const itemEstimatedHeight = 72.0;
-        final viewportHeight = MediaQuery.of(context).size.height * 0.58;
-        final targetOffset = (activeIdx * itemEstimatedHeight) - (viewportHeight / 2) + (itemEstimatedHeight / 2);
-        _scrollController.animateTo(
-          targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
-          duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOutCubic,
-        );
+        if (activeIdx >= 0) {
+          const itemEstimatedHeight = 66.0;
+          final viewportHeight = MediaQuery.of(context).size.height * 0.58;
+          final targetOffset = (activeIdx * itemEstimatedHeight) - (viewportHeight / 2) + (itemEstimatedHeight / 2);
+          _scrollController.animateTo(
+            targetOffset.clamp(0.0, _scrollController.position.maxScrollExtent),
+            duration: const Duration(milliseconds: 320),
+            curve: Curves.easeOutCubic,
+          );
+        } else {
+          // Seeking before first line (intro instrumental): smoothly scroll to top
+          _scrollController.animateTo(
+            0.0,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+          );
+        }
       }
     }
   }
@@ -175,38 +208,58 @@ class _LyricsSheetState extends State<LyricsSheet> {
     }
 
     try {
-      final cleanTitle = widget.song.title.replaceAll(RegExp(r'[^\w\s]+'), '').trim().replaceAll(RegExp(r'\s+'), '_');
-      final fileName = '${cleanTitle}_Lyrics.txt';
-      const channel = MethodChannel('com.abhishekpal.abhisuno/native');
+      final safeSongTitle = _currentSong.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final fileName = '${safeSongTitle}_लिरिक्स.txt';
 
-      await channel.invokeMethod('saveTextToDownloads', {
+      const channel = MethodChannel('com.abhishekpal.abhisuno/native');
+      final success = await channel.invokeMethod<bool>('saveTextToDownloads', {
         'fileName': fileName,
-        'content': '🎧 ${widget.song.title} - ${widget.song.artist}\n'
-            '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n'
-            '$cleanLyrics\n\n'
-            '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n'
-            'Abhi Suno Music App • Developed by Abhishek Pal\n',
+        'content': '=== ${_currentSong.title} (${_currentSong.artist}) ===\n\n$cleanLyrics\n\n--- Abhi Suno Music Player ---',
       });
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: cyanNeon,
-            content: Text(
-              isHindi ? 'लिरिक्स टेक्स्ट फाइल सफलतापूर्वक डाउनलोड हो गई! ($fileName)' : 'Lyrics text file downloaded successfully! ($fileName)',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+        if (success == true) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: const Color(0xFF00E676),
+              duration: const Duration(seconds: 4),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.black, size: 22),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isHindi
+                          ? 'लिरिक्स डाउनलोड फोल्डर (AbhiSuno) में सेव हो गए!'
+                          : 'Lyrics saved to Downloads/AbhiSuno folder!',
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                    ),
+                  ),
+                ],
+              ),
+              action: SnackBarAction(
+                label: isHindi ? 'खोलें' : 'OPEN',
+                textColor: Colors.black,
+                onPressed: () {
+                  try {
+                    channel.invokeMethod('openDownloadsFolder');
+                  } catch (_) {}
+                },
+              ),
             ),
-          ),
-        );
+          );
+        } else {
+          throw Exception('File write failed');
+        }
       }
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.redAccent,
             content: Text(
-              isHindi ? 'लिरिक्स डाउनलोड विफल रहा।' : 'Failed to download lyrics file.',
-              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              isHindi ? 'लिरिक्स डाउनलोड करने में विफल: $e' : 'Failed to save lyrics: $e',
+              style: const TextStyle(color: Colors.white),
             ),
           ),
         );
@@ -272,7 +325,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.song.title,
+                              _currentSong.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(color: textColor, fontSize: 16, fontWeight: FontWeight.bold),
@@ -295,7 +348,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                   ),
                                 Expanded(
                                   child: Text(
-                                    widget.song.artist,
+                                    _currentSong.artist,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(color: subtextColor, fontSize: 12),
@@ -320,21 +373,22 @@ class _LyricsSheetState extends State<LyricsSheet> {
                               BoxShadow(color: cyanNeon.withOpacity(0.35), blurRadius: 8),
                             ],
                           ),
-                          child: const Icon(Icons.file_download_outlined, color: cyanNeon, size: 19),
+                          child: const Icon(Icons.file_download_outlined, color: cyanNeon, size: 18),
                         ),
                         onPressed: _downloadLyricsAsTextFile,
                       ),
 
-                      // Close Button
                       IconButton(
-                        icon: Icon(Icons.close_rounded, color: textColor),
+                        icon: const Icon(Icons.close_rounded, color: Colors.white70),
                         onPressed: () => Navigator.pop(context),
                       ),
                     ],
                   ),
-                  const Divider(color: Colors.white12, height: 20),
+                  const SizedBox(height: 12),
+                  const Divider(color: Colors.white12, height: 1),
+                  const SizedBox(height: 12),
 
-                  // Lyrics Content View
+                  // Lyrics Content Body
                   Expanded(
                     child: _isLoading
                         ? const Center(
@@ -357,24 +411,28 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                       widget.audioHandler?.seek(line.time);
                                     },
                                     child: AnimatedScale(
-                                      scale: isActive ? 1.18 : 1.0,
-                                      duration: const Duration(milliseconds: 280),
-                                      curve: Curves.easeOutBack,
+                                      scale: isActive ? 1.04 : 1.0, // Refined, elegant non-jarring scale
+                                      duration: const Duration(milliseconds: 260),
+                                      curve: Curves.easeOutCubic,
                                       child: AnimatedContainer(
-                                        duration: const Duration(milliseconds: 260),
+                                        duration: const Duration(milliseconds: 240),
                                         margin: EdgeInsets.symmetric(
-                                          vertical: isActive ? 8 : 4,
+                                          vertical: isActive ? 6 : 3,
                                           horizontal: isActive ? 4 : 8,
                                         ),
                                         padding: EdgeInsets.symmetric(
-                                          vertical: isActive ? 14 : 9,
-                                          horizontal: isActive ? 18 : 12,
+                                          vertical: isActive ? 12 : 7,
+                                          horizontal: isActive ? 16 : 10,
                                         ),
                                         decoration: BoxDecoration(
-                                          borderRadius: BorderRadius.circular(22),
+                                          borderRadius: BorderRadius.circular(24),
                                           gradient: isActive
                                               ? const LinearGradient(
-                                                  colors: [Color(0xFF0F1B33), Color(0xFF1E102E)],
+                                                  colors: [
+                                                    Color(0xFF131D36),
+                                                    Color(0xFF1B112D),
+                                                    Color(0xFF0E1626),
+                                                  ],
                                                   begin: Alignment.topLeft,
                                                   end: Alignment.bottomRight,
                                                 )
@@ -382,22 +440,36 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                           color: isActive ? null : Colors.transparent,
                                           border: isActive
                                               ? Border.all(
-                                                  color: cyanNeon.withOpacity(0.9),
-                                                  width: 1.8,
+                                                  color: cyanNeon.withOpacity(0.85),
+                                                  width: 1.5,
                                                 )
                                               : null,
                                           boxShadow: isActive
                                               ? [
+                                                  // 3D Top-left light reflection highlight
                                                   BoxShadow(
-                                                    color: cyanNeon.withOpacity(0.40),
-                                                    blurRadius: 22,
-                                                    spreadRadius: 1,
-                                                    offset: const Offset(0, 4),
+                                                    color: Colors.white.withOpacity(0.12),
+                                                    blurRadius: 6,
+                                                    offset: const Offset(-2, -2),
                                                   ),
+                                                  // 3D Bottom-right deep ambient drop shadow
                                                   BoxShadow(
-                                                    color: pinkNeon.withOpacity(0.22),
-                                                    blurRadius: 16,
-                                                    offset: const Offset(0, -2),
+                                                    color: Colors.black.withOpacity(0.65),
+                                                    blurRadius: 12,
+                                                    offset: const Offset(3, 5),
+                                                  ),
+                                                  // Neon cyan glow
+                                                  BoxShadow(
+                                                    color: cyanNeon.withOpacity(0.35),
+                                                    blurRadius: 18,
+                                                    spreadRadius: 0.5,
+                                                    offset: const Offset(0, 2),
+                                                  ),
+                                                  // Neon pink subtle secondary glow
+                                                  BoxShadow(
+                                                    color: pinkNeon.withOpacity(0.20),
+                                                    blurRadius: 14,
+                                                    offset: const Offset(0, -1),
                                                   ),
                                                 ]
                                               : null,
@@ -421,13 +493,13 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                                   style: const TextStyle(
                                                     fontFamily: 'AmsSudha',
                                                     color: Colors.white,
-                                                    fontSize: 24,
+                                                    fontSize: 20, // Crisp & readable without oversized overflow
                                                     fontWeight: FontWeight.w900,
-                                                    letterSpacing: 0.8,
+                                                    letterSpacing: 0.6,
                                                     shadows: [
-                                                      Shadow(color: cyanNeon, blurRadius: 24),
-                                                      Shadow(color: Color(0xFF00E5FF), blurRadius: 12),
-                                                      Shadow(color: pinkNeon, blurRadius: 20),
+                                                      Shadow(color: cyanNeon, blurRadius: 18),
+                                                      Shadow(color: Color(0xFF00E5FF), blurRadius: 10),
+                                                      Shadow(color: pinkNeon, blurRadius: 14),
                                                     ],
                                                   ),
                                                 ),
@@ -438,7 +510,7 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                                 style: TextStyle(
                                                   fontFamily: 'AmsSudha',
                                                   color: textColor.withOpacity(i < _activeLineIndex ? 0.35 : 0.70),
-                                                  fontSize: 17,
+                                                  fontSize: 16,
                                                   fontWeight: FontWeight.w600,
                                                   letterSpacing: 0.4,
                                                 ),
@@ -459,10 +531,10 @@ class _LyricsSheetState extends State<LyricsSheet> {
                                   style: const TextStyle(
                                     fontFamily: 'AmsSudha',
                                     color: Colors.white,
-                                    fontSize: 20,
-                                    height: 2.2,
+                                    fontSize: 19,
+                                    height: 2.1,
                                     fontWeight: FontWeight.w600,
-                                    letterSpacing: 0.6,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ),
@@ -480,5 +552,6 @@ class _LyricsSheetState extends State<LyricsSheet> {
 class _KaraokeLine {
   final Duration time;
   final String text;
+
   _KaraokeLine({required this.time, required this.text});
 }
