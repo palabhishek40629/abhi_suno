@@ -11,6 +11,7 @@ import 'playback_history_service.dart';
 import 'audio_providers/unified_audio_repository.dart';
 import 'audio_providers/jiosaavn_adapter.dart';
 import 'party_room_service.dart';
+import 'connectivity_service.dart';
 
 class AbhiAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
   final AudioPlayer _player = AudioPlayer();
