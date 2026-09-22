@@ -24,7 +24,7 @@ class PipedInvidiousAdapter implements AudioProviderAdapter {
     for (final host in _pipedInstances) {
       try {
         final res = await http.get(
-          Uri.parse('System.Management.Automation.Internal.Host.InternalHost/streams/'),
+          Uri.parse('$host/streams/$trackId'),
           headers: {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)'},
         ).timeout(const Duration(milliseconds: 2500));
 
@@ -43,7 +43,7 @@ class PipedInvidiousAdapter implements AudioProviderAdapter {
     for (final host in _invidiousMirrors) {
       try {
         final res = await http.get(
-          Uri.parse('System.Management.Automation.Internal.Host.InternalHost/api/v1/videos/'),
+          Uri.parse('$host/api/v1/videos/$trackId'),
           headers: {'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X)'},
         ).timeout(const Duration(milliseconds: 2500));
 

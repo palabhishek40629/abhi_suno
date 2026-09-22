@@ -65,25 +65,30 @@ jobs:
 
       - name: Rename APK for Easy Identification
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.3.0-release.apk
+          cp build/app/outputs/flutter-apk/app-release.apk AbhiSuno-v4.3.1-release.apk
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: AbhiSuno-v4.3.0-release
-          path: AbhiSuno-v4.3.0-release.apk
+          name: AbhiSuno-v4.3.1-release
+          path: AbhiSuno-v4.3.1-release.apk
           retention-days: 30
 
       - name: Create GitHub Release (On Tag or Main Push)
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v4.3.0-${{ github.run_number }}
-          name: "Abhi Suno v4.3.0 Ultimate Master Edition (Build ${{ github.run_number }})"
+          tag_name: v4.3.1-${{ github.run_number }}
+          name: "Abhi Suno v4.3.1 Deep Audit Edition (Build ${{ github.run_number }})"
           body: |
-            ### 🎧 Abhi Suno v4.3.0 Ultimate Master Edition
+            ### 🎧 Abhi Suno v4.3.1 Deep Audit Edition
             **Developed by Abhishek Pal (Computer Science & Engineering Student)**
 
+            - 🛠️ **Deep Static & Runtime Codebase Audit Fixes:**
+              - Repaired corrupted Piped & Invidious fallback stream URLs in `piped_invidious_adapter.dart`.
+              - Replaced all 7 zero-result queries in `_infiniteQueryPool` with 100% verified active JioSaavn queries.
+              - Localized missing-lyrics fallback string in `music_service.dart` for 100% pure English mode.
+              - Modernized deprecated `WillPopScope` to `PopScope` for native Android 14+ Predictive Back support.
             - ⚡ **100% JioSaavn Primary Playback (<100ms Akamai CDN):**
               - High-speed direct Akamai CDN streaming with automatic DES token decryptor.
               - Intelligent YouTube fallback only when a song is unavailable on JioSaavn.
@@ -108,8 +113,8 @@ jobs:
             - 📱 **Reactive Now Playing Status:**
               - Dynamic real-time sync for download and favorite status on song change.
 
-            **Direct APK Download:** `AbhiSuno-v4.3.0-release.apk`
-          files: AbhiSuno-v4.3.0-release.apk
+            **Direct APK Download:** `AbhiSuno-v4.3.1-release.apk`
+          files: AbhiSuno-v4.3.1-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         continue-on-error: true

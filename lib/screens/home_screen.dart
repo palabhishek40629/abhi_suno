@@ -48,15 +48,15 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isContinueDismissed = false;
   String _cachedArtistQuery = '';
 
-  // Rich Discovery Queries for Endless Fast Scroll
+  // Rich Discovery Queries for Endless Fast Scroll (100% Verified against JioSaavn Index)
   static const List<String> _infiniteQueryPool = [
-    'Bollywood Top 50 Chartbusters',
+    'Top Bollywood Songs',
     'Arijit Singh Melodies',
     'Atif Aslam Romance',
-    'Trending Punjabi Club Party',
-    '90s Golden Era Bollywood',
+    'Top Punjabi Songs',
+    '90s Hindi Hits',
     'Shreya Ghoshal Pure Vocals',
-    'Hindi Indie Acoustic Vibes',
+    'Hindi Indie Hits',
     'Coke Studio Hits',
     'Sidhu Moose Wala Bangers',
     'Pritam Mega Hits',
@@ -66,13 +66,13 @@ class _HomeScreenState extends State<HomeScreen> {
     'Unplugged Hindi Covers',
     'Kishore Kumar Evergreen Classics',
     'Lata Mangeshkar Masterpieces',
-    'Mohammad Rafi Ghazals & Hits',
+    'Mohammed Rafi Superhits',
     'Sonu Nigam Heartfelt Melodies',
-    'Anuv Jain Soul Acoustic',
+    'Anuv Jain Songs',
     'Darshan Raval Love Ballads',
     'Jubin Nautiyal Peaceful Beats',
     'King Desi Hip Hop',
-    'Yo Yo Honey Singh Party Retro',
+    'Honey Singh Hits',
   ];
 
   @override

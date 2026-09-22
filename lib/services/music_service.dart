@@ -5,6 +5,7 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 import '../models/song_model.dart';
 import 'audio_providers/jiosaavn_adapter.dart';
 import 'audio_providers/unified_audio_repository.dart';
+import 'language_service.dart';
 
 class MusicService {
   static final MusicService _instance = MusicService._internal();
@@ -199,7 +200,10 @@ class MusicService {
     } catch (_) {}
 
     // 6. Graceful Fallback
-    const fallback = 'गीत के बोल उपलब्ध नहीं हैं।\n\nअभी सुनो - शुद्ध भारतीय संगीत प्लेयर';
+    final isHindi = LanguageService().isHindi;
+    final fallback = isHindi
+        ? 'गीत के बोल उपलब्ध नहीं हैं।\n\nअभी सुनो - शुद्ध भारतीय संगीत प्लेयर'
+        : 'Lyrics not available for this song.\n\nAbhi Suno - Ad-Free Music Player';
     _lyricsCache[cacheKey] = fallback;
     return fallback;
   }

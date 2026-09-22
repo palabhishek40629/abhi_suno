@@ -244,10 +244,12 @@ class _MainNavigationScaffoldState extends State<MainNavigationScaffold> with Wi
       LibraryScreen(audioHandler: widget.audioHandler),
     ];
 
-    return WillPopScope(
-      onWillPop: () async {
-        _handleBackPress();
-        return false;
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) {
+        if (!didPop) {
+          _handleBackPress();
+        }
       },
       child: AnimatedBuilder(
         animation: Listenable.merge([_theme, _lang, _connectivity]),
